@@ -11,25 +11,62 @@ interface CachedLayouts {
 
 /**
  * Salva layouts no cache do navegador (localStorage)
+ * Remove decryptedContent para economizar espaço (pode ser muito grande)
  */
 export const saveLayoutsToCache = (layouts: Layout[]): void => {
   try {
+    // Criar versão leve dos layouts (sem decryptedContent para economizar espaço)
+    const lightweightLayouts = layouts.map(layout => ({
+      layoutGuid: layout.layoutGuid,
+      name: layout.name,
+      description: layout.description,
+      version: layout.version,
+      layoutType: layout.layoutType,
+      // Não salvar decryptedContent - será buscado do backend quando necessário
+    }));
+
     const cacheData: CachedLayouts = {
-      layouts,
+      layouts: lightweightLayouts as Layout[],
       timestamp: Date.now(),
     };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    console.log('✅ Layouts salvos no cache do navegador:', layouts.length);
+    
+    const cacheString = JSON.stringify(cacheData);
+    
+    // Verificar tamanho antes de salvar (localStorage geralmente tem limite de 5-10MB)
+    if (cacheString.length > 4 * 1024 * 1024) { // 4MB
+      console.warn('⚠️ Cache muito grande, salvando apenas metadados');
+    }
+    
+    localStorage.setItem(CACHE_KEY, cacheString);
+    console.log('✅ Layouts salvos no cache do navegador (metadados apenas):', layouts.length);
   } catch (error) {
     console.warn('⚠️ Erro ao salvar layouts no cache:', error);
-    // Se o localStorage estiver cheio, tentar limpar e salvar novamente
-    if (error instanceof DOMException && error.code === 22) {
+    // Se o localStorage estiver cheio, limpar cache antigo e tentar novamente
+    if (error instanceof DOMException && (error.code === 22 || error.name === 'QuotaExceededError')) {
       try {
-        localStorage.removeItem(CACHE_KEY);
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ layouts, timestamp: Date.now() }));
-        console.log('✅ Cache limpo e layouts salvos novamente');
+        // Limpar todo o cache relacionado
+        clearLayoutsCache();
+        
+        // Tentar salvar apenas os primeiros 50 layouts para não exceder o limite
+        const limitedLayouts = layouts.slice(0, 50).map(layout => ({
+          layoutGuid: layout.layoutGuid,
+          name: layout.name,
+          description: layout.description,
+          version: layout.version,
+          layoutType: layout.layoutType,
+        }));
+        
+        const limitedCache = {
+          layouts: limitedLayouts as Layout[],
+          timestamp: Date.now(),
+        };
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify(limitedCache));
+        console.log('✅ Cache limpo e salvos apenas 50 primeiros layouts (metadados)');
       } catch (retryError) {
         console.error('❌ Erro ao salvar layouts após limpar cache:', retryError);
+        // Se ainda falhar, não salvar cache (não é crítico)
+        console.warn('⚠️ Cache desabilitado devido a limitações de armazenamento');
       }
     }
   }

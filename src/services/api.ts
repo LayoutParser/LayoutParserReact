@@ -28,7 +28,7 @@ const getApiBaseUrl = (): string => {
 const API_CONFIG: ApiConfig = {
   baseUrl: getApiBaseUrl(),
   endpoints: {
-    parse: '/api/parse',
+    parse: '/api/parse/upload',
     layoutDatabase: '/api/layoutdatabase',
     dataGeneration: '/api/datageneration',
     dataGenerator: '/api/datagenerator',
