@@ -22,10 +22,13 @@ export const Tabs: React.FC<TabsProps> = ({
 }) => {
   const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
 
+  // Filtrar tabs vazias (caso alguma seja condicionalmente removida)
+  const visibleTabs = tabs.filter(tab => tab !== undefined);
+
   return (
     <div className={`tabs-container ${className}`}>
       <div className="tabs-header">
-        {tabs.map(tab => (
+        {visibleTabs.map(tab => (
           <button
             key={tab.id}
             className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}

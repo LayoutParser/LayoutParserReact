@@ -18,6 +18,7 @@ export interface ApiConfig {
 export interface ParseRequest {
   layoutFile: File;
   txtFile: File;
+  layoutName?: string;
   layoutType?: string;
   layoutConfig?: LayoutConfig;
 }

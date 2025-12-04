@@ -1,30 +1,23 @@
 import { useState } from 'react';
 import { parseService } from '../../services/api';
 import { useAppStore } from '../../store/useAppStore';
+import LayoutSearch from './LayoutSearch';
 import type { ParseRequest } from '../../types/api';
 import './UploadSection.css';
 
 const UploadSection = () => {
-  const [layoutFile, setLayoutFile] = useState<File | null>(null);
   const [txtFile, setTxtFile] = useState<File | null>(null);
   
   const {
     isUploading,
     uploadError,
+    selectedLayout,
     setUploading,
     setUploadError,
     setParseResult,
     setTxtContent,
     setFields,
   } = useAppStore();
-
-  const handleLayoutFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setLayoutFile(file);
-      setUploadError(null);
-    }
-  };
 
   const handleTxtFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,8 +30,13 @@ const UploadSection = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!layoutFile || !txtFile) {
-      setUploadError('Por favor, selecione ambos os arquivos (Layout e TXT)');
+    if (!selectedLayout) {
+      setUploadError('Por favor, selecione um layout do banco de dados primeiro');
+      return;
+    }
+
+    if (!txtFile) {
+      setUploadError('Por favor, selecione o arquivo de dados (TXT/MQSeries/IDoc)');
       return;
     }
 
@@ -46,9 +44,21 @@ const UploadSection = () => {
     setUploadError(null);
 
     try {
+      // Criar um arquivo virtual com o layout selecionado
+      // O layout vem do Redis com decryptedContent ou valueContent
+      const layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
+      
+      if (!layoutContent) {
+        throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
+      }
+      
+      const blob = new Blob([layoutContent], { type: 'application/xml' });
+      const layoutFile = new File([blob], `${selectedLayout.name || 'layout'}.xml`, { type: 'application/xml' });
+
       const request: ParseRequest = {
         layoutFile,
         txtFile,
+        layoutName: selectedLayout.name,
       };
 
       const result = await parseService.parseFiles(request);
@@ -76,29 +86,26 @@ const UploadSection = () => {
   return (
     <div className="upload-section">
       <div className="upload-card">
-        <h2>Upload de Arquivos</h2>
+        <h2>Upload e Processamento</h2>
         <p className="upload-description">
-          Selecione o arquivo de layout (XML) e o arquivo de dados (TXT/MQSeries/IDoc)
+          Selecione um layout do banco de dados e o arquivo de dados (TXT/MQSeries/IDoc)
         </p>
 
         <form onSubmit={handleSubmit} className="upload-form">
-          <div className="file-input-group">
-            <label htmlFor="layoutFile" className="file-label">
-              <span className="file-label-text">Arquivo de Layout (XML)</span>
-              <input
-                type="file"
-                id="layoutFile"
-                accept=".xml"
-                onChange={handleLayoutFileChange}
-                disabled={isUploading}
-                className="file-input"
-              />
-              {layoutFile && (
-                <span className="file-name">✓ {layoutFile.name}</span>
-              )}
-            </label>
-          </div>
+          {/* Busca de Layouts */}
+          <LayoutSearch />
 
+          {/* Layout Selecionado */}
+          {selectedLayout && (
+            <div className="selected-layout-info">
+              <strong>Layout Selecionado:</strong> {selectedLayout.name}
+              {selectedLayout.layoutGuid && (
+                <span className="layout-guid"> ({selectedLayout.layoutGuid.substring(0, 8)}...)</span>
+              )}
+            </div>
+          )}
+
+          {/* Upload de Arquivo de Dados */}
           <div className="file-input-group">
             <label htmlFor="txtFile" className="file-label">
               <span className="file-label-text">Arquivo de Dados (TXT/MQSeries/IDoc)</span>
@@ -124,10 +131,10 @@ const UploadSection = () => {
 
           <button
             type="submit"
-            disabled={isUploading || !layoutFile || !txtFile}
+            disabled={isUploading || !selectedLayout || !txtFile}
             className="submit-button"
           >
-            {isUploading ? 'Processando...' : 'Processar Arquivos'}
+            {isUploading ? 'Processando...' : 'Processar & Analisar Documento'}
           </button>
         </form>
       </div>

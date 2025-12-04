@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ParseResponse, Field } from '../types/api';
+import type { Layout } from '../types/layout';
 
 interface AppState {
   // Estado de upload
@@ -12,6 +13,9 @@ interface AppState {
   txtContent: string;
   fields: Field[];
   
+  // Layout selecionado
+  selectedLayout: Layout | null;
+  
   // Ações
   setUploading: (uploading: boolean) => void;
   setUploadProgress: (progress: number) => void;
@@ -19,6 +23,7 @@ interface AppState {
   setParseResult: (result: ParseResponse | null) => void;
   setTxtContent: (content: string) => void;
   setFields: (fields: Field[]) => void;
+  setSelectedLayout: (layout: Layout | null) => void;
   reset: () => void;
 }
 
@@ -29,6 +34,7 @@ const initialState = {
   parseResult: null,
   txtContent: '',
   fields: [],
+  selectedLayout: null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -40,6 +46,7 @@ export const useAppStore = create<AppState>((set) => ({
   setParseResult: (result) => set({ parseResult: result }),
   setTxtContent: (content) => set({ txtContent: content }),
   setFields: (fields) => set({ fields }),
+  setSelectedLayout: (layout) => set({ selectedLayout: layout }),
   
   reset: () => set(initialState),
 }));

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Tabs } from '../components/shared/Tabs';
 import UploadSection from '../components/upload/UploadSection';
+import { useAppStore } from '../store/useAppStore';
 import './MainLayout.css';
 
 interface MainLayoutProps {
@@ -9,34 +10,41 @@ interface MainLayoutProps {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [activeTab, setActiveTab] = useState('upload');
+  const { parseResult } = useAppStore();
 
-  const tabs = [
-    {
-      id: 'upload',
-      label: 'Upload & Processamento',
-      content: <UploadSection />,
-    },
-    {
-      id: 'analysis',
-      label: 'Análise & Estrutura',
-      content: (
-        <div className="tab-placeholder">
-          <h3>Análise & Estrutura</h3>
-          <p>Esta funcionalidade será implementada na Fase 2 - Módulo 2</p>
-        </div>
-      ),
-    },
-    {
-      id: 'console',
-      label: 'Console de Processamento',
-      content: (
-        <div className="tab-placeholder">
-          <h3>Console de Processamento</h3>
-          <p>Esta funcionalidade será implementada na Fase 2 - Módulo 5</p>
-        </div>
-      ),
-    },
-  ];
+  // Tab de análise só aparece se houver parseResult
+  const tabs = useMemo(() => {
+    const baseTabs = [
+      {
+        id: 'upload',
+        label: 'Upload & Processamento',
+        content: <UploadSection />,
+      },
+    ];
+
+    // Adicionar tab de análise apenas se houver resultado de parse
+    if (parseResult && parseResult.success) {
+      baseTabs.push({
+        id: 'analysis',
+        label: 'Análise & Estrutura',
+        content: (
+          <div className="tab-placeholder">
+            <h3>Análise & Estrutura</h3>
+            <p>Esta funcionalidade será implementada na Fase 2 - Módulo 2</p>
+          </div>
+        ),
+      });
+    }
+
+    return baseTabs;
+  }, [parseResult]);
+
+  // Se a tab ativa for 'analysis' mas não houver parseResult, voltar para 'upload'
+  React.useEffect(() => {
+    if (activeTab === 'analysis' && (!parseResult || !parseResult.success)) {
+      setActiveTab('upload');
+    }
+  }, [activeTab, parseResult]);
 
   return (
     <div className="main-layout">

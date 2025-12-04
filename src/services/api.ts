@@ -57,6 +57,10 @@ export const parseService = {
     formData.append('layoutFile', request.layoutFile);
     formData.append('txtFile', request.txtFile);
     
+    if (request.layoutName) {
+      formData.append('layoutName', request.layoutName);
+    }
+    
     if (request.layoutType) {
       formData.append('layoutType', request.layoutType);
     }
@@ -90,4 +94,5 @@ console.log('🔧 API Config:', API_CONFIG);
 console.log('📍 API URL:', API_CONFIG.baseUrl);
 
 export default apiClient;
+export { apiClient };
 
