@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { parseService } from '../../services/api';
+import { layoutService } from '../../services/api/layoutService';
 import { useAppStore } from '../../store/useAppStore';
 import LayoutSearch from './LayoutSearch';
 import type { ParseRequest } from '../../types/api';
@@ -17,6 +18,7 @@ const UploadSection = () => {
     setParseResult,
     setTxtContent,
     setFields,
+    setSelectedLayout,
   } = useAppStore();
 
   const handleTxtFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,21 +46,52 @@ const UploadSection = () => {
     setUploadError(null);
 
     try {
-      // Criar um arquivo virtual com o layout selecionado
-      // O layout vem do Redis com decryptedContent ou valueContent
-      const layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
+      // Verificar se o layout tem decryptedContent
+      // Se não tiver (veio do cache do navegador), buscar da API
+      let layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
+      let layoutToUse = selectedLayout;
+      
+      if (!layoutContent) {
+        // Layout veio do cache sem conteúdo, buscar da API
+        console.log('ℹ️ Layout sem decryptedContent, buscando da API...');
+        setUploadError('Buscando layout completo da API...');
+        
+        try {
+          const result = await layoutService.searchLayouts();
+          if (result.success && result.layouts) {
+            const fullLayout = result.layouts.find(l => 
+              l.layoutGuid === selectedLayout.layoutGuid || 
+              l.name === selectedLayout.name
+            );
+            
+            if (fullLayout && (fullLayout.decryptedContent || (fullLayout as any).valueContent)) {
+              layoutContent = fullLayout.decryptedContent || (fullLayout as any).valueContent;
+              layoutToUse = fullLayout;
+              // Atualizar o layout selecionado com o conteúdo completo
+              setSelectedLayout(fullLayout);
+              console.log('✅ Layout completo carregado da API');
+            } else {
+              throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
+            }
+          } else {
+            throw new Error('Erro ao buscar layout da API. Por favor, atualize o cache.');
+          }
+        } catch (apiError) {
+          throw new Error(`Erro ao buscar layout da API: ${apiError instanceof Error ? apiError.message : 'Erro desconhecido'}`);
+        }
+      }
       
       if (!layoutContent) {
         throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
       }
       
       const blob = new Blob([layoutContent], { type: 'application/xml' });
-      const layoutFile = new File([blob], `${selectedLayout.name || 'layout'}.xml`, { type: 'application/xml' });
+      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, { type: 'application/xml' });
 
       const request: ParseRequest = {
         layoutFile,
         txtFile,
-        layoutName: selectedLayout.name,
+        layoutName: layoutToUse.name,
       };
 
       const result = await parseService.parseFiles(request);
