@@ -21,27 +21,27 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #5700FF 0%, #5700FF 100%);
+  color: #FFFFFF;
 }
 
 .btn-secondary {
-  background: #6c757d;
-  color: white;
+  background: #666;
+  color: #FFFFFF;
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #28a745, #1e7e34);
-  color: white;
+  background: linear-gradient(135deg, #1FEBCC, #1FEBCC);
+  color: #000000;
 }
 
 .btn-danger {
-  background: #dc3545;
-  color: white;
+  background: #ED008C;
+  color: #FFFFFF;
 }
 
 .btn-warning {
-  background: #ffc107;
-  color: #333;
+  background: #ED008C;
+  color: #FFFFFF;
 }
 

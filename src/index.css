@@ -3,9 +3,16 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Paleta de cores */
+  --color-verde: #1FEBCC;
+  --color-rosa: #ED008C;
+  --color-roxo: #5700FF;
+  --color-branco: #FFFFFF;
+  --color-preto: #000000;
+
+  color-scheme: light;
+  color: #000000;
+  background-color: #FFFFFF;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

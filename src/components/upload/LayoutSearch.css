@@ -3,8 +3,8 @@
 }
 
 .refresh-btn {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-  color: white;
+  background: linear-gradient(135deg, #1FEBCC 0%, #1FEBCC 100%);
+  color: #000000;
   border: none;
   padding: 12px 24px;
   border-radius: 8px;
@@ -12,14 +12,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 4px 15px rgba(31, 235, 204, 0.3);
   width: 100%;
   margin-bottom: 10px;
 }
 
 .refresh-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+  box-shadow: 0 6px 20px rgba(31, 235, 204, 0.4);
 }
 
 .refresh-btn:disabled {
@@ -29,8 +29,8 @@
 }
 
 .search-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, #5700FF 0%, #5700FF 100%);
+  color: #FFFFFF;
   border: none;
   padding: 12px 24px;
   border-radius: 8px;
@@ -38,13 +38,13 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(87, 0, 255, 0.3);
   width: 100%;
 }
 
 .search-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(87, 0, 255, 0.4);
 }
 
 .search-btn:disabled {
@@ -56,14 +56,14 @@
 .search-results {
   margin-top: 1.5rem;
   padding: 1.5rem;
-  background: white;
+  background: #FFFFFF;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .search-results h4 {
   margin: 0 0 1rem 0;
-  color: #333;
+  color: #000000;
   font-size: 1.1rem;
 }
 
@@ -82,8 +82,8 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #5700FF;
+  box-shadow: 0 0 0 3px rgba(87, 0, 255, 0.1);
 }
 
 .layout-list-container {
@@ -92,7 +92,7 @@
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 10px;
-  background: white;
+  background: #FFFFFF;
 }
 
 .layout-item {
@@ -106,15 +106,15 @@
 }
 
 .layout-item:hover {
-  border-color: #667eea;
+  border-color: #5700FF;
   background: #f0f0f0;
   transform: translateX(4px);
 }
 
 .layout-item.selected {
-  border-color: #667eea;
-  background: #e7e9fd;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  border-color: #5700FF;
+  background: rgba(87, 0, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(87, 0, 255, 0.2);
 }
 
 .layout-item-info {
@@ -125,7 +125,7 @@
 
 .layout-item-name {
   font-weight: 600;
-  color: #333;
+  color: #000000;
   font-size: 0.95rem;
 }
 
