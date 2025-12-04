@@ -114,7 +114,7 @@ const LayoutSearch: React.FC = () => {
   const handleLayoutSelect = (layout: Layout, index: number) => {
     setSelectedLayoutIndex(index);
     setSelectedLayout(layout);
-    console.log('✅ Layout selecionado:', layout.name);
+    console.log('✅ Layout selecionado:', layout.name, 'GUID:', layout.layoutGuid);
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,8 +218,16 @@ const LayoutSearch: React.FC = () => {
               filteredLayouts.map((layout, filteredIndex) => {
                 // Encontrar índice original no allLayouts
                 const originalIndex = allLayouts.findIndex(l => l.layoutGuid === layout.layoutGuid);
-                // Usar layoutGuid para comparação mais confiável
-                const isSelected = selectedLayout?.layoutGuid === layout.layoutGuid;
+                // Usar layoutGuid para comparação mais confiável - garantir que ambos existam e sejam iguais
+                const selectedGuid = selectedLayout?.layoutGuid;
+                const currentGuid = layout.layoutGuid;
+                const isSelected = Boolean(
+                  selectedGuid && 
+                  currentGuid && 
+                  selectedGuid === currentGuid &&
+                  selectedGuid.length > 0 &&
+                  currentGuid.length > 0
+                );
 
                 return (
                   <div
