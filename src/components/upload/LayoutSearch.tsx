@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { layoutService } from '../../services/api/layoutService';
 import { useLayoutStore } from '../../store/useLayoutStore';
 import { useAppStore } from '../../store/useAppStore';
+import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import type { Layout } from '../../types/layout';
 import './LayoutSearch.css';
 
@@ -28,36 +29,54 @@ const LayoutSearch: React.FC = () => {
 
   const { setSelectedLayout } = useAppStore();
 
-  // Verificar layouts no Redis ao carregar
+  // Carregar layouts ao montar o componente
   useEffect(() => {
-    const checkRedisLayoutsOnLoad = async () => {
+    const loadLayoutsOnMount = async () => {
+      // 1. Primeiro, tentar carregar do cache do navegador (instantâneo)
+      const cachedLayouts = loadLayoutsFromCache();
+      if (cachedLayouts && cachedLayouts.length > 0) {
+        const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(cachedLayouts);
+        setAllLayouts(cachedLayouts);
+        setShowSearchResults(true);
+        setShowSearchButton(!hasLayoutsInRedis);
+        console.log('✅ Layouts carregados do cache do navegador:', cachedLayouts.length);
+      }
+
+      // 2. Em paralelo, buscar do backend para atualizar o cache
       try {
         const result = await layoutService.searchLayouts();
         
         if (result.success && result.layouts && result.layouts.length > 0) {
           const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(result.layouts);
           
-          if (hasLayoutsInRedis) {
-            // Layouts já estão no Redis, ocultar botão e carregar automaticamente
-            setShowSearchButton(false);
-            setAllLayouts(result.layouts);
-            setShowSearchResults(true);
-            console.log('✅ Layouts carregados automaticamente do Redis');
-          } else {
-            // Não há layouts no Redis, mostrar botão
+          // Atualizar estado com dados do backend
+          setAllLayouts(result.layouts);
+          setShowSearchResults(true);
+          setShowSearchButton(!hasLayoutsInRedis);
+          
+          // Salvar no cache do navegador para próxima vez
+          saveLayoutsToCache(result.layouts);
+          
+          console.log('✅ Layouts atualizados do backend:', result.layouts.length);
+        } else {
+          // Se não houver layouts do backend e não houver cache, mostrar botão
+          if (!cachedLayouts || cachedLayouts.length === 0) {
             setShowSearchButton(true);
           }
-        } else {
-          setShowSearchButton(true);
         }
       } catch (error) {
-        console.error('Erro ao verificar layouts:', error);
-        setShowSearchButton(true);
+        console.error('Erro ao buscar layouts do backend:', error);
+        // Se houver erro mas tivermos cache, manter o cache visível
+        if (!cachedLayouts || cachedLayouts.length === 0) {
+          setSearchError(error instanceof Error ? error.message : 'Erro ao buscar layouts');
+          setShowSearchButton(true);
+          setShowSearchResults(false);
+        }
       }
     };
     
-    checkRedisLayoutsOnLoad();
-  }, [setShowSearchButton, setAllLayouts, setShowSearchResults]);
+    loadLayoutsOnMount();
+  }, [setAllLayouts, setShowSearchResults, setShowSearchButton, setSearchError]);
 
   const handleSearchLayouts = async () => {
     setIsSearching(true);
@@ -75,6 +94,9 @@ const LayoutSearch: React.FC = () => {
         if (hasLayoutsInRedis) {
           setShowSearchButton(false);
         }
+        
+        // Salvar no cache do navegador
+        saveLayoutsToCache(result.layouts);
       } else {
         setSearchError('Nenhum layout encontrado');
         setShowSearchResults(false);
