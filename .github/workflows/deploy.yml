@@ -24,7 +24,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'npm'
+      # Não usar cache pois não temos package-lock.json
     
     - name: Install dependencies
       run: |
@@ -243,4 +243,3 @@ jobs:
         
         # Garantir que o script termina com sucesso
         exit 0
-
