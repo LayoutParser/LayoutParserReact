@@ -43,7 +43,7 @@ const API_CONFIG: ApiConfig = {
 // Instância do axios configurada
 const apiClient = axios.create({
   baseURL: API_CONFIG.baseUrl,
-  timeout: 30000,
+  timeout: 120000, // 2 minutos - necessário para buscar layouts do banco
   // Não definir Content-Type para FormData - axios faz isso automaticamente com boundary
 });
 

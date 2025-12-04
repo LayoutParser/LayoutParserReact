@@ -49,8 +49,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <div className="main-layout">
       <header className="main-header">
-        <h1>Parser de Layout Posicional + IA Analyzer</h1>
-        <p>Migração para React + TypeScript</p>
+        <h1>Parser de Layout</h1>
       </header>
       
       <main className="main-content">
