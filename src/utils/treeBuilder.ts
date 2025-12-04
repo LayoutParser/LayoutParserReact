@@ -7,7 +7,7 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
   const nodeMap = new Map<string, TreeNode>();
   const rootNodes: TreeNode[] = [];
 
-  // Primeiro, criar todos os nós
+  // Primeiro, criar todos os nós de linha (LineElementVO)
   elements.forEach((element, index) => {
     const node: TreeNode = {
       id: element.elementGuid || `node-${index}`,
@@ -22,58 +22,79 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
     nodeMap.set(node.id, node);
   });
 
-  // Depois, construir a hierarquia
+  // Depois, processar os elementos filhos (campos dentro de cada linha)
   elements.forEach((element) => {
     const nodeId = element.elementGuid || `node-${elements.indexOf(element)}`;
     const node = nodeMap.get(nodeId);
     
     if (!node) return;
 
-    // Se o elemento tem elementos filhos (array de strings JSON)
+    // Se o elemento tem elementos filhos (array de strings JSON representando FieldElementVO)
     if (element.elements && element.elements.length > 0) {
       element.elements.forEach((childElementStr) => {
         try {
-          // Tentar parsear se for JSON string
-          let childElement: LayoutElement;
+          // Parsear a string JSON para obter o FieldElementVO
+          let childElement: any;
           if (typeof childElementStr === 'string') {
             try {
               childElement = JSON.parse(childElementStr);
-            } catch {
-              // Se não for JSON válido, pode ser um GUID
-              const childNode = nodeMap.get(childElementStr);
-              if (childNode) {
-                node.children.push(childNode);
-                childNode.level = node.level + 1;
-              }
+            } catch (parseError) {
+              console.warn('Erro ao parsear elemento filho como JSON:', parseError, childElementStr);
               return;
             }
           } else {
-            childElement = childElementStr as LayoutElement;
+            childElement = childElementStr;
           }
 
-          // Buscar o nó filho
-          const childGuid = childElement.elementGuid || childElement.elementGuid;
+          // Criar nó filho para o campo
+          const childGuid = childElement.ElementGuid || childElement.elementGuid;
+          const childName = childElement.Name || childElement.name || 'Campo sem nome';
+          const childSequence = childElement.Sequence || childElement.sequence || 0;
+          const childType = childElement.Type || childElement.type || 'FieldElementVO';
+
           if (childGuid) {
-            const childNode = nodeMap.get(childGuid);
-            if (childNode && !node.children.some(c => c.id === childNode.id)) {
+            // Verificar se o nó já existe (caso o campo apareça em múltiplas linhas)
+            let childNode = nodeMap.get(childGuid);
+            
+            if (!childNode) {
+              // Criar novo nó para o campo
+              childNode = {
+                id: childGuid,
+                type: childType,
+                name: childName,
+                elementGuid: childGuid,
+                sequence: childSequence,
+                children: [],
+                element: {
+                  type: childType,
+                  elementGuid: childGuid,
+                  description: childElement.Description || childElement.description || '',
+                  sequence: childSequence,
+                  name: childName,
+                  isRequired: childElement.IsRequired || childElement.isRequired || false,
+                } as LayoutElement,
+                level: node.level + 1,
+              };
+              nodeMap.set(childGuid, childNode);
+            }
+
+            // Adicionar como filho se ainda não estiver na lista
+            if (!node.children.some(c => c.id === childNode!.id)) {
               node.children.push(childNode);
-              childNode.level = node.level + 1;
             }
           }
         } catch (error) {
-          console.warn('Erro ao processar elemento filho:', error);
+          console.warn('Erro ao processar elemento filho:', error, childElementStr);
         }
       });
     }
 
-    // Se não tem pai, é um nó raiz
-    if (!elements.some(e => 
-      e.elements?.some(el => {
-        const elGuid = typeof el === 'string' ? el : (el as LayoutElement).elementGuid;
-        return elGuid === element.elementGuid;
-      })
-    )) {
-      rootNodes.push(node);
+    // Se não tem pai (não é referenciado por outro elemento), é um nó raiz
+    // Todos os LineElementVO são nós raiz
+    if (element.type === 'LineElementVO' || element.type.includes('Line')) {
+      if (!rootNodes.some(r => r.id === node.id)) {
+        rootNodes.push(node);
+      }
     }
   });
 

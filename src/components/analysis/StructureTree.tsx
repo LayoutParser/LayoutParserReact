@@ -33,26 +33,41 @@ const StructureTree: React.FC = () => {
     // Usar campos do parseResult se fields estiver vazio
     const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
     
+    // Verificar se elements é um array de strings JSON ou objetos
+    const layoutElements = parseResult.layout?.elements;
+    const hasLayoutElements = layoutElements && (
+      Array.isArray(layoutElements) && layoutElements.length > 0
+    );
+    
     console.log('🌳 StructureTree: Construindo árvore', {
       hasLayout: !!parseResult.layout,
-      layoutElements: parseResult.layout?.elements?.length || 0,
+      layoutElements: layoutElements?.length || 0,
+      layoutElementsRaw: layoutElements,
+      layoutFull: parseResult.layout,
       fieldsFromStore: fields.length,
       fieldsFromResult: parseResult.fields?.length || 0,
       actualFields: actualFields.length,
+      documentStructure: parseResult.documentStructure,
+      summary: parseResult.summary,
     });
 
     // Se tiver layout com elementos, usar buildTreeFromLayout
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
     
-    if (parseResult.layout?.elements && parseResult.layout.elements.length > 0) {
-      console.log('🌳 Usando buildTreeFromLayout com', parseResult.layout.elements.length, 'elementos');
-      tree = buildTreeFromLayout(parseResult.layout.elements);
+    if (hasLayoutElements) {
+      console.log('🌳 Usando buildTreeFromLayout com', layoutElements.length, 'elementos');
+      console.log('🌳 Primeiro elemento:', layoutElements[0]);
+      tree = buildTreeFromLayout(layoutElements);
+      console.log('🌳 Árvore construída do layout:', tree.length, 'nós raiz');
     } else if (actualFields && actualFields.length > 0) {
       console.log('🌳 Usando buildTreeFromFields com', actualFields.length, 'campos');
       tree = buildTreeFromFields(actualFields);
     } else {
       console.warn('⚠️ StructureTree: Nenhum dado disponível para construir árvore');
+      console.warn('⚠️ Layout completo:', parseResult.layout);
+      console.warn('⚠️ Tentando construir árvore vazia para exibir estrutura do layout mesmo sem campos');
+      // Mesmo sem campos, podemos tentar construir uma árvore básica se houver documentStructure
       tree = [];
     }
 

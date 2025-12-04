@@ -39,6 +39,14 @@ export interface ParseResponse {
   text?: string;
   errors?: string[];
   warnings?: string[];
+  documentStructure?: any;
+  summary?: {
+    totalLines?: number;
+    totalFields?: number;
+    validFields?: number;
+    warningFields?: number;
+    errorFields?: number;
+  };
 }
 
 export interface Layout {
