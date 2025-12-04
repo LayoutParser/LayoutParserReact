@@ -3,6 +3,7 @@ import { layoutService } from '../../services/api/layoutService';
 import { useLayoutStore } from '../../store/useLayoutStore';
 import { useAppStore } from '../../store/useAppStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
+import LayoutCombobox from './LayoutCombobox';
 import type { Layout } from '../../types/layout';
 import './LayoutSearch.css';
 
@@ -111,22 +112,22 @@ const LayoutSearch: React.FC = () => {
     }
   };
 
-  const handleLayoutSelect = (layout: Layout, index: number) => {
-    // Limpar seleção anterior explicitamente
-    setSelectedLayoutIndex(-1);
-    setSelectedLayout(null);
+  const handleLayoutSelect = (layout: Layout) => {
+    // Encontrar índice no allLayouts
+    const index = allLayouts.findIndex(l => {
+      if (l.layoutGuid && layout.layoutGuid) {
+        return l.layoutGuid === layout.layoutGuid;
+      }
+      return l === layout;
+    });
     
-    // Aguardar um tick para garantir que o estado foi limpo
-    setTimeout(() => {
-      setSelectedLayoutIndex(index);
-      setSelectedLayout(layout);
-      console.log('✅ Layout selecionado:', {
-        name: layout.name,
-        guid: layout.layoutGuid,
-        index: index,
-        fullLayout: layout
-      });
-    }, 0);
+    setSelectedLayoutIndex(index >= 0 ? index : -1);
+    setSelectedLayout(layout);
+    console.log('✅ Layout selecionado:', {
+      name: layout.name,
+      guid: layout.layoutGuid,
+      index: index
+    });
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,74 +209,14 @@ const LayoutSearch: React.FC = () => {
         </div>
       )}
 
-      {/* Lista de layouts aparece sempre que houver layouts carregados */}
-      {(showSearchResults || allLayouts.length > 0) && (
-        <div className="search-results">
-          <h4>Layouts Encontrados: {allLayouts.length}</h4>
-          
-          <div className="search-input-group">
-            <input
-              type="text"
-              placeholder="Buscar por nome ou layoutGuid..."
-              value={searchTerm}
-              onChange={handleSearchInputChange}
-              className="search-input"
-            />
-          </div>
-
-          <div className="layout-list-container">
-            {filteredLayouts.length === 0 ? (
-              <p className="no-results">Nenhum layout encontrado</p>
-            ) : (
-              filteredLayouts.map((layout, filteredIndex) => {
-                // Encontrar índice original no allLayouts
-                const originalIndex = allLayouts.findIndex(l => {
-                  // Comparar por layoutGuid se disponível, senão por índice
-                  if (l.layoutGuid && layout.layoutGuid) {
-                    return l.layoutGuid === layout.layoutGuid;
-                  }
-                  return false;
-                });
-                
-                // Usar layoutGuid para comparação mais confiável
-                // Se os GUIDs forem válidos e diferentes, usar GUID
-                // Se os GUIDs forem iguais/vazios, usar índice como fallback
-                let isSelected = false;
-                
-                if (selectedLayout) {
-                  const selectedGuid = String(selectedLayout.layoutGuid || '').trim();
-                  const currentGuid = String(layout.layoutGuid || '').trim();
-                  
-                  // Se ambos têm GUID válido e são diferentes, comparar por GUID
-                  if (selectedGuid.length > 0 && currentGuid.length > 0 && selectedGuid !== '00000000-0000-0000-0000-000000000000') {
-                    isSelected = selectedGuid === currentGuid;
-                  } else {
-                    // Fallback: comparar por índice se GUIDs são inválidos ou iguais
-                    const selectedIndexInAll = allLayouts.findIndex(l => l === selectedLayout);
-                    isSelected = originalIndex >= 0 && selectedIndexInAll >= 0 && originalIndex === selectedIndexInAll;
-                  }
-                }
-
-                return (
-                  <div
-                    key={layout.layoutGuid || `layout-${filteredIndex}`}
-                    className={`layout-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleLayoutSelect(layout, originalIndex >= 0 ? originalIndex : filteredIndex)}
-                  >
-                    <div className="layout-item-info">
-                      <div className="layout-item-name">{layout.name || 'Sem nome'}</div>
-                      <div className="layout-item-details">
-                        {layout.layoutGuid && (
-                          <span>GUID: {layout.layoutGuid.substring(0, 8)}... | </span>
-                        )}
-                        {layout.description || 'Sem descrição'}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+      {/* Combobox de layouts - aparece sempre que houver layouts carregados */}
+      {(showSearchResults || allLayouts.length > 0) && allLayouts.length > 0 && (
+        <div className="layout-combobox-wrapper">
+          <LayoutCombobox
+            layouts={allLayouts}
+            onSelect={handleLayoutSelect}
+            selectedLayout={selectedLayout}
+          />
         </div>
       )}
     </div>

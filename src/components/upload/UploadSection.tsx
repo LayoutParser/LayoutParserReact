@@ -92,18 +92,8 @@ const UploadSection = () => {
         </p>
 
         <form onSubmit={handleSubmit} className="upload-form">
-          {/* Busca de Layouts */}
+          {/* Combobox de Layouts */}
           <LayoutSearch />
-
-          {/* Layout Selecionado */}
-          {selectedLayout && (
-            <div className="selected-layout-info">
-              <strong>Layout Selecionado:</strong> {selectedLayout.name}
-              {selectedLayout.layoutGuid && (
-                <span className="layout-guid"> ({selectedLayout.layoutGuid.substring(0, 8)}...)</span>
-              )}
-            </div>
-          )}
 
           {/* Upload de Arquivo de Dados */}
           <div className="file-input-group">
