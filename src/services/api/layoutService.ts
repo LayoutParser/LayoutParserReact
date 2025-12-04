@@ -42,5 +42,23 @@ export const layoutService = {
       layout.decryptedContent && layout.decryptedContent.length > 0
     );
   },
+
+  /**
+   * Atualiza o cache Redis no backend
+   */
+  async refreshCache(): Promise<{ success: boolean; message?: string; error?: string; timestamp?: string }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; message?: string; error?: string; timestamp?: string }>(
+        '/api/layoutdatabase/refresh-cache'
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || error.message || 'Erro ao atualizar cache';
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
+  },
 };
 

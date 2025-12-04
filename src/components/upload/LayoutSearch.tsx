@@ -123,8 +123,61 @@ const LayoutSearch: React.FC = () => {
     filterLayouts(term);
   };
 
+  const handleRefreshCache = async () => {
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      // 1. Atualizar cache Redis no backend
+      console.log('🔄 Atualizando cache do banco de dados...');
+      const refreshResult = await layoutService.refreshCache();
+      
+      if (!refreshResult.success) {
+        throw new Error(refreshResult.error || 'Erro ao atualizar cache');
+      }
+
+      console.log('✅ Cache Redis atualizado:', refreshResult.message);
+
+      // 2. Buscar layouts atualizados do backend
+      const result = await layoutService.searchLayouts();
+
+      if (result.success && result.layouts && result.layouts.length > 0) {
+        const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(result.layouts);
+        
+        // Atualizar estado com dados do backend
+        setAllLayouts(result.layouts);
+        setShowSearchResults(true);
+        setShowSearchButton(!hasLayoutsInRedis);
+        
+        // Salvar no cache do navegador
+        saveLayoutsToCache(result.layouts);
+        
+        console.log('✅ Layouts atualizados após refresh do cache:', result.layouts.length);
+      } else {
+        setSearchError('Nenhum layout encontrado após atualizar cache');
+        setShowSearchResults(false);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar cache';
+      setSearchError(errorMessage);
+      console.error('❌ Erro ao atualizar cache:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
     <div className="layout-search-container">
+      {/* Botão de atualizar cache - sempre visível */}
+      <button
+        type="button"
+        onClick={handleRefreshCache}
+        disabled={isSearching}
+        className="refresh-btn"
+      >
+        {isSearching ? 'Atualizando...' : 'Atualizar Cache do Banco'}
+      </button>
+
       {/* Botão só aparece se não houver layouts no Redis */}
       {showSearchButton && (
         <button
