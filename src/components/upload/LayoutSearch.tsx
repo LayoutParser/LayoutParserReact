@@ -38,53 +38,25 @@ const LayoutSearch: React.FC = () => {
       
       if (cachedLayouts && cachedLayouts.length > 0) {
         // Se tem cache válido, usar apenas o cache (não buscar da API)
-        const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(cachedLayouts);
+        // Não mostrar botão "Buscar Layouts do Banco" - apenas o combobox
         setAllLayouts(cachedLayouts);
         setShowSearchResults(true);
-        setShowSearchButton(!hasLayoutsInRedis); // Ocultar botão se layouts estão no Redis
+        setShowSearchButton(false); // Sempre ocultar botão quando tem cache
         console.log('✅ Layouts carregados do cache do navegador:', cachedLayouts.length);
-        console.log('ℹ️ Usando cache local - não buscando da API automaticamente');
+        console.log('ℹ️ Usando cache local - combobox disponível, botão de buscar oculto');
         return; // Sair aqui se tem cache válido
       }
 
-      // 2. Se não tem cache, buscar automaticamente da API (que busca do Redis)
-      console.log('ℹ️ Cache não encontrado ou expirado, buscando da API...');
-      setIsSearching(true);
-      setSearchError(null);
-
-      try {
-        const result = await layoutService.searchLayouts();
-        
-        if (result.success && result.layouts && result.layouts.length > 0) {
-          const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(result.layouts);
-          
-          // Atualizar estado com dados do backend
-          setAllLayouts(result.layouts);
-          setShowSearchResults(true);
-          setShowSearchButton(!hasLayoutsInRedis); // Ocultar botão se layouts estão no Redis
-          
-          // Salvar no cache do navegador para próxima vez
-          saveLayoutsToCache(result.layouts);
-          
-          console.log('✅ Layouts carregados da API (Redis):', result.layouts.length);
-        } else {
-          // Se não houver layouts do backend, mostrar botão para buscar do banco
-          setSearchError('Nenhum layout encontrado no Redis');
-          setShowSearchButton(true);
-          setShowSearchResults(false);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar layouts do backend:', error);
-        setSearchError(error instanceof Error ? error.message : 'Erro ao buscar layouts');
-        setShowSearchButton(true);
-        setShowSearchResults(false);
-      } finally {
-        setIsSearching(false);
-      }
+      // 2. Se não tem cache, mostrar botão "Buscar Layouts do Banco"
+      // O usuário precisa clicar no botão para buscar da API
+      console.log('ℹ️ Cache não encontrado ou expirado - mostrando botão "Buscar Layouts do Banco"');
+      setShowSearchButton(true);
+      setShowSearchResults(false);
+      setAllLayouts([]);
     };
     
     loadLayoutsOnMount();
-  }, [setAllLayouts, setShowSearchResults, setShowSearchButton, setSearchError, setIsSearching]);
+  }, [setAllLayouts, setShowSearchResults, setShowSearchButton]);
 
   const handleSearchLayouts = async () => {
     setIsSearching(true);
@@ -94,25 +66,25 @@ const LayoutSearch: React.FC = () => {
       const result = await layoutService.searchLayouts();
 
       if (result.success && result.layouts && result.layouts.length > 0) {
+        // Buscar layouts da API (que busca do Redis)
         setAllLayouts(result.layouts);
         setShowSearchResults(true);
+        setShowSearchButton(false); // Ocultar botão após buscar com sucesso
         
-        // Verificar se há layouts no Redis e ocultar botão se necessário
-        const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(result.layouts);
-        if (hasLayoutsInRedis) {
-          setShowSearchButton(false);
-        }
-        
-        // Salvar no cache do navegador
+        // Salvar no cache do navegador para próxima vez
         saveLayoutsToCache(result.layouts);
+        
+        console.log('✅ Layouts carregados da API e salvos no cache:', result.layouts.length);
       } else {
         setSearchError('Nenhum layout encontrado');
         setShowSearchResults(false);
+        setShowSearchButton(true); // Manter botão visível se não encontrou layouts
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao buscar layouts';
       setSearchError(errorMessage);
       setShowSearchResults(false);
+      setShowSearchButton(true); // Manter botão visível em caso de erro
       console.error('Erro na busca de layouts:', error);
     } finally {
       setIsSearching(false);
@@ -162,12 +134,10 @@ const LayoutSearch: React.FC = () => {
       const result = await layoutService.searchLayouts();
 
       if (result.success && result.layouts && result.layouts.length > 0) {
-        const hasLayoutsInRedis = layoutService.hasLayoutsInRedis(result.layouts);
-        
         // Atualizar estado com dados do backend
         setAllLayouts(result.layouts);
         setShowSearchResults(true);
-        setShowSearchButton(!hasLayoutsInRedis);
+        setShowSearchButton(false); // Ocultar botão após atualizar com sucesso
         
         // Salvar no cache do navegador
         saveLayoutsToCache(result.layouts);
@@ -176,6 +146,7 @@ const LayoutSearch: React.FC = () => {
       } else {
         setSearchError('Nenhum layout encontrado após atualizar cache');
         setShowSearchResults(false);
+        setShowSearchButton(true); // Mostrar botão se não encontrou layouts
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao atualizar cache';
