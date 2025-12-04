@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import { useFieldStore } from '../../store/useFieldStore';
 import StructureTree from './StructureTree';
 import FieldDisplay from './FieldDisplay';
 import DocumentSummary from './DocumentSummary';
@@ -9,7 +10,19 @@ import LineProperties from './LineProperties';
 import './AnalysisSection.css';
 
 const AnalysisSection: React.FC = () => {
-  const { parseResult } = useAppStore();
+  const { parseResult, fields } = useAppStore();
+  const { setFields } = useFieldStore();
+
+  // Sincronizar campos do parseResult com o useFieldStore
+  useEffect(() => {
+    if (parseResult?.fields && parseResult.fields.length > 0) {
+      console.log('🔄 Sincronizando campos no AnalysisSection:', parseResult.fields.length);
+      setFields(parseResult.fields);
+    } else {
+      console.warn('⚠️ AnalysisSection: Nenhum campo no parseResult');
+      setFields([]);
+    }
+  }, [parseResult, setFields]);
 
   if (!parseResult || !parseResult.success) {
     return (

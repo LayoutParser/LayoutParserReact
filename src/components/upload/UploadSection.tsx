@@ -63,16 +63,33 @@ const UploadSection = () => {
 
       const result = await parseService.parseFiles(request);
       
+      // Log detalhado da resposta
+      console.log('✅ Parsing concluído:', result);
+      console.log('📊 Detalhes da resposta:', {
+        success: result.success,
+        detectedType: result.detectedType,
+        hasLayout: !!result.layout,
+        layoutElements: result.layout?.elements?.length || 0,
+        fieldsCount: result.fields?.length || 0,
+        fields: result.fields,
+        hasText: !!result.text,
+        textLength: result.text?.length || 0,
+        errors: result.errors,
+        warnings: result.warnings,
+      });
+      
       // Atualizar estado
       setParseResult(result);
       if (result.text) {
         setTxtContent(result.text);
       }
-      if (result.fields) {
+      if (result.fields && result.fields.length > 0) {
+        console.log('✅ Salvando campos no store:', result.fields.length);
         setFields(result.fields);
+      } else {
+        console.warn('⚠️ Nenhum campo na resposta ou array vazio');
+        setFields([]);
       }
-
-      console.log('✅ Parsing concluído:', result);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';

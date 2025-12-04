@@ -4,13 +4,17 @@ import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
 import type { Field } from '../../types/field';
+import type { FieldGroup } from '../../types/field';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
-  const { fields } = useAppStore();
+  const { parseResult, fields } = useAppStore();
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
   const { showFieldProperties } = usePropertiesStore();
+
+  // Usar campos do parseResult se fields estiver vazio
+  const actualFields = fields.length > 0 ? fields : (parseResult?.fields || []);
 
   useEffect(() => {
     // Quando há resultados de busca, destacar o campo atual
@@ -40,17 +44,49 @@ const FieldDisplay: React.FC = () => {
     );
   };
 
-  if (!fields || fields.length === 0) {
+  // Sincronizar campos com o store se necessário
+  useEffect(() => {
+    if (actualFields.length > 0) {
+      const { setFields: setFieldsInStore } = useFieldStore.getState();
+      setFieldsInStore(actualFields);
+    }
+  }, [actualFields]);
+
+  // Criar grupos se fieldGroups estiver vazio mas houver campos
+  const displayGroups = fieldGroups.length > 0 ? fieldGroups : (() => {
+    if (actualFields.length === 0) return [];
+    const groupsMap = new Map<string, Field[]>();
+    actualFields.forEach(field => {
+      const lineName = field.lineName || 'OUTROS';
+      if (!groupsMap.has(lineName)) {
+        groupsMap.set(lineName, []);
+      }
+      groupsMap.get(lineName)!.push(field);
+    });
+    return Array.from(groupsMap.entries()).map(([lineName, fields]) => ({
+      lineName,
+      fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
+      sequence: fields[0]?.sequence || 0,
+    })).sort((a, b) => a.sequence - b.sequence);
+  })();
+
+  if (!actualFields || actualFields.length === 0) {
     return (
       <div className="field-display-empty">
         <p>Nenhum campo disponível. Processe um documento primeiro.</p>
+        {parseResult && parseResult.success && (
+          <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
+            Debug: parseResult.success=true, mas nenhum campo encontrado.
+            {parseResult.fields ? ` Campos na resposta: ${parseResult.fields.length}` : ' Sem campo fields na resposta.'}
+          </p>
+        )}
       </div>
     );
   }
 
   return (
     <div className="field-display">
-      {fieldGroups.map((group) => (
+      {displayGroups.map((group) => (
         <div key={group.lineName} className="field-group">
           <div className="field-group-header">
             <h3>{group.lineName}</h3>

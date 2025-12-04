@@ -9,8 +9,11 @@ const DocumentSummary: React.FC = () => {
     return null;
   }
 
-  const totalFields = fields.length;
-  const totalLines = new Set(fields.map(f => f.lineName)).size;
+  // Usar campos do parseResult se fields estiver vazio
+  const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
+  
+  const totalFields = actualFields.length;
+  const totalLines = actualFields.length > 0 ? new Set(actualFields.map(f => f.lineName)).size : 0;
   const totalChars = txtContent.length;
 
   return (

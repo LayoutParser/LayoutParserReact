@@ -30,20 +30,35 @@ const StructureTree: React.FC = () => {
       return;
     }
 
+    // Usar campos do parseResult se fields estiver vazio
+    const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
+    
+    console.log('🌳 StructureTree: Construindo árvore', {
+      hasLayout: !!parseResult.layout,
+      layoutElements: parseResult.layout?.elements?.length || 0,
+      fieldsFromStore: fields.length,
+      fieldsFromResult: parseResult.fields?.length || 0,
+      actualFields: actualFields.length,
+    });
+
     // Se tiver layout com elementos, usar buildTreeFromLayout
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
     
     if (parseResult.layout?.elements && parseResult.layout.elements.length > 0) {
+      console.log('🌳 Usando buildTreeFromLayout com', parseResult.layout.elements.length, 'elementos');
       tree = buildTreeFromLayout(parseResult.layout.elements);
-    } else if (fields && fields.length > 0) {
-      tree = buildTreeFromFields(fields);
+    } else if (actualFields && actualFields.length > 0) {
+      console.log('🌳 Usando buildTreeFromFields com', actualFields.length, 'campos');
+      tree = buildTreeFromFields(actualFields);
     } else {
+      console.warn('⚠️ StructureTree: Nenhum dado disponível para construir árvore');
       tree = [];
     }
 
+    console.log('🌳 Árvore construída com', tree.length, 'nós raiz');
     setTreeData(tree);
-    setFields(fields || []);
+    setFields(actualFields);
   }, [parseResult, fields, setTreeData, setFields]);
 
   const handleNodeClick = (node: TreeNode) => {
