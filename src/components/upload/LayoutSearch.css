@@ -112,23 +112,6 @@
   flex-wrap: wrap;
 }
 
-.redis-badge {
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.redis-badge.available {
-  background: #d4edda;
-  color: #155724;
-}
-
-.redis-badge.not-available {
-  background: #f8d7da;
-  color: #721c24;
-}
-
 .no-results {
   text-align: center;
   color: #999;

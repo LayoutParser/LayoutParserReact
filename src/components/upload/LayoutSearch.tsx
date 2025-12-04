@@ -144,7 +144,6 @@ const LayoutSearch: React.FC = () => {
                 // Encontrar índice original
                 const originalIndex = allLayouts.findIndex(l => l.layoutGuid === layout.layoutGuid);
                 const isSelected = selectedLayoutIndex === originalIndex;
-                const isInRedis = layout.decryptedContent && layout.decryptedContent.length > 0;
 
                 return (
                   <div
@@ -159,9 +158,6 @@ const LayoutSearch: React.FC = () => {
                           <span>GUID: {layout.layoutGuid.substring(0, 8)}... | </span>
                         )}
                         {layout.description || 'Sem descrição'}
-                        <span className={`redis-badge ${isInRedis ? 'available' : 'not-available'}`}>
-                          {isInRedis ? '✓ Redis' : '✗ Redis'}
-                        </span>
                       </div>
                     </div>
                   </div>
