@@ -111,10 +111,18 @@
   transform: translateX(4px);
 }
 
+/* Garantir que apenas itens com classe selected fiquem roxos */
 .layout-item.selected {
   border-color: #5700FF !important;
   background: rgba(87, 0, 255, 0.1) !important;
   box-shadow: 0 2px 8px rgba(87, 0, 255, 0.2) !important;
+}
+
+/* Garantir que itens sem selected NÃO tenham estilo roxo */
+.layout-item:not(.selected) {
+  border-color: #e0e0e0 !important;
+  background: #f8f9fa !important;
+  box-shadow: none !important;
 }
 
 .layout-item-info {

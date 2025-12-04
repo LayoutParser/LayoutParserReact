@@ -112,9 +112,21 @@ const LayoutSearch: React.FC = () => {
   };
 
   const handleLayoutSelect = (layout: Layout, index: number) => {
-    setSelectedLayoutIndex(index);
-    setSelectedLayout(layout);
-    console.log('✅ Layout selecionado:', layout.name, 'GUID:', layout.layoutGuid);
+    // Limpar seleção anterior explicitamente
+    setSelectedLayoutIndex(-1);
+    setSelectedLayout(null);
+    
+    // Aguardar um tick para garantir que o estado foi limpo
+    setTimeout(() => {
+      setSelectedLayoutIndex(index);
+      setSelectedLayout(layout);
+      console.log('✅ Layout selecionado:', {
+        name: layout.name,
+        guid: layout.layoutGuid,
+        index: index,
+        fullLayout: layout
+      });
+    }, 0);
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,17 +229,32 @@ const LayoutSearch: React.FC = () => {
             ) : (
               filteredLayouts.map((layout, filteredIndex) => {
                 // Encontrar índice original no allLayouts
-                const originalIndex = allLayouts.findIndex(l => l.layoutGuid === layout.layoutGuid);
-                // Usar layoutGuid para comparação mais confiável - garantir que ambos existam e sejam iguais
-                const selectedGuid = selectedLayout?.layoutGuid;
-                const currentGuid = layout.layoutGuid;
-                const isSelected = Boolean(
-                  selectedGuid && 
-                  currentGuid && 
-                  selectedGuid === currentGuid &&
-                  selectedGuid.length > 0 &&
-                  currentGuid.length > 0
-                );
+                const originalIndex = allLayouts.findIndex(l => {
+                  // Comparar por layoutGuid se disponível, senão por índice
+                  if (l.layoutGuid && layout.layoutGuid) {
+                    return l.layoutGuid === layout.layoutGuid;
+                  }
+                  return false;
+                });
+                
+                // Usar layoutGuid para comparação mais confiável
+                // Se os GUIDs forem válidos e diferentes, usar GUID
+                // Se os GUIDs forem iguais/vazios, usar índice como fallback
+                let isSelected = false;
+                
+                if (selectedLayout) {
+                  const selectedGuid = String(selectedLayout.layoutGuid || '').trim();
+                  const currentGuid = String(layout.layoutGuid || '').trim();
+                  
+                  // Se ambos têm GUID válido e são diferentes, comparar por GUID
+                  if (selectedGuid.length > 0 && currentGuid.length > 0 && selectedGuid !== '00000000-0000-0000-0000-000000000000') {
+                    isSelected = selectedGuid === currentGuid;
+                  } else {
+                    // Fallback: comparar por índice se GUIDs são inválidos ou iguais
+                    const selectedIndexInAll = allLayouts.findIndex(l => l === selectedLayout);
+                    isSelected = originalIndex >= 0 && selectedIndexInAll >= 0 && originalIndex === selectedIndexInAll;
+                  }
+                }
 
                 return (
                   <div
