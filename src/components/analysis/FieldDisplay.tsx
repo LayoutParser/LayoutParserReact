@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
-import { usePropertiesStore } from '../../store/usePropertiesStore';
 import type { Field } from '../../types/field';
 import type { FieldGroup } from '../../types/field';
 import './FieldDisplay.css';
@@ -11,7 +10,6 @@ const FieldDisplay: React.FC = () => {
   const { parseResult, fields } = useAppStore();
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
-  const { showFieldProperties } = usePropertiesStore();
 
   // Usar campos do parseResult se fields estiver vazio
   const actualFields = fields.length > 0 ? fields : (parseResult?.fields || []);
@@ -29,7 +27,7 @@ const FieldDisplay: React.FC = () => {
 
   const handleFieldClick = (field: Field) => {
     selectField(field);
-    showFieldProperties(field);
+    // Não mostrar propriedades, apenas destacar
   };
 
   const isFieldHighlighted = (field: Field): boolean => {
@@ -93,52 +91,26 @@ const FieldDisplay: React.FC = () => {
             <span className="field-count">{group.fields.length} campos</span>
           </div>
           
-          <div className="field-list">
+          <div className="field-list-inline">
+            {/* Nome da linha (Record) */}
+            <span className="field-record">{group.lineName}</span>
+            
+            {/* Campos em linha única */}
             {group.fields.map((field, index) => {
               const highlighted = isFieldHighlighted(field);
               const inSearch = isFieldInSearch(field);
+              const fieldId = `${field.lineName}_${field.fieldName}`;
               
               return (
-                <div
+                <span
                   key={`${field.lineName}_${field.fieldName}_${index}`}
-                  className={`field-item ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
+                  data-field-id={fieldId}
+                  className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
                   onClick={() => handleFieldClick(field)}
+                  title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
                 >
-                  <div className="field-header">
-                    <span className="field-name">{field.fieldName}</span>
-                    {field.sequence && (
-                      <span className="field-sequence">Seq: {field.sequence}</span>
-                    )}
-                  </div>
-                  
-                  <div className="field-value">
-                    <span className="value-label">Valor:</span>
-                    <span className="value-text">{field.value || '(vazio)'}</span>
-                  </div>
-                  
-                  {(field.startPosition !== undefined || field.length !== undefined) && (
-                    <div className="field-position">
-                      {field.startPosition !== undefined && (
-                        <span>Pos: {field.startPosition}</span>
-                      )}
-                      {field.length !== undefined && (
-                        <span>Len: {field.length}</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {field.isValid === false && (
-                    <div className="field-error">
-                      ❌ {field.errorMessage || 'Campo inválido'}
-                    </div>
-                  )}
-                  
-                  {field.hasWarning && (
-                    <div className="field-warning">
-                      ⚠️ {field.warningMessage || 'Aviso'}
-                    </div>
-                  )}
-                </div>
+                  {field.value || ' '}
+                </span>
               );
             })}
           </div>

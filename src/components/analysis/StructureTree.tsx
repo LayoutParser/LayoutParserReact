@@ -21,7 +21,7 @@ const StructureTree: React.FC = () => {
     isExpanded 
   } = useStructureStore();
   const { setFields } = useFieldStore();
-  const { showLineProperties, showFieldProperties } = usePropertiesStore();
+  const { showLineProperties } = usePropertiesStore();
 
   // Construir árvore quando parseResult mudar
   useEffect(() => {
@@ -91,10 +91,18 @@ const StructureTree: React.FC = () => {
       });
       
       if (field) {
-        showFieldProperties(field);
-      } else {
-        // Se não encontrar campo, mostrar propriedades do elemento
-        showLineProperties(node.element);
+        // Destacar o campo no FieldDisplay
+        const { highlightField } = useFieldStore.getState();
+        const fieldId = `${field.lineName}_${field.fieldName}`;
+        highlightField(fieldId);
+        
+        // Scroll para o campo destacado
+        setTimeout(() => {
+          const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+          if (fieldElement) {
+            fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
       }
     }
   };

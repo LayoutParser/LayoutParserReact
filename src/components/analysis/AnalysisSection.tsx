@@ -5,7 +5,6 @@ import StructureTree from './StructureTree';
 import FieldDisplay from './FieldDisplay';
 import DocumentSummary from './DocumentSummary';
 import FieldSearch from './FieldSearch';
-import FieldProperties from './FieldProperties';
 import LineProperties from './LineProperties';
 import './AnalysisSection.css';
 
@@ -52,7 +51,6 @@ const AnalysisSection: React.FC = () => {
           </div>
         </div>
 
-        <FieldProperties />
         <LineProperties />
       </div>
     </div>

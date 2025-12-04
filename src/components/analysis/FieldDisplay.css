@@ -49,106 +49,79 @@
   border-radius: 4px;
 }
 
-.field-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+/* Formato inline - campos em linha única */
+.field-list-inline {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow-x: auto;
+  margin-top: 0.5rem;
 }
 
-.field-item {
-  padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+.field-record {
+  display: inline-block;
+  background: rgba(87, 0, 255, 0.1);
+  color: #5700FF;
+  padding: 3px 8px;
+  margin: 2px 3px;
+  border-radius: 4px;
+  border: 1px solid #5700FF;
+  font-weight: bold;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: #FFFFFF;
+  transition: all 0.2s;
+  font-size: 11px;
 }
 
-.field-item:hover {
-  border-color: #5700FF;
-  background: rgba(87, 0, 255, 0.05);
-  transform: translateX(4px);
+.field-record:hover {
+  background: rgba(87, 0, 255, 0.2);
+  transform: scale(1.05);
 }
 
-.field-item.highlighted {
-  border-color: #1FEBCC;
-  background: rgba(31, 235, 204, 0.1);
-  box-shadow: 0 2px 8px rgba(31, 235, 204, 0.2);
+.field-inline {
+  display: inline-block;
+  padding: 3px 6px;
+  margin: 1px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: pre;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
 }
 
-.field-item.in-search {
+.field-inline:hover {
+  background: #fff9c4;
+  border-color: #ffc107;
+  transform: scale(1.02);
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.field-inline.highlighted {
+  background: #1FEBCC !important;
+  border-color: #1FEBCC !important;
+  font-weight: bold;
+  box-shadow: 0 0 10px rgba(31, 235, 204, 0.8) !important;
+  animation: pulse-highlight 0.6s ease-in-out;
+}
+
+.field-inline.in-search {
   border-left: 3px solid #ED008C;
 }
 
-.field-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.field-name {
-  font-weight: 600;
-  color: #000000;
-  font-size: 14px;
-}
-
-.field-sequence {
-  font-size: 0.8rem;
-  color: #666;
-  background: #f0f0f0;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.field-value {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.value-label {
-  font-size: 0.85rem;
-  color: #666;
-  font-weight: 500;
-}
-
-.value-text {
-  font-size: 0.9rem;
-  color: #000000;
-  font-family: 'Courier New', monospace;
-  background: #f8f9fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  word-break: break-all;
-}
-
-.field-position {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-.field-error {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: rgba(237, 0, 140, 0.1);
-  border: 1px solid #ED008C;
-  border-radius: 4px;
-  color: #ED008C;
-  font-size: 0.85rem;
-}
-
-.field-warning {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: rgba(31, 235, 204, 0.1);
-  border: 1px solid #1FEBCC;
-  border-radius: 4px;
-  color: #000000;
-  font-size: 0.85rem;
+@keyframes pulse-highlight {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 /* Scrollbar personalizado */

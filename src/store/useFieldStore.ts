@@ -9,7 +9,7 @@ interface FieldState {
   
   setFields: (fields: Field[]) => void;
   selectField: (field: Field | null) => void;
-  highlightField: (fieldId: string) => void;
+  highlightField: (fieldId: string | null) => void;
   clearHighlights: () => void;
   getFieldsByLine: (lineName: string) => Field[];
   getFieldById: (fieldId: string) => Field | null;
@@ -53,10 +53,12 @@ export const useFieldStore = create<FieldState>((set, get) => ({
   },
 
   highlightField: (fieldId) => {
-    const { highlightedFields } = get();
-    const newHighlights = new Set(highlightedFields);
-    newHighlights.add(fieldId);
-    set({ highlightedFields: newHighlights });
+    // Limpar highlights anteriores e destacar apenas o campo selecionado
+    if (fieldId) {
+      set({ highlightedFields: new Set([fieldId]) });
+    } else {
+      set({ highlightedFields: new Set<string>() });
+    }
   },
 
   clearHighlights: () => {
