@@ -27,7 +27,7 @@ const LayoutSearch: React.FC = () => {
     filterLayouts,
   } = useLayoutStore();
 
-  const { setSelectedLayout } = useAppStore();
+  const { selectedLayout, setSelectedLayout } = useAppStore();
 
   // Carregar layouts ao montar o componente
   useEffect(() => {
@@ -216,15 +216,16 @@ const LayoutSearch: React.FC = () => {
               <p className="no-results">Nenhum layout encontrado</p>
             ) : (
               filteredLayouts.map((layout, filteredIndex) => {
-                // Encontrar índice original
+                // Encontrar índice original no allLayouts
                 const originalIndex = allLayouts.findIndex(l => l.layoutGuid === layout.layoutGuid);
-                const isSelected = selectedLayoutIndex === originalIndex;
+                // Usar layoutGuid para comparação mais confiável
+                const isSelected = selectedLayout?.layoutGuid === layout.layoutGuid;
 
                 return (
                   <div
-                    key={layout.layoutGuid}
+                    key={layout.layoutGuid || `layout-${filteredIndex}`}
                     className={`layout-item ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleLayoutSelect(layout, originalIndex)}
+                    onClick={() => handleLayoutSelect(layout, originalIndex >= 0 ? originalIndex : filteredIndex)}
                   >
                     <div className="layout-item-info">
                       <div className="layout-item-name">{layout.name || 'Sem nome'}</div>
