@@ -101,20 +101,19 @@ const LayoutSearch: React.FC = () => {
     filterLayouts(term);
   };
 
-  if (!showSearchButton) {
-    return null; // Não mostrar botão se layouts já estão no Redis
-  }
-
   return (
     <div className="layout-search-container">
-      <button
-        type="button"
-        onClick={handleSearchLayouts}
-        disabled={isSearching}
-        className="search-btn"
-      >
-        {isSearching ? 'Buscando...' : 'Buscar Layouts do Banco'}
-      </button>
+      {/* Botão só aparece se não houver layouts no Redis */}
+      {showSearchButton && (
+        <button
+          type="button"
+          onClick={handleSearchLayouts}
+          disabled={isSearching}
+          className="search-btn"
+        >
+          {isSearching ? 'Buscando...' : 'Buscar Layouts do Banco'}
+        </button>
+      )}
 
       {searchError && (
         <div className="error-message">
@@ -122,7 +121,8 @@ const LayoutSearch: React.FC = () => {
         </div>
       )}
 
-      {showSearchResults && (
+      {/* Lista de layouts aparece sempre que houver layouts carregados */}
+      {(showSearchResults || allLayouts.length > 0) && (
         <div className="search-results">
           <h4>Layouts Encontrados: {allLayouts.length}</h4>
           
