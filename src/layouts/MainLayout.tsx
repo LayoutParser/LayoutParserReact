@@ -1,50 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Tabs } from '../components/shared/Tabs';
-import UploadSection from '../components/upload/UploadSection';
+import React, { useEffect } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import './MainLayout.css';
 
-interface MainLayoutProps {
-  children?: React.ReactNode;
-}
-
-export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState('upload');
+export const MainLayout: React.FC = () => {
   const { parseResult } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Tab de análise só aparece se houver parseResult
-  const tabs = useMemo(() => {
-    const baseTabs = [
-      {
-        id: 'upload',
-        label: 'Upload & Processamento',
-        content: <UploadSection />,
-      },
-    ];
-
-    // Adicionar tab de análise apenas se houver resultado de parse
-    if (parseResult && parseResult.success) {
-      baseTabs.push({
-        id: 'analysis',
-        label: 'Análise & Estrutura',
-        content: (
-          <div className="tab-placeholder">
-            <h3>Análise & Estrutura</h3>
-            <p>Esta funcionalidade será implementada na Fase 2 - Módulo 2</p>
-          </div>
-        ),
-      });
+  // Redirecionar para /upload se estiver em /analysis sem parseResult
+  useEffect(() => {
+    if (location.pathname === '/analysis' && (!parseResult || !parseResult.success)) {
+      navigate('/upload', { replace: true });
     }
-
-    return baseTabs;
-  }, [parseResult]);
-
-  // Se a tab ativa for 'analysis' mas não houver parseResult, voltar para 'upload'
-  React.useEffect(() => {
-    if (activeTab === 'analysis' && (!parseResult || !parseResult.success)) {
-      setActiveTab('upload');
-    }
-  }, [activeTab, parseResult]);
+  }, [location.pathname, parseResult, navigate]);
 
   return (
     <div className="main-layout">
@@ -53,11 +22,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       </header>
       
       <main className="main-content">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+        <nav className="main-nav">
+          <NavLink
+            to="/upload"
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+          >
+            Upload & Processamento
+          </NavLink>
+          {parseResult && parseResult.success && (
+            <NavLink
+              to="/analysis"
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              Análise & Estrutura
+            </NavLink>
+          )}
+        </nav>
+        
+        <div className="main-content-area">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

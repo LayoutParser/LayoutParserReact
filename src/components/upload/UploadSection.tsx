@@ -128,54 +128,6 @@ const UploadSection = () => {
           </button>
         </form>
       </div>
-
-      <ParseResultDisplay />
-    </div>
-  );
-};
-
-const ParseResultDisplay = () => {
-  const { parseResult, txtContent, fields } = useAppStore();
-
-  if (!parseResult) {
-    return null;
-  }
-
-  return (
-    <div className="result-card">
-      <h3>Resultado do Parsing</h3>
-      
-      <div className="result-info">
-        <div className="info-item">
-          <strong>Status:</strong> {parseResult.success ? '✅ Sucesso' : '❌ Erro'}
-        </div>
-        {parseResult.detectedType && (
-          <div className="info-item">
-            <strong>Tipo Detectado:</strong> {parseResult.detectedType}
-          </div>
-        )}
-        {txtContent && (
-          <div className="info-item">
-            <strong>Conteúdo:</strong> {txtContent.length} caracteres
-          </div>
-        )}
-        {fields && (
-          <div className="info-item">
-            <strong>Campos:</strong> {fields.length} campos processados
-          </div>
-        )}
-      </div>
-
-      {parseResult.errors && parseResult.errors.length > 0 && (
-        <div className="errors-section">
-          <h4>Erros:</h4>
-          <ul>
-            {parseResult.errors.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 };

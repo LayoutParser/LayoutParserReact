@@ -1,9 +1,3 @@
-import MainLayout from './layouts/MainLayout'
-import './App.css'
-
-function App() {
-  return <MainLayout />
-}
-
-export default App
+// App.tsx não é mais necessário - rotas são gerenciadas pelo RouterProvider em main.tsx
+export {};
 

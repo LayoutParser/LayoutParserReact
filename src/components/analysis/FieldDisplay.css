@@ -1,0 +1,172 @@
+.field-display {
+  background: #FFFFFF;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.field-display-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  background: #FFFFFF;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.field-group {
+  margin-bottom: 1.5rem;
+}
+
+.field-group:last-child {
+  margin-bottom: 0;
+}
+
+.field-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(87, 0, 255, 0.05);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.field-group-header h3 {
+  margin: 0;
+  color: #000000;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.field-count {
+  font-size: 0.85rem;
+  color: #666;
+  background: rgba(87, 0, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field-item {
+  padding: 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #FFFFFF;
+}
+
+.field-item:hover {
+  border-color: #5700FF;
+  background: rgba(87, 0, 255, 0.05);
+  transform: translateX(4px);
+}
+
+.field-item.highlighted {
+  border-color: #1FEBCC;
+  background: rgba(31, 235, 204, 0.1);
+  box-shadow: 0 2px 8px rgba(31, 235, 204, 0.2);
+}
+
+.field-item.in-search {
+  border-left: 3px solid #ED008C;
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.field-name {
+  font-weight: 600;
+  color: #000000;
+  font-size: 14px;
+}
+
+.field-sequence {
+  font-size: 0.8rem;
+  color: #666;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.field-value {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.value-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.value-text {
+  font-size: 0.9rem;
+  color: #000000;
+  font-family: 'Courier New', monospace;
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.field-position {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.field-error {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(237, 0, 140, 0.1);
+  border: 1px solid #ED008C;
+  border-radius: 4px;
+  color: #ED008C;
+  font-size: 0.85rem;
+}
+
+.field-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(31, 235, 204, 0.1);
+  border: 1px solid #1FEBCC;
+  border-radius: 4px;
+  color: #000000;
+  font-size: 0.85rem;
+}
+
+/* Scrollbar personalizado */
+.field-display::-webkit-scrollbar {
+  width: 8px;
+}
+
+.field-display::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.field-display::-webkit-scrollbar-thumb {
+  background: #5700FF;
+  border-radius: 4px;
+}
+
+.field-display::-webkit-scrollbar-thumb:hover {
+  background: #ED008C;
+}
+

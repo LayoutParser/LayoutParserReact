@@ -1,0 +1,34 @@
+.document-summary {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem;
+  background: rgba(87, 0, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(87, 0, 255, 0.2);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 1.1rem;
+  color: #000000;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .document-summary {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+}
+
