@@ -297,7 +297,7 @@
   border-top: 2px solid #e0e0e0;
 }
 
-.structure-tree-wrapper {
+.file-visualization-header .structure-tree {
   max-height: 300px;
   overflow-y: auto;
   border: 1px solid #e0e0e0;

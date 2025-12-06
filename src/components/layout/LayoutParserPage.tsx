@@ -292,9 +292,7 @@ const LayoutParserPage: React.FC = () => {
                 <FieldDisplay />
               </div>
               <div className="file-visualization-header">
-                <div className="structure-tree-wrapper">
-                  <StructureTree />
-                </div>
+                <StructureTree />
               </div>
             </div>
           ) : (
