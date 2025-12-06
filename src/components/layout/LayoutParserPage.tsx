@@ -289,7 +289,34 @@ const LayoutParserPage: React.FC = () => {
           {parseResult && parseResult.success && txtFile ? (
             <div className="file-visualization">
               <div className="file-visualization-header">
-                <h3>Visualização do Documento</h3>
+                <div className="file-visualization-title-bar">
+                  <div className="file-info-group">
+                    <div className="file-info-item">
+                      <span className="file-info-label">Arquivo:</span>
+                      <span className="file-info-value" title={txtFile.name}>{txtFile.name}</span>
+                    </div>
+                    {selectedLayout && (
+                      <div className="file-info-item">
+                        <span className="file-info-label">Layout:</span>
+                        <span className="file-info-value" title={selectedLayout.name}>
+                          {selectedLayout.name}
+                        </span>
+                      </div>
+                    )}
+                    {parseResult.detectedType && (
+                      <div className="file-info-item">
+                        <span className="file-info-label">Tipo:</span>
+                        <span className="file-info-value type-badge">{parseResult.detectedType}</span>
+                      </div>
+                    )}
+                    {parseResult.fields && (
+                      <div className="file-info-item">
+                        <span className="file-info-label">Campos:</span>
+                        <span className="file-info-value">{parseResult.fields.length}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="structure-tree-wrapper">
                   <StructureTree />
                 </div>
