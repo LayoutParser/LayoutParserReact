@@ -8,6 +8,7 @@ export interface LayoutElement {
   name: string;
   isRequired: boolean;
   elements?: string[]; // Array de JSON strings ou LayoutElement[]
+  initialValue?: string; // Valor inicial da linha (ex: "000", "001", "HEADER")
   // Campos específicos de FieldElementVO
   startValue?: number;
   incrementValue?: number;

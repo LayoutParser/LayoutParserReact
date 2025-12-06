@@ -14,6 +14,17 @@ const FieldDisplay: React.FC = () => {
   // Usar campos do parseResult se fields estiver vazio
   const actualFields = fields.length > 0 ? fields : (parseResult?.fields || []);
 
+  // Função para obter o initialValue de uma linha do layout
+  const getLineInitialValue = (lineName: string): string | null => {
+    if (!parseResult?.layout?.elements) return null;
+    
+    const lineElement = parseResult.layout.elements.find(
+      (el: any) => el.type === 'LineElementVO' && el.name === lineName
+    );
+    
+    return lineElement?.initialValue || null;
+  };
+
   useEffect(() => {
     // Quando há resultados de busca, destacar o campo atual
     if (searchResults.length > 0 && currentResultIndex >= 0) {
@@ -185,19 +196,50 @@ const FieldDisplay: React.FC = () => {
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         
         // Determinar o sequencial a ser exibido
-        let displaySequential = groupData.sequential || '000001';
+        // Para HEADER: usar "HEADER"
+        // Para outras linhas: usar o initialValue do layout (ex: "000", "001")
+        // OU o valor do campo "Sequencia" da linha anterior
+        let displaySequential = '000001';
         
-        // Para HEADER, sempre usar 000001 (é o primeiro sequencial)
         if (isHeader) {
-          displaySequential = '000001';
-        }
-        
-        // Se o sequencial não foi extraído corretamente, tentar extrair diretamente do txtContent
-        if (displaySequential === '000000' && !isHeader && txtContent && groupData.position >= 0) {
-          const lineStart = Math.floor(groupData.position / 600) * 600;
-          const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
-          if (/^\d{6}$/.test(sequentialInFile)) {
-            displaySequential = sequentialInFile;
+          displaySequential = 'HEADER';
+        } else {
+          // Primeiro: tentar buscar initialValue do layout
+          const initialValue = getLineInitialValue(group.lineName);
+          if (initialValue) {
+            // Se initialValue é numérico (ex: "000", "001"), formatar como sequencial de 6 dígitos
+            if (/^\d+$/.test(initialValue)) {
+              displaySequential = initialValue.padStart(6, '0');
+            } else {
+              displaySequential = initialValue;
+            }
+          } else {
+            // Fallback 1: buscar campo "Sequencia" da linha anterior
+            if (groupIndex > 0) {
+              const previousGroup = displayGroups[groupIndex - 1] as any;
+              const previousSequenciaField = previousGroup.fields?.find(
+                (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+              );
+              if (previousSequenciaField?.value) {
+                const seqValue = previousSequenciaField.value.trim();
+                if (/^\d{6}$/.test(seqValue)) {
+                  displaySequential = seqValue;
+                } else if (/^\d+$/.test(seqValue)) {
+                  displaySequential = seqValue.padStart(6, '0');
+                }
+              }
+            }
+            
+            // Fallback 2: tentar extrair do txtContent
+            if (displaySequential === '000001' && txtContent && groupData.position >= 0) {
+              const lineStart = Math.floor(groupData.position / 600) * 600;
+              const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
+              if (/^\d{6}$/.test(sequentialInFile)) {
+                displaySequential = sequentialInFile;
+              } else if (groupData.lineSequence && /^\d+$/.test(groupData.lineSequence)) {
+                displaySequential = groupData.lineSequence.padStart(6, '0');
+              }
+            }
           }
         }
         
@@ -215,24 +257,29 @@ const FieldDisplay: React.FC = () => {
                 </span>
               )}
               
-              {/* Campos da linha */}
-              {group.fields.map((field, index) => {
-                const highlighted = isFieldHighlighted(field);
-                const inSearch = isFieldInSearch(field);
-                const fieldId = `${field.lineName}_${field.fieldName}`;
-                
-                return (
-                  <span
-                    key={`${field.lineName}_${field.fieldName}_${index}`}
-                    data-field-id={fieldId}
-                    className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
-                    onClick={() => handleFieldClick(field)}
-                    title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
-                  >
-                    {field.value || ' '}
-                  </span>
-                );
-              })}
+              {/* Campos da linha - excluir campo "Sequencia" (pertence à próxima linha) */}
+              {group.fields
+                .filter(field => {
+                  const fieldNameUpper = field.fieldName?.toUpperCase() || '';
+                  return fieldNameUpper !== 'SEQUENCIA';
+                })
+                .map((field, index) => {
+                  const highlighted = isFieldHighlighted(field);
+                  const inSearch = isFieldInSearch(field);
+                  const fieldId = `${field.lineName}_${field.fieldName}`;
+                  
+                  return (
+                    <span
+                      key={`${field.lineName}_${field.fieldName}_${index}`}
+                      data-field-id={fieldId}
+                      className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
+                      onClick={() => handleFieldClick(field)}
+                      title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
+                    >
+                      {field.value || ' '}
+                    </span>
+                  );
+                })}
             </div>
           </div>
         );

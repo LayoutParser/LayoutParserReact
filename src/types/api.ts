@@ -66,6 +66,7 @@ export interface LayoutElement {
   name: string;
   isRequired: boolean;
   elements?: string[];
+  initialValue?: string; // Valor inicial da linha (ex: "000", "001", "HEADER")
 }
 
 export interface Field {
