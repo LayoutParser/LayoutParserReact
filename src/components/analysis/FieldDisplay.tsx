@@ -256,15 +256,75 @@ const FieldDisplay: React.FC = () => {
             return posA - posB;
           });
 
+        // Debug: log dos campos
+        if (groupIndex === 0) {
+          console.log('🔍 FieldDisplay - Primeira linha:', {
+            lineName: group.lineName,
+            fieldsCount: displayFields.length,
+            fields: displayFields.slice(0, 5).map(f => ({
+              name: f.fieldName,
+              value: f.value?.substring(0, 20) || '(vazio)',
+              startPosition: f.startPosition,
+              length: f.length
+            }))
+          });
+        }
+        
+        // Se não há campos, retornar linha vazia
+        if (displayFields.length === 0) {
+          return (
+            <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
+              <div className="field-list-inline">
+                {isHeader ? (
+                  <span className="field-sequential field-sequential-header" title="Sequencial: HEADER (000001)">
+                    HEADER
+                  </span>
+                ) : (
+                  <span className="field-sequential" title={`Sequencial: ${displaySequential}`}>
+                    {displaySequential}
+                  </span>
+                )}
+                <span className="field-line-content">{' '.repeat(600)}</span>
+              </div>
+            </div>
+          );
+        }
+
         // Construir linha completa com 600 caracteres
         const LINE_LENGTH = 600;
         const lineParts: Array<{ type: 'field' | 'space'; content: string; field?: Field; start: number; end: number }> = [];
         let currentPos = 0;
         
-        displayFields.forEach(field => {
-          const startPos = (field.startPosition ?? 0) - 1; // startPosition é 1-based
-          const fieldLength = field.length || 0;
+        displayFields.forEach((field, fieldIndex) => {
+          // startPosition pode ser 1-based ou 0-based, vamos tratar ambos
+          let startPos = field.startPosition ?? 0;
+          // Se startPosition parece ser 1-based (maior que 0), converter para 0-based
+          if (startPos > 0) {
+            startPos = startPos - 1;
+          }
+          
+          // Se não tem startPosition, usar posição sequencial baseada no índice
+          if (!field.startPosition && fieldIndex > 0) {
+            // Tentar calcular baseado no campo anterior
+            const prevField = displayFields[fieldIndex - 1];
+            const prevStart = (prevField.startPosition ?? 0) > 0 ? (prevField.startPosition ?? 0) - 1 : 0;
+            const prevLength = prevField.length || 0;
+            startPos = prevStart + prevLength;
+          }
+          
+          const fieldLength = field.length || 1; // Mínimo 1 para evitar campos invisíveis
           let fieldValue = field.value || '';
+          
+          // Se não tem valor mas tem length, preencher com espaços
+          if (!fieldValue && fieldLength > 0) {
+            // Para Filler, sempre usar espaços
+            if (field.fieldName?.toUpperCase().includes('FILLER') || field.fieldName?.toUpperCase() === 'FILLER') {
+              fieldValue = ' '.repeat(fieldLength);
+            } else {
+              // Para outros campos vazios, usar espaços também para manter o layout
+              fieldValue = ' '.repeat(fieldLength);
+            }
+          }
           
           // Garantir que o valor tenha o tamanho correto
           if (fieldLength > 0) {
@@ -275,11 +335,9 @@ const FieldDisplay: React.FC = () => {
               // Truncar se for maior
               fieldValue = fieldValue.substring(0, fieldLength);
             }
-          }
-          
-          // Se o valor está vazio e é um Filler, mostrar espaços
-          if (!fieldValue && (field.fieldName?.toUpperCase().includes('FILLER') || field.fieldName?.toUpperCase() === 'FILLER')) {
-            fieldValue = ' '.repeat(fieldLength || 1);
+          } else if (!fieldValue) {
+            // Se não tem length definido e não tem valor, usar pelo menos 1 espaço
+            fieldValue = ' ';
           }
           
           // Adicionar espaço antes do campo se necessário
@@ -290,18 +348,33 @@ const FieldDisplay: React.FC = () => {
               start: currentPos,
               end: startPos
             });
+            currentPos = startPos;
           }
           
-          // Adicionar o campo
-          if (startPos >= 0 && startPos + fieldLength <= LINE_LENGTH) {
+          // Adicionar o campo (sempre adicionar, mesmo se startPos for negativo)
+          const actualStart = Math.max(0, startPos);
+          const actualLength = fieldLength || fieldValue.length || 1;
+          
+          if (actualStart + actualLength <= LINE_LENGTH) {
             lineParts.push({
               type: 'field',
               content: fieldValue,
               field: field,
-              start: startPos,
-              end: startPos + fieldLength
+              start: actualStart,
+              end: actualStart + actualLength
             });
-            currentPos = startPos + fieldLength;
+            currentPos = actualStart + actualLength;
+          } else if (actualStart < LINE_LENGTH) {
+            // Campo que ultrapassa o limite, truncar
+            const truncatedLength = LINE_LENGTH - actualStart;
+            lineParts.push({
+              type: 'field',
+              content: fieldValue.substring(0, truncatedLength),
+              field: field,
+              start: actualStart,
+              end: LINE_LENGTH
+            });
+            currentPos = LINE_LENGTH;
           }
         });
         

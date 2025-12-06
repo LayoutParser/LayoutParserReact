@@ -58,15 +58,16 @@
 .field-space {
   display: inline;
   white-space: pre;
+  color: #000000;
 }
 
 .field-inline {
   display: inline-block;
   padding: 0;
   margin: 0;
-  border: 1px solid #ddd;
-  border-radius: 2px;
-  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   transition: all 0.2s;
   white-space: pre;
@@ -74,6 +75,8 @@
   font-size: 11px;
   line-height: 1.2;
   vertical-align: top;
+  color: #000000;
+  min-width: 1px;
 }
 
 /* Sequencial destacado */
