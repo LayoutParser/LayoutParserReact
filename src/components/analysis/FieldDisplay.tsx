@@ -243,6 +243,78 @@ const FieldDisplay: React.FC = () => {
           }
         }
         
+        // Filtrar e ordenar campos (excluir Sequencia, incluir Filler)
+        const displayFields = group.fields
+          .filter(field => {
+            const fieldNameUpper = field.fieldName?.toUpperCase() || '';
+            return fieldNameUpper !== 'SEQUENCIA';
+          })
+          .sort((a, b) => {
+            // Ordenar campos por startPosition ou sequence para manter ordem correta
+            const posA = a.startPosition ?? a.sequence ?? 0;
+            const posB = b.startPosition ?? b.sequence ?? 0;
+            return posA - posB;
+          });
+
+        // Construir linha completa com 600 caracteres
+        const LINE_LENGTH = 600;
+        const lineParts: Array<{ type: 'field' | 'space'; content: string; field?: Field; start: number; end: number }> = [];
+        let currentPos = 0;
+        
+        displayFields.forEach(field => {
+          const startPos = (field.startPosition ?? 0) - 1; // startPosition é 1-based
+          const fieldLength = field.length || 0;
+          let fieldValue = field.value || '';
+          
+          // Garantir que o valor tenha o tamanho correto
+          if (fieldLength > 0) {
+            if (fieldValue.length < fieldLength) {
+              // Preencher com espaços à direita
+              fieldValue = fieldValue.padEnd(fieldLength, ' ');
+            } else if (fieldValue.length > fieldLength) {
+              // Truncar se for maior
+              fieldValue = fieldValue.substring(0, fieldLength);
+            }
+          }
+          
+          // Se o valor está vazio e é um Filler, mostrar espaços
+          if (!fieldValue && (field.fieldName?.toUpperCase().includes('FILLER') || field.fieldName?.toUpperCase() === 'FILLER')) {
+            fieldValue = ' '.repeat(fieldLength || 1);
+          }
+          
+          // Adicionar espaço antes do campo se necessário
+          if (startPos > currentPos) {
+            lineParts.push({
+              type: 'space',
+              content: ' '.repeat(startPos - currentPos),
+              start: currentPos,
+              end: startPos
+            });
+          }
+          
+          // Adicionar o campo
+          if (startPos >= 0 && startPos + fieldLength <= LINE_LENGTH) {
+            lineParts.push({
+              type: 'field',
+              content: fieldValue,
+              field: field,
+              start: startPos,
+              end: startPos + fieldLength
+            });
+            currentPos = startPos + fieldLength;
+          }
+        });
+        
+        // Preencher até 600 caracteres se necessário
+        if (currentPos < LINE_LENGTH) {
+          lineParts.push({
+            type: 'space',
+            content: ' '.repeat(LINE_LENGTH - currentPos),
+            start: currentPos,
+            end: LINE_LENGTH
+          });
+        }
+        
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-list-inline">
@@ -257,29 +329,31 @@ const FieldDisplay: React.FC = () => {
                 </span>
               )}
               
-              {/* Campos da linha - excluir campo "Sequencia" (pertence à próxima linha) */}
-              {group.fields
-                .filter(field => {
-                  const fieldNameUpper = field.fieldName?.toUpperCase() || '';
-                  return fieldNameUpper !== 'SEQUENCIA';
-                })
-                .map((field, index) => {
+              {/* Linha completa com 600 caracteres */}
+              <span className="field-line-content">
+                {lineParts.map((part, partIndex) => {
+                  if (part.type === 'space') {
+                    return <span key={`space-${partIndex}`} className="field-space">{part.content}</span>;
+                  }
+                  
+                  const field = part.field!;
+                  const fieldId = `${field.lineName}_${field.fieldName}`;
                   const highlighted = isFieldHighlighted(field);
                   const inSearch = isFieldInSearch(field);
-                  const fieldId = `${field.lineName}_${field.fieldName}`;
                   
                   return (
                     <span
-                      key={`${field.lineName}_${field.fieldName}_${index}`}
+                      key={`field-${partIndex}`}
                       data-field-id={fieldId}
                       className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
                       onClick={() => handleFieldClick(field)}
-                      title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
+                      title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
                     >
-                      {field.value || ' '}
+                      {part.content}
                     </span>
                   );
                 })}
+              </span>
             </div>
           </div>
         );
