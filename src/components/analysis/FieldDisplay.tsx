@@ -66,13 +66,12 @@ const FieldDisplay: React.FC = () => {
       return '000001';
     }
     
-    // HEADER: se lineSequence é "HEADER", significa que não tem sequencial antes
-    // HEADER sempre é o primeiro, então sequencial é 000001
+    // HEADER: sempre é o primeiro sequencial (000001)
     if (lineName === 'HEADER' || lineSequence === 'HEADER') {
       return '000001';
     }
     
-    if (!lineSequence || position < 0) {
+    if (position < 0) {
       return '000000';
     }
     
@@ -86,11 +85,6 @@ const FieldDisplay: React.FC = () => {
     // Verificar se é um número válido (formato: 000001, 000002, etc)
     if (/^\d{6}$/.test(sequentialInFile)) {
       return sequentialInFile;
-    }
-    
-    // Se não encontrou sequencial válido, tentar usar o lineSequence como sequencial (se for numérico)
-    if (lineSequence && /^\d+$/.test(lineSequence)) {
-      return lineSequence.padStart(6, '0');
     }
     
     return '000000';
@@ -188,11 +182,40 @@ const FieldDisplay: React.FC = () => {
     <div className="field-display">
       {displayGroups.map((group, groupIndex) => {
         const groupData = group as any;
+        const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         
-        // Todas as linhas seguem o mesmo formato: apenas campos inline, sem header
+        // Determinar o sequencial a ser exibido
+        let displaySequential = groupData.sequential || '000001';
+        
+        // Para HEADER, sempre usar 000001 (é o primeiro sequencial)
+        if (isHeader) {
+          displaySequential = '000001';
+        }
+        
+        // Se o sequencial não foi extraído corretamente, tentar extrair diretamente do txtContent
+        if (displaySequential === '000000' && !isHeader && txtContent && groupData.position >= 0) {
+          const lineStart = Math.floor(groupData.position / 600) * 600;
+          const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
+          if (/^\d{6}$/.test(sequentialInFile)) {
+            displaySequential = sequentialInFile;
+          }
+        }
+        
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-list-inline">
+              {/* Sequencial destacado */}
+              {isHeader ? (
+                <span className="field-sequential field-sequential-header" title="Sequencial: HEADER (000001)">
+                  HEADER
+                </span>
+              ) : (
+                <span className="field-sequential" title={`Sequencial: ${displaySequential}`}>
+                  {displaySequential}
+                </span>
+              )}
+              
+              {/* Campos da linha */}
               {group.fields.map((field, index) => {
                 const highlighted = isFieldHighlighted(field);
                 const inSearch = isFieldInSearch(field);

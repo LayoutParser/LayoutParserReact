@@ -41,6 +41,33 @@
   white-space: nowrap;
   margin-left: 0;
   font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+}
+
+/* Sequencial destacado */
+.field-sequential {
+  display: inline-block;
+  background: #5700FF;
+  color: #FFFFFF;
+  padding: 3px 8px;
+  margin-right: 4px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  min-width: 60px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(87, 0, 255, 0.3);
+}
+
+/* HEADER como sequencial */
+.field-sequential-header {
+  background: #ED008C;
+  color: #FFFFFF;
+  min-width: 70px;
+  box-shadow: 0 2px 4px rgba(237, 0, 140, 0.3);
 }
 
 .field-record {
