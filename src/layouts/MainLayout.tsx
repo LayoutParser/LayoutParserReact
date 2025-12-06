@@ -22,23 +22,6 @@ export const MainLayout: React.FC = () => {
       </header>
       
       <main className="main-content">
-        <nav className="main-nav">
-          <NavLink
-            to="/upload"
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-          >
-            Upload & Processamento
-          </NavLink>
-          {parseResult && parseResult.success && (
-            <NavLink
-              to="/analysis"
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              Análise & Estrutura
-            </NavLink>
-          )}
-        </nav>
-        
         <div className="main-content-area">
           <Outlet />
         </div>

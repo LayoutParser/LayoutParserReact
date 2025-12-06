@@ -6,9 +6,13 @@
 .main-header {
   background: linear-gradient(135deg, #5700FF 0%, #ED008C 100%);
   color: #FFFFFF;
-  padding: 2rem;
+  padding: 1rem 2rem;
   text-align: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .main-header h1 {
@@ -17,9 +21,11 @@
 }
 
 .main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+  width: 100%;
+  height: calc(100vh - 80px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .main-nav {
@@ -58,10 +64,10 @@
 }
 
 .main-content-area {
-  background: #FFFFFF;
-  border-radius: 8px;
-  padding: 2rem;
-  min-height: 400px;
+  background: transparent;
+  padding: 0;
+  min-height: calc(100vh - 120px);
+  height: 100%;
 }
 
 .tab-placeholder {

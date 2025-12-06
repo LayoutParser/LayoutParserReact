@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
-import UploadSection from './components/upload/UploadSection';
-import AnalysisSection from './components/analysis/AnalysisSection';
+import LayoutParserPage from './components/layout/LayoutParserPage';
 
 export const router = createBrowserRouter([
   {
@@ -14,11 +13,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'upload',
-        element: <UploadSection />,
+        element: <LayoutParserPage />,
       },
       {
         path: 'analysis',
-        element: <AnalysisSection />,
+        element: <LayoutParserPage />,
       },
     ],
   },
