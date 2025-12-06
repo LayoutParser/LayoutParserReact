@@ -25,6 +25,7 @@ const FieldDisplay: React.FC = () => {
     return lineElement?.initialValue || null;
   };
 
+
   useEffect(() => {
     // Quando há resultados de busca, destacar o campo atual
     if (searchResults.length > 0 && currentResultIndex >= 0) {
@@ -256,6 +257,36 @@ const FieldDisplay: React.FC = () => {
             return posA - posB;
           });
 
+        // Usar posições calculadas do back-end (apenas para layouts configurados)
+        const lineValidation = parseResult?.lineValidations?.find(
+          lv => lv.lineName === group.lineName
+        );
+        
+        if (lineValidation && lineValidation.calculatedPositions) {
+          // Usar posições calculadas do back-end
+          displayFields.forEach(field => {
+            const calculatedPos = lineValidation.calculatedPositions[field.fieldName];
+            if (calculatedPos) {
+              field.startPosition = calculatedPos;
+            }
+          });
+          
+          if (groupIndex === 0) {
+            console.log(`✅ Usando posições calculadas do back-end para ${group.lineName}:`, {
+              totalLength: lineValidation.totalLength,
+              isValid: lineValidation.isValid,
+              positions: Object.entries(lineValidation.calculatedPositions).slice(0, 5)
+            });
+          }
+        } else {
+          // Se não houver lineValidations (layout não configurado para cálculo), usar startPosition que já vem nos campos
+          // Isso é normal para layouts que não estão na lista de layouts com cálculo específico
+          if (groupIndex === 0 && parseResult?.lineValidations) {
+            // Se lineValidations existe mas não tem esta linha, significa que o layout não está configurado
+            console.log(`ℹ️ Layout não configurado para cálculo de validação, usando startPosition dos campos para ${group.lineName}`);
+          }
+        }
+
         // Debug: log dos campos
         if (groupIndex === 0) {
           console.log('🔍 FieldDisplay - Primeira linha:', {
@@ -266,7 +297,8 @@ const FieldDisplay: React.FC = () => {
               value: f.value?.substring(0, 20) || '(vazio)',
               startPosition: f.startPosition,
               length: f.length
-            }))
+            })),
+            layoutPositions: Array.from(layoutPositions.entries()).slice(0, 5)
           });
         }
         
@@ -290,26 +322,70 @@ const FieldDisplay: React.FC = () => {
           );
         }
 
-        // Construir linha completa com 600 caracteres
+        // Construir linha completa com 600 caracteres usando a lógica do back-end
         const LINE_LENGTH = 600;
-        const lineParts: Array<{ type: 'field' | 'space'; content: string; field?: Field; start: number; end: number }> = [];
+        const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence'; content: string; field?: Field; start: number; end: number }> = [];
+        
+        // 1. Sequencia da linha anterior (6 chars) - apenas para linhas não-HEADER
+        const sequenceFromPreviousLine = isHeader ? 0 : 6;
         let currentPos = 0;
         
-        displayFields.forEach((field, fieldIndex) => {
-          // startPosition pode ser 1-based ou 0-based, vamos tratar ambos
-          let startPos = field.startPosition ?? 0;
-          // Se startPosition parece ser 1-based (maior que 0), converter para 0-based
-          if (startPos > 0) {
-            startPos = startPos - 1;
+        if (sequenceFromPreviousLine > 0) {
+          // Buscar sequencia da linha anterior
+          let previousSequencia = '000000';
+          if (groupIndex > 0) {
+            const previousGroup = displayGroups[groupIndex - 1] as any;
+            const previousSequenciaField = previousGroup.fields?.find(
+              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+            );
+            if (previousSequenciaField?.value) {
+              const seqValue = previousSequenciaField.value.trim();
+              if (/^\d{6}$/.test(seqValue)) {
+                previousSequencia = seqValue;
+              }
+            }
           }
           
-          // Se não tem startPosition, usar posição sequencial baseada no índice
-          if (!field.startPosition && fieldIndex > 0) {
-            // Tentar calcular baseado no campo anterior
-            const prevField = displayFields[fieldIndex - 1];
-            const prevStart = (prevField.startPosition ?? 0) > 0 ? (prevField.startPosition ?? 0) - 1 : 0;
-            const prevLength = prevField.length || 0;
-            startPos = prevStart + prevLength;
+          lineParts.push({
+            type: 'sequence',
+            content: previousSequencia,
+            start: 0,
+            end: sequenceFromPreviousLine
+          });
+          currentPos = sequenceFromPreviousLine;
+        }
+        
+        // 2. InitialValue (HEADER, "000", "001", etc.)
+        const initialValue = getLineInitialValue(group.lineName) || '';
+        if (initialValue) {
+          lineParts.push({
+            type: 'initial',
+            content: initialValue,
+            start: currentPos,
+            end: currentPos + initialValue.length
+          });
+          currentPos += initialValue.length;
+        }
+        
+        // 3. Buscar a tag Sequencia desta linha (será adicionada no final, pertence à próxima linha)
+        const sequenciaField = group.fields.find(
+          (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+        );
+        const sequenciaLength = sequenciaField?.length || 6;
+        const sequenciaValue = sequenciaField?.value || '000000';
+        
+        // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
+        // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
+        displayFields.forEach((field, fieldIndex) => {
+          // startPosition é sempre 1-based (vem do back-end)
+          let startPos = field.startPosition ?? 0;
+          
+          // Converter para 0-based para uso interno
+          if (startPos > 0) {
+            startPos = startPos - 1;
+          } else {
+            // Se não tem startPosition, usar posição atual
+            startPos = currentPos;
           }
           
           const fieldLength = field.length || 1; // Mínimo 1 para evitar campos invisíveis
@@ -378,20 +454,79 @@ const FieldDisplay: React.FC = () => {
           }
         });
         
-        // Preencher até 600 caracteres se necessário
+        // 5. Adicionar a tag Sequencia desta linha no final (pertence à próxima linha)
+        // Esta sequencia completa a linha atual até 600 caracteres
+        // Fórmula: sequencia anterior + InitialValue + campos (sem Sequencia própria) + Sequencia própria = 600
+        // A tag Sequencia sempre existe (6 chars padrão se não encontrada)
+        if (currentPos + sequenciaLength <= LINE_LENGTH) {
+          lineParts.push({
+            type: 'sequence',
+            content: sequenciaValue.padEnd(sequenciaLength, ' '),
+            start: currentPos,
+            end: currentPos + sequenciaLength
+          });
+          currentPos += sequenciaLength;
+        } else {
+          // Se não há espaço para a sequencia, algo está errado
+          console.warn(`⚠️ Linha ${group.lineName}: não há espaço para tag Sequencia (${currentPos} + ${sequenciaLength} > ${LINE_LENGTH})`);
+        }
+        
+        // 5. Preencher até 600 caracteres se necessário (não deveria acontecer se cálculo estiver correto)
         if (currentPos < LINE_LENGTH) {
+          const missing = LINE_LENGTH - currentPos;
           lineParts.push({
             type: 'space',
-            content: ' '.repeat(LINE_LENGTH - currentPos),
+            content: ' '.repeat(missing),
             start: currentPos,
             end: LINE_LENGTH
           });
+          console.warn(`⚠️ Linha ${group.lineName} tem apenas ${currentPos} chars, preenchendo ${missing} espaços`);
+        } else if (currentPos > LINE_LENGTH) {
+          console.warn(`⚠️ Linha ${group.lineName} excedeu 600 chars (${currentPos}), truncando`);
+        }
+        
+        // Validar e garantir que a linha tenha exatamente 600 caracteres
+        let fullLineContent = '';
+        lineParts.forEach(part => {
+          fullLineContent += part.content;
+        });
+        
+        // Log de validação (apenas para primeira linha)
+        if (groupIndex === 0) {
+          console.log(`📏 Validação da linha ${group.lineName}:`, {
+            totalChars: fullLineContent.length,
+            expected: LINE_LENGTH,
+            isValid: fullLineContent.length === LINE_LENGTH,
+            partsCount: lineParts.length,
+            parts: lineParts.map(p => ({
+              type: p.type,
+              length: p.content.length,
+              start: p.start,
+              end: p.end
+            }))
+          });
+        }
+        
+        // Se não tiver 600 caracteres, preencher com espaços no final
+        if (fullLineContent.length < LINE_LENGTH) {
+          const missing = LINE_LENGTH - fullLineContent.length;
+          lineParts.push({
+            type: 'space',
+            content: ' '.repeat(missing),
+            start: currentPos,
+            end: LINE_LENGTH
+          });
+          fullLineContent = fullLineContent.padEnd(LINE_LENGTH, ' ');
+        } else if (fullLineContent.length > LINE_LENGTH) {
+          // Truncar se exceder (não deveria acontecer)
+          fullLineContent = fullLineContent.substring(0, LINE_LENGTH);
+          console.warn(`⚠️ Linha ${group.lineName} excedeu 600 caracteres, truncando`);
         }
         
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-list-inline">
-              {/* Sequencial destacado */}
+              {/* Sequencial destacado - posicionado absolutamente */}
               {isHeader ? (
                 <span className="field-sequential field-sequential-header" title="Sequencial: HEADER (000001)">
                   HEADER
@@ -402,29 +537,42 @@ const FieldDisplay: React.FC = () => {
                 </span>
               )}
               
-              {/* Linha completa com 600 caracteres */}
+              {/* Linha completa com exatamente 600 caracteres */}
               <span className="field-line-content">
                 {lineParts.map((part, partIndex) => {
                   if (part.type === 'space') {
                     return <span key={`space-${partIndex}`} className="field-space">{part.content}</span>;
                   }
                   
-                  const field = part.field!;
-                  const fieldId = `${field.lineName}_${field.fieldName}`;
-                  const highlighted = isFieldHighlighted(field);
-                  const inSearch = isFieldInSearch(field);
+                  if (part.type === 'sequence' || part.type === 'initial') {
+                    // Sequencia e InitialValue são renderizados como texto simples (não clicáveis)
+                    return (
+                      <span key={`${part.type}-${partIndex}`} className="field-static">
+                        {part.content}
+                      </span>
+                    );
+                  }
                   
-                  return (
-                    <span
-                      key={`field-${partIndex}`}
-                      data-field-id={fieldId}
-                      className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
-                      onClick={() => handleFieldClick(field)}
-                      title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
-                    >
-                      {part.content}
-                    </span>
-                  );
+                  if (part.type === 'field' && part.field) {
+                    const field = part.field;
+                    const fieldId = `${field.lineName}_${field.fieldName}`;
+                    const highlighted = isFieldHighlighted(field);
+                    const inSearch = isFieldInSearch(field);
+                    
+                    return (
+                      <span
+                        key={`field-${partIndex}`}
+                        data-field-id={fieldId}
+                        className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
+                        onClick={() => handleFieldClick(field)}
+                        title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
+                      >
+                        {part.content}
+                      </span>
+                    );
+                  }
+                  
+                  return null;
                 })}
               </span>
             </div>

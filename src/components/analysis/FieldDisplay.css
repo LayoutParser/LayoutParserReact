@@ -31,6 +31,8 @@
 .field-line-container {
   margin-bottom: 0.2rem;
   padding: 0.1rem 0;
+  position: relative;
+  padding-left: 80px; /* Espaço para o sequencial destacado */
 }
 
 /* Formato inline - campos em linha única, sem indentação */
@@ -43,7 +45,7 @@
   font-family: 'Courier New', monospace;
   display: flex;
   align-items: center;
-  gap: 4px;
+  position: relative;
 }
 
 .field-line-content {
@@ -53,16 +55,37 @@
   line-height: 1.2;
   white-space: pre;
   letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  /* Garantir que cada caractere ocupe exatamente o mesmo espaço */
+  width: 600ch; /* 600 caracteres usando ch unit (largura do caractere "0") */
+  min-width: 600ch;
+  max-width: 600ch;
+  overflow: hidden;
+  text-align: left;
+  /* Garantir que não haja espaçamento entre caracteres */
+  word-spacing: 0;
 }
 
 .field-space {
   display: inline;
   white-space: pre;
   color: #000000;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.field-static {
+  display: inline;
+  white-space: pre;
+  color: #000000;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 
 .field-inline {
-  display: inline-block;
+  display: inline;
   padding: 0;
   margin: 0;
   border: 1px solid rgba(0, 0, 0, 0.15);
@@ -74,18 +97,22 @@
   font-family: 'Courier New', monospace;
   font-size: 11px;
   line-height: 1.2;
-  vertical-align: top;
+  vertical-align: baseline;
   color: #000000;
-  min-width: 1px;
+  position: relative;
+  letter-spacing: 0;
+  word-spacing: 0;
 }
 
-/* Sequencial destacado */
+/* Sequencial destacado - posicionado de forma absoluta para não afetar alinhamento */
 .field-sequential {
-  display: inline-block;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
   background: #5700FF;
   color: #FFFFFF;
   padding: 3px 8px;
-  margin-right: 4px;
   border-radius: 4px;
   font-weight: 700;
   font-size: 11px;
@@ -94,6 +121,7 @@
   min-width: 60px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(87, 0, 255, 0.3);
+  z-index: 10;
 }
 
 /* HEADER como sequencial */

@@ -31,6 +31,20 @@ export interface LayoutConfig {
   splitMethod: string;
 }
 
+export interface LineValidationInfo {
+  lineName: string;
+  initialValue: string;
+  initialValueLength: number;
+  sequenceFromPreviousLine: number;
+  fieldsLength: number;
+  sequenciaLength: number;
+  totalLength: number;
+  isValid: boolean;
+  hasChildren: boolean;
+  fieldCount: number;
+  calculatedPositions: Record<string, number>; // Map<fieldName, startPosition (1-based)>
+}
+
 export interface ParseResponse {
   success: boolean;
   detectedType?: string;
@@ -47,6 +61,7 @@ export interface ParseResponse {
     warningFields?: number;
     errorFields?: number;
   };
+  lineValidations?: LineValidationInfo[]; // NOVO: Validações e posições calculadas pelo back-end
 }
 
 export interface Layout {
