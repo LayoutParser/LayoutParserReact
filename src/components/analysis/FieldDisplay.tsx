@@ -50,22 +50,41 @@ const FieldDisplay: React.FC = () => {
     }
   }, [actualFields]);
 
+  // Função para extrair número da linha do nome (ex: "LINHA000" -> "000")
+  const extractLineNumber = (lineName: string): string => {
+    const match = lineName.match(/(\d+)$/);
+    if (match) {
+      return match[1].padStart(3, '0');
+    }
+    if (lineName === 'HEADER') return '000';
+    return '000';
+  };
+
   // Criar grupos se fieldGroups estiver vazio mas houver campos
+  // Agrupar por linha e ocorrência para manter ordem sequencial
   const displayGroups = fieldGroups.length > 0 ? fieldGroups : (() => {
     if (actualFields.length === 0) return [];
     const groupsMap = new Map<string, Field[]>();
     actualFields.forEach(field => {
       const lineName = field.lineName || 'OUTROS';
-      if (!groupsMap.has(lineName)) {
-        groupsMap.set(lineName, []);
+      const key = lineName;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, []);
       }
-      groupsMap.get(lineName)!.push(field);
+      groupsMap.get(key)!.push(field);
     });
     return Array.from(groupsMap.entries()).map(([lineName, fields]) => ({
       lineName,
       fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
       sequence: fields[0]?.sequence || 0,
-    })).sort((a, b) => a.sequence - b.sequence);
+      lineSequence: fields[0]?.lineSequence || extractLineNumber(lineName),
+    })).sort((a, b) => {
+      // Ordenar por sequência da linha se disponível
+      if (a.lineSequence && b.lineSequence) {
+        return a.lineSequence.localeCompare(b.lineSequence);
+      }
+      return a.sequence - b.sequence;
+    });
   })();
 
   if (!actualFields || actualFields.length === 0) {
@@ -84,38 +103,42 @@ const FieldDisplay: React.FC = () => {
 
   return (
     <div className="field-display">
-      {displayGroups.map((group) => (
-        <div key={group.lineName} className="field-group">
-          <div className="field-group-header">
-            <h3>{group.lineName}</h3>
-            <span className="field-count">{group.fields.length} campos</span>
-          </div>
-          
-          <div className="field-list-inline">
-            {/* Nome da linha (Record) */}
-            <span className="field-record">{group.lineName}</span>
+      {displayGroups.map((group, groupIndex) => {
+        const lineNumber = group.lineSequence || extractLineNumber(group.lineName);
+        const sequentialNumber = String(groupIndex + 1).padStart(6, '0');
+        
+        return (
+          <div key={`${group.lineName}_${groupIndex}`} className="field-group-indented">
+            <div className="field-line-header">
+              <span className="line-sequential">{sequentialNumber}</span>
+              <span className="line-number">{lineNumber}</span>
+              <span className="line-name">{group.lineName}</span>
+              <span className="line-field-count">({group.fields.length} campos)</span>
+            </div>
             
-            {/* Campos em linha única */}
-            {group.fields.map((field, index) => {
-              const highlighted = isFieldHighlighted(field);
-              const inSearch = isFieldInSearch(field);
-              const fieldId = `${field.lineName}_${field.fieldName}`;
-              
-              return (
-                <span
-                  key={`${field.lineName}_${field.fieldName}_${index}`}
-                  data-field-id={fieldId}
-                  className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
-                  onClick={() => handleFieldClick(field)}
-                  title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
-                >
-                  {field.value || ' '}
-                </span>
-              );
-            })}
+            <div className="field-list-inline">
+              {/* Campos em linha única */}
+              {group.fields.map((field, index) => {
+                const highlighted = isFieldHighlighted(field);
+                const inSearch = isFieldInSearch(field);
+                const fieldId = `${field.lineName}_${field.fieldName}`;
+                
+                return (
+                  <span
+                    key={`${field.lineName}_${field.fieldName}_${index}`}
+                    data-field-id={fieldId}
+                    className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
+                    onClick={() => handleFieldClick(field)}
+                    title={`${field.fieldName} (Seq: ${field.sequence || index + 1}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
+                  >
+                    {field.value || ' '}
+                  </span>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

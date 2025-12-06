@@ -15,6 +15,8 @@ export interface Field {
   lineGuid?: string;
   sequence?: number;
   dataType?: string;
+  lineSequence?: string; // Sequência da linha (ex: "000", "001")
+  occurrence?: number; // Ocorrência da linha no documento
 }
 
 export interface FieldGroup {
