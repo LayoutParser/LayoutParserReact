@@ -1,10 +1,11 @@
 .document-summary {
   display: flex;
   gap: 0.75rem;
-  padding: 0.5rem;
+  padding: 0.4rem 0.75rem;
   background: rgba(87, 0, 255, 0.05);
   border-radius: 6px;
   border: 1px solid rgba(87, 0, 255, 0.2);
+  flex-shrink: 0;
 }
 
 .summary-item {

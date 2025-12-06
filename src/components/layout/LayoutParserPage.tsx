@@ -206,14 +206,15 @@ const LayoutParserPage: React.FC = () => {
 
         {/* Top-Right: Estrutura de Layout */}
         <div className="l-top-right">
-          <h2>Estrutura de Layout</h2>
           {parseResult && parseResult.success ? (
             <div className="structure-content">
+              <h2>Estrutura de Layout</h2>
               <DocumentSummary />
               <FieldSearch />
             </div>
           ) : (
             <div className="structure-placeholder">
+              <h2>Estrutura de Layout</h2>
               <p>Processe um documento primeiro para visualizar a estrutura de layout.</p>
             </div>
           )}
