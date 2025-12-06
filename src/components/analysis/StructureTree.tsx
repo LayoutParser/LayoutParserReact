@@ -21,7 +21,7 @@ const StructureTree: React.FC = () => {
     isExpanded 
   } = useStructureStore();
   const { setFields } = useFieldStore();
-  const { showLineProperties } = usePropertiesStore();
+  // const { showLineProperties } = usePropertiesStore(); // Removido temporariamente
 
   // Construir árvore quando parseResult mudar
   useEffect(() => {
@@ -80,7 +80,7 @@ const StructureTree: React.FC = () => {
     selectNode(node.id);
     
     if (node.type === 'LineElementVO' || node.type.includes('Line')) {
-      showLineProperties(node.element);
+      // showLineProperties(node.element); // Removido temporariamente
     } else if (node.type === 'FieldElementVO' || node.type.includes('Field')) {
       // Tentar encontrar o campo correspondente
       const field = fields.find(f => {

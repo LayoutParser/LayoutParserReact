@@ -108,16 +108,14 @@ const FieldDisplay: React.FC = () => {
         const sequentialNumber = String(groupIndex + 1).padStart(6, '0');
         
         return (
-          <div key={`${group.lineName}_${groupIndex}`} className="field-group-indented">
-            <div className="field-line-header">
+          <div key={`${group.lineName}_${groupIndex}`} className="field-line-container">
+            <div className="field-line-info">
               <span className="line-sequential">{sequentialNumber}</span>
               <span className="line-number">{lineNumber}</span>
               <span className="line-name">{group.lineName}</span>
-              <span className="line-field-count">({group.fields.length} campos)</span>
             </div>
             
             <div className="field-list-inline">
-              {/* Campos em linha única */}
               {group.fields.map((field, index) => {
                 const highlighted = isFieldHighlighted(field);
                 const inSearch = isFieldInSearch(field);

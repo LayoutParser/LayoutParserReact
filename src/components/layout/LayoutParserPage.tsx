@@ -8,7 +8,6 @@ import StructureTree from '../analysis/StructureTree';
 import FieldDisplay from '../analysis/FieldDisplay';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
-import LineProperties from '../analysis/LineProperties';
 import type { ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
 import './LayoutParserPage.css';
@@ -305,8 +304,6 @@ const LayoutParserPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Modais */}
-      <LineProperties />
     </div>
   );
 };

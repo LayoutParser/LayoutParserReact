@@ -2,10 +2,11 @@
   background: #FFFFFF;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 0.5rem;
   height: 100%;
   overflow-y: auto;
   overflow-x: auto;
+  font-family: 'Courier New', monospace;
 }
 
 .field-display-empty {
@@ -17,78 +18,53 @@
   border-radius: 8px;
 }
 
-/* Visualização indentada com sequenciais e números de linha */
-.field-group-indented {
-  margin-bottom: 1rem;
-  padding-left: 0;
-  border-left: 3px solid transparent;
-  transition: all 0.2s ease;
+/* Visualização simples com sequenciais e números de linha */
+.field-line-container {
+  margin-bottom: 0.25rem;
 }
 
-.field-group-indented:hover {
-  border-left-color: rgba(87, 0, 255, 0.3);
-  background: rgba(87, 0, 255, 0.02);
-  border-radius: 4px;
-}
-
-.field-line-header {
+.field-line-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(87, 0, 255, 0.05);
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .line-sequential {
   color: #5700FF;
   font-weight: 700;
-  font-size: 0.9rem;
-  min-width: 60px;
+  font-size: 0.8rem;
+  width: 70px;
   text-align: right;
-  background: rgba(87, 0, 255, 0.1);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  display: inline-block;
 }
 
 .line-number {
   color: #ED008C;
   font-weight: 700;
-  font-size: 0.9rem;
-  min-width: 40px;
+  font-size: 0.8rem;
+  width: 35px;
   text-align: center;
-  background: rgba(237, 0, 140, 0.1);
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  display: inline-block;
 }
 
 .line-name {
   color: #000000;
   font-weight: 600;
-  flex: 1;
-  font-size: 0.9rem;
-}
-
-.line-field-count {
-  color: #666;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  display: inline-block;
 }
 
 /* Formato inline - campos em linha única */
 .field-list-inline {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  line-height: 1.8;
-  padding: 10px;
-  background: #fafafa;
-  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 2px 0;
   white-space: nowrap;
   overflow-x: auto;
-  margin-top: 0.5rem;
+  margin-left: 110px;
 }
 
 .field-record {
