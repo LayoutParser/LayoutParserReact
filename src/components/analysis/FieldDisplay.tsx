@@ -188,37 +188,10 @@ const FieldDisplay: React.FC = () => {
     <div className="field-display">
       {displayGroups.map((group, groupIndex) => {
         const groupData = group as any;
-        const lineSequence = groupData.lineSequence || extractLineNumber(group.lineName);
         
-        // Determinar número da linha e sequencial
-        let lineNumber = '000';
-        let sequentialNumber = groupData.sequential || '000001';
-        
-        if (lineSequence === 'HEADER' || group.lineName === 'HEADER') {
-          lineNumber = '000';
-          sequentialNumber = '000001'; // HEADER sempre é o primeiro
-        } else {
-          // Para outras linhas, usar o lineSequence como número da linha
-          lineNumber = lineSequence;
-          // O sequencial já foi extraído do arquivo
-          if (sequentialNumber === '000000') {
-            // Fallback: usar o lineSequence como sequencial se for numérico
-            if (/^\d+$/.test(lineSequence)) {
-              sequentialNumber = lineSequence.padStart(6, '0');
-            } else {
-              sequentialNumber = String(groupIndex + 1).padStart(6, '0');
-            }
-          }
-        }
-        
+        // Todas as linhas seguem o mesmo formato: apenas campos inline, sem header
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
-            <div className="field-line-header">
-              <span className="line-sequential">{sequentialNumber}</span>
-              <span className="line-number">{lineNumber}</span>
-              <span className="line-name">{group.lineName}</span>
-            </div>
-            
             <div className="field-list-inline">
               {group.fields.map((field, index) => {
                 const highlighted = isFieldHighlighted(field);

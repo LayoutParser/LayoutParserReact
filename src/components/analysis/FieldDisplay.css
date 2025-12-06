@@ -27,58 +27,19 @@
   border-radius: 8px;
 }
 
-/* Visualização indentada com sequenciais e números de linha */
+/* Visualização: todas as linhas no mesmo formato - apenas campos inline */
 .field-line-container {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
   padding: 0.1rem 0;
 }
 
-.field-line-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.1rem 0;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  white-space: nowrap;
-  font-family: 'Courier New', monospace;
-}
-
-.line-sequential {
-  color: #5700FF;
-  font-weight: 700;
-  font-size: 0.75rem;
-  width: 70px;
-  text-align: right;
-  display: inline-block;
-  font-family: 'Courier New', monospace;
-}
-
-.line-number {
-  color: #ED008C;
-  font-weight: 700;
-  font-size: 0.75rem;
-  width: 35px;
-  text-align: center;
-  display: inline-block;
-  font-family: 'Courier New', monospace;
-}
-
-.line-name {
-  color: #000000;
-  font-weight: 600;
-  font-size: 0.75rem;
-  display: inline-block;
-  font-family: 'Courier New', monospace;
-}
-
-/* Formato inline - campos em linha única com indentação */
+/* Formato inline - campos em linha única, sem indentação */
 .field-list-inline {
   font-size: 11px;
   line-height: 1.5;
   padding: 1px 0;
   white-space: nowrap;
-  margin-left: 110px;
+  margin-left: 0;
   font-family: 'Courier New', monospace;
 }
 
