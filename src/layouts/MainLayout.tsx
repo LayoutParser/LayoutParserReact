@@ -17,10 +17,6 @@ export const MainLayout: React.FC = () => {
 
   return (
     <div className="main-layout">
-      <header className="main-header">
-        <h1>Parser de Layout</h1>
-      </header>
-      
       <main className="main-content">
         <div className="main-content-area">
           <Outlet />

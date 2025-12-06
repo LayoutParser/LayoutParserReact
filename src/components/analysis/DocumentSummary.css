@@ -1,26 +1,26 @@
 .document-summary {
   display: flex;
-  gap: 1.5rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: 0.5rem;
   background: rgba(87, 0, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid rgba(87, 0, 255, 0.2);
 }
 
 .summary-item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .summary-label {
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   color: #666;
   font-weight: 500;
 }
 
 .summary-value {
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   color: #000000;
   font-weight: 600;
 }

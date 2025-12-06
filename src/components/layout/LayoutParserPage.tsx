@@ -19,6 +19,7 @@ const LayoutParserPage: React.FC = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showSearchButton, setShowSearchButton] = useState(false);
   const [allLayouts, setAllLayouts] = useState<Layout[]>([]);
+  const [isControlsVisible, setIsControlsVisible] = useState(true);
 
   const {
     isUploading,
@@ -120,10 +121,10 @@ const LayoutParserPage: React.FC = () => {
       let layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
       let layoutToUse = selectedLayout;
 
+      // Se não tiver layoutContent, buscar da API
       if (!layoutContent) {
         console.log('ℹ️ Layout sem decryptedContent, buscando da API...');
-        setUploadError('Buscando layout completo da API...');
-
+        
         try {
           const result = await layoutService.searchLayouts();
           if (result.success && result.layouts) {
@@ -138,7 +139,7 @@ const LayoutParserPage: React.FC = () => {
               console.log('✅ Layout completo carregado da API');
             } else {
               throw new Error(
-                'Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.'
+                'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
               );
             }
           } else {
@@ -152,7 +153,7 @@ const LayoutParserPage: React.FC = () => {
       }
 
       if (!layoutContent) {
-        throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
+        throw new Error('Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.');
       }
 
       const blob = new Blob([layoutContent], { type: 'application/xml' });
@@ -192,9 +193,16 @@ const LayoutParserPage: React.FC = () => {
     <div className="layout-parser-page">
       {/* Layout em L */}
       <div className="l-layout-container">
-        {/* Top-Left: Título */}
+        {/* Top-Left: Botão para ocultar/visualizar controles */}
         <div className="l-top-left">
-          <h1>Layout Parser</h1>
+          <button
+            type="button"
+            onClick={() => setIsControlsVisible(!isControlsVisible)}
+            className="toggle-controls-btn"
+            title={isControlsVisible ? 'Ocultar controles' : 'Mostrar controles'}
+          >
+            {isControlsVisible ? '◀' : '▶'}
+          </button>
         </div>
 
         {/* Top-Right: Estrutura de Layout */}
@@ -213,9 +221,8 @@ const LayoutParserPage: React.FC = () => {
         </div>
 
         {/* Bottom-Left: Controles */}
-        <div className="l-bottom-left">
+        <div className={`l-bottom-left ${isControlsVisible ? '' : 'hidden'}`}>
           <div className="controls-panel">
-            <h3>Controles</h3>
 
             {/* Atualizar Layout */}
             <button

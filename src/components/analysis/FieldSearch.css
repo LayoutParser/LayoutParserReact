@@ -13,10 +13,10 @@
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.4rem 0.75rem;
   border: 2px solid #5700FF;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   box-sizing: border-box;
   transition: all 0.2s ease;
 }
