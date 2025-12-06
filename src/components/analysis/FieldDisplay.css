@@ -27,36 +27,52 @@
   border-radius: 8px;
 }
 
-/* Visualização simples com sequenciais e números de linha */
+/* Visualização indentada com sequenciais e números de linha */
 .field-line-container {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.4rem;
+  padding: 0.15rem 0;
+  border-left: 2px solid transparent;
+  padding-left: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.field-line-container:hover {
+  border-left-color: rgba(87, 0, 255, 0.3);
+  background: rgba(87, 0, 255, 0.02);
+  border-radius: 2px;
 }
 
 .field-line-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   padding: 0.15rem 0;
   font-size: 0.8rem;
-  line-height: 1.4;
+  line-height: 1.6;
+  white-space: nowrap;
+  margin-bottom: 0.1rem;
 }
 
 .line-sequential {
   color: #5700FF;
   font-weight: 700;
   font-size: 0.8rem;
-  width: 70px;
+  min-width: 70px;
   text-align: right;
   display: inline-block;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
 
 .line-number {
   color: #ED008C;
   font-weight: 700;
   font-size: 0.8rem;
-  width: 35px;
+  min-width: 35px;
   text-align: center;
   display: inline-block;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
 
 .line-name {
@@ -64,15 +80,18 @@
   font-weight: 600;
   font-size: 0.8rem;
   display: inline-block;
+  font-family: 'Courier New', monospace;
 }
 
-/* Formato inline - campos em linha única */
+/* Formato inline - campos em linha única com indentação */
 .field-list-inline {
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.6;
   padding: 2px 0;
   white-space: nowrap;
   margin-left: 110px;
+  font-family: 'Courier New', monospace;
+  min-height: 20px;
 }
 
 .field-record {

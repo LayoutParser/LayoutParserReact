@@ -61,33 +61,34 @@ const FieldDisplay: React.FC = () => {
   };
 
   // Função para extrair o sequencial do arquivo baseado na posição da linha
-  const extractSequentialFromFile = (lineName: string, lineSequence: string, txtContent: string): string => {
-    if (lineName === 'HEADER') {
-      // HEADER não tem sequencial antes dele no arquivo
+  const extractSequentialFromFile = (lineName: string, lineSequence: string, txtContent: string, position: number): string => {
+    if (!txtContent) {
+      return '000001';
+    }
+    
+    // HEADER: se lineSequence é "HEADER", significa que não tem sequencial antes
+    // HEADER sempre é o primeiro, então sequencial é 000001
+    if (lineName === 'HEADER' || lineSequence === 'HEADER') {
+      return '000001';
+    }
+    
+    if (!lineSequence || position < 0) {
       return '000000';
     }
     
-    if (!txtContent || !lineSequence) {
-      return '000000';
+    // Para outras linhas, o sequencial está nas primeiras 6 posições de cada linha de 600 caracteres
+    // Calcular o início da linha (cada linha tem 600 caracteres)
+    const lineStart = Math.floor(position / 600) * 600;
+    
+    // O sequencial está nas posições 0-5 de cada linha
+    const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
+    
+    // Verificar se é um número válido (formato: 000001, 000002, etc)
+    if (/^\d{6}$/.test(sequentialInFile)) {
+      return sequentialInFile;
     }
     
-    // Procurar a sequência da linha no texto
-    // O arquivo tem linhas de 600 caracteres, e o sequencial está nas primeiras 6 posições
-    const index = txtContent.indexOf(lineSequence);
-    if (index >= 0) {
-      // Calcular o início da linha (cada linha tem 600 caracteres)
-      const lineStart = Math.floor(index / 600) * 600;
-      
-      // O sequencial está nas posições 0-5 de cada linha
-      const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
-      
-      // Verificar se é um número válido (formato: 000001, 000002, etc)
-      if (/^\d{6}$/.test(sequentialInFile)) {
-        return sequentialInFile;
-      }
-    }
-    
-    // Se não encontrou, tentar usar o lineSequence como sequencial (se for numérico)
+    // Se não encontrou sequencial válido, tentar usar o lineSequence como sequencial (se for numérico)
     if (lineSequence && /^\d+$/.test(lineSequence)) {
       return lineSequence.padStart(6, '0');
     }
@@ -104,46 +105,67 @@ const FieldDisplay: React.FC = () => {
   };
 
   // Criar grupos se fieldGroups estiver vazio mas houver campos
-  // Agrupar por linha e ordenar pela posição real no arquivo
+  // Agrupar por lineSequence + occurrence para manter múltiplas ocorrências da mesma linha
   const displayGroups = fieldGroups.length > 0 ? fieldGroups : (() => {
     if (actualFields.length === 0) return [];
     const groupsMap = new Map<string, Field[]>();
+    
+    // Agrupar por lineSequence + occurrence para distinguir múltiplas ocorrências
     actualFields.forEach(field => {
       const lineName = field.lineName || 'OUTROS';
-      const key = lineName;
+      const lineSequence = field.lineSequence || extractLineNumber(lineName);
+      const occurrence = field.occurrence || 1;
+      // Chave única: lineSequence + occurrence para distinguir múltiplas ocorrências
+      const key = `${lineSequence}_${occurrence}_${lineName}`;
+      
       if (!groupsMap.has(key)) {
         groupsMap.set(key, []);
       }
       groupsMap.get(key)!.push(field);
     });
     
-    return Array.from(groupsMap.entries()).map(([lineName, fields]) => {
+    return Array.from(groupsMap.entries()).map(([key, fields]) => {
+      const lineName = fields[0]?.lineName || 'OUTROS';
       const lineSequence = fields[0]?.lineSequence || extractLineNumber(lineName);
-      const position = calculateLinePosition(lineSequence, txtContent);
-      const sequential = extractSequentialFromFile(lineName, lineSequence, txtContent);
+      let position = -1;
+      
+      // HEADER: se lineSequence é "HEADER", procurar diretamente no texto
+      if (lineSequence === 'HEADER' || lineName === 'HEADER') {
+        position = txtContent.indexOf('HEADER');
+      } else {
+        // Para outras linhas, procurar pelo lineSequence no texto
+        position = calculateLinePosition(lineSequence, txtContent);
+      }
+      
+      // Extrair sequencial do arquivo
+      const sequential = extractSequentialFromFile(lineName, lineSequence, txtContent, position);
       
       return {
         lineName,
         fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
         sequence: fields[0]?.sequence || 0,
         lineSequence,
-        position, // Posição no arquivo para ordenação
-        sequential, // Sequencial extraído do arquivo
+        position,
+        sequential,
+        occurrence: fields[0]?.occurrence || 1,
       };
     }).sort((a, b) => {
-      // Ordenar por posição no arquivo (HEADER primeiro se não tiver sequência)
-      if (a.lineName === 'HEADER' && a.position < 0) return -1;
-      if (b.lineName === 'HEADER' && b.position < 0) return 1;
-      
+      // Ordenar por posição no arquivo
       if (a.position >= 0 && b.position >= 0) {
         return a.position - b.position;
       }
       
-      // Fallback: ordenar por sequência da linha
-      if (a.lineSequence && b.lineSequence) {
-        return a.lineSequence.localeCompare(b.lineSequence);
-      }
-      return a.sequence - b.sequence;
+      // HEADER sempre primeiro se não tiver posição calculada
+      if (a.lineName === 'HEADER' || a.lineSequence === 'HEADER') return -1;
+      if (b.lineName === 'HEADER' || b.lineSequence === 'HEADER') return 1;
+      
+      // Fallback: ordenar por sequencial numérico
+      const seqA = parseInt(a.sequential || '0', 10);
+      const seqB = parseInt(b.sequential || '0', 10);
+      if (seqA !== seqB) return seqA - seqB;
+      
+      // Se mesmo sequencial, ordenar por occurrence
+      return (a.occurrence || 1) - (b.occurrence || 1);
     });
   })();
 
@@ -165,11 +187,32 @@ const FieldDisplay: React.FC = () => {
   return (
     <div className="field-display">
       {displayGroups.map((group, groupIndex) => {
-        const lineNumber = group.lineSequence || extractLineNumber(group.lineName);
-        const sequentialNumber = (group as any).sequential || '000000';
+        const groupData = group as any;
+        const lineSequence = groupData.lineSequence || extractLineNumber(group.lineName);
+        
+        // Determinar número da linha e sequencial
+        let lineNumber = '000';
+        let sequentialNumber = groupData.sequential || '000001';
+        
+        if (lineSequence === 'HEADER' || group.lineName === 'HEADER') {
+          lineNumber = '000';
+          sequentialNumber = '000001'; // HEADER sempre é o primeiro
+        } else {
+          // Para outras linhas, usar o lineSequence como número da linha
+          lineNumber = lineSequence;
+          // O sequencial já foi extraído do arquivo
+          if (sequentialNumber === '000000') {
+            // Fallback: usar o lineSequence como sequencial se for numérico
+            if (/^\d+$/.test(lineSequence)) {
+              sequentialNumber = lineSequence.padStart(6, '0');
+            } else {
+              sequentialNumber = String(groupIndex + 1).padStart(6, '0');
+            }
+          }
+        }
         
         return (
-          <div key={`${group.lineName}_${groupIndex}`} className="field-line-container">
+          <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-line-info">
               <span className="line-sequential">{sequentialNumber}</span>
               <span className="line-number">{lineNumber}</span>
