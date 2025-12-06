@@ -213,7 +213,7 @@ const FieldDisplay: React.FC = () => {
         
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
-            <div className="field-line-info">
+            <div className="field-line-header">
               <span className="line-sequential">{sequentialNumber}</span>
               <span className="line-number">{lineNumber}</span>
               <span className="line-name">{group.lineName}</span>
