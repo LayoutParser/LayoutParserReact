@@ -251,95 +251,27 @@
   gap: 1rem;
 }
 
-.file-visualization-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.file-visualization-title-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
-}
-
-.file-info-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-
-.file-info-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.65rem;
-  background: rgba(87, 0, 255, 0.05);
-  border-radius: 6px;
-  border: 1px solid rgba(87, 0, 255, 0.15);
-  transition: all 0.2s ease;
-  min-width: 0;
-  flex-shrink: 0;
-}
-
-.file-info-item:hover {
-  background: rgba(87, 0, 255, 0.1);
-  border-color: rgba(87, 0, 255, 0.3);
-}
-
-.file-info-label {
-  font-size: 0.7rem;
-  color: #666;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-
-.file-info-value {
-  font-size: 0.8rem;
-  color: #000000;
-  font-weight: 600;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'Courier New', monospace;
-}
-
-.file-info-value.type-badge {
-  background: linear-gradient(135deg, #5700FF 0%, #ED008C 100%);
-  color: #FFFFFF;
-  padding: 0.25rem 0.65rem;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  max-width: none;
-  font-family: inherit;
-  box-shadow: 0 2px 4px rgba(87, 0, 255, 0.2);
-}
-
-.structure-tree-wrapper {
-  max-height: 250px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  background: #FFFFFF;
-}
-
 .file-visualization-content {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #FFFFFF;
+  margin-bottom: 0.75rem;
+}
+
+.file-visualization-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.structure-tree-wrapper {
+  max-height: 300px;
+  overflow-y: auto;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
   background: #FFFFFF;
