@@ -198,9 +198,9 @@ const LayoutParserPage: React.FC = () => {
             type="button"
             onClick={() => setIsControlsVisible(!isControlsVisible)}
             className="toggle-controls-btn"
-            title={isControlsVisible ? 'Ocultar controles' : 'Mostrar controles'}
+            title={isControlsVisible ? 'Retrair menu' : 'Mostrar menu'}
           >
-            {isControlsVisible ? '◀' : '▶'}
+            {isControlsVisible ? '<<' : '>>'}
           </button>
         </div>
 
