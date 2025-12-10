@@ -195,7 +195,7 @@ const FieldDisplay: React.FC = () => {
         const groupData = group as any;
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         
-        // Determinar o sequencial a ser exibido
+        // Determinar o sequencial a ser exibido (6 dígitos)
         // Para HEADER: usar "HEADER"
         // Para outras linhas: usar o initialValue do layout (ex: "000", "001")
         // OU o valor do campo "Sequencia" da linha anterior
@@ -240,6 +240,27 @@ const FieldDisplay: React.FC = () => {
                 displaySequential = groupData.lineSequence.padStart(6, '0');
               }
             }
+          }
+        }
+        
+        // Determinar o número da linha (3 dígitos) - formato antigo: sequencial(6) + espaço + número da linha(3)
+        let lineNumber = '000'; // Padrão: 3 dígitos
+        if (!isHeader) {
+          // Tentar obter do initialValue do layout (ex: "000", "001", "004")
+          const initialValue = getLineInitialValue(group.lineName);
+          if (initialValue && /^\d+$/.test(initialValue)) {
+            lineNumber = initialValue.padStart(3, '0');
+          } else if (groupData.lineSequence) {
+            // Usar lineSequence se disponível
+            if (/^\d+$/.test(groupData.lineSequence)) {
+              lineNumber = groupData.lineSequence.padStart(3, '0');
+            } else {
+              // Extrair número do nome da linha (ex: "LINHA000" -> "000", "LINHA001" -> "001")
+              lineNumber = extractLineNumber(group.lineName);
+            }
+          } else {
+            // Extrair número do nome da linha
+            lineNumber = extractLineNumber(group.lineName);
           }
         }
         
@@ -531,14 +552,14 @@ const FieldDisplay: React.FC = () => {
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-list-inline">
-              {/* Sequencial destacado - posicionado absolutamente */}
+              {/* Sequencial destacado - formato: sequencial(6) + espaço + número da linha(3) */}
               {isHeader ? (
                 <span className="field-sequential field-sequential-header" title="Sequencial: HEADER (000001)">
                   HEADER
                 </span>
               ) : (
-                <span className="field-sequential" title={`Sequencial: ${displaySequential}`}>
-                  {displaySequential}
+                <span className="field-sequential" title={`Sequencial: ${displaySequential} | Linha: ${lineNumber}`}>
+                  {displaySequential} {lineNumber}
                 </span>
               )}
               

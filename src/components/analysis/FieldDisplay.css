@@ -105,6 +105,7 @@
 }
 
 /* Sequencial destacado - posicionado de forma absoluta para não afetar alinhamento */
+/* Formato: sequencial(6) + espaço + número da linha(3) = "000001 000" */
 .field-sequential {
   position: absolute;
   left: 0;
@@ -118,10 +119,11 @@
   font-size: 11px;
   font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
-  min-width: 60px;
+  min-width: 90px; /* Aumentado para acomodar "000001 000" (6 dígitos + espaço + 3 dígitos) */
   text-align: center;
   box-shadow: 0 2px 4px rgba(87, 0, 255, 0.3);
   z-index: 10;
+  white-space: nowrap; /* Garantir que não quebre em múltiplas linhas */
 }
 
 /* HEADER como sequencial */
