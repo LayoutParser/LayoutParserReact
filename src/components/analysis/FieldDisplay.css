@@ -32,7 +32,7 @@
   margin-bottom: 0.2rem;
   padding: 0.1rem 0;
   position: relative;
-  padding-left: 80px; /* Espaço para o sequencial destacado */
+  /* Removido padding-left - sequencial agora está inline */
 }
 
 /* Formato inline - campos em linha única, sem indentação */
@@ -46,6 +46,10 @@
   display: flex;
   align-items: center;
   position: relative;
+  /* Width total: sequencial (10ch) + espaço (1ch) + linha (600ch) = 611ch */
+  width: 611ch;
+  min-width: 611ch;
+  max-width: 611ch;
 }
 
 .field-line-content {
@@ -104,14 +108,11 @@
   word-spacing: 0;
 }
 
-/* Sequencial destacado - posicionado de forma absoluta para não afetar alinhamento */
+/* Sequencial destacado - agora inline com a linha */
 /* Formato: sequencial(6) + espaço + número da linha(3) = "000001 000" */
 .field-sequential {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #5700FF;
+  display: inline-block;
+  background: #808080; /* Cor cinza */
   color: #FFFFFF;
   padding: 3px 8px;
   border-radius: 4px;
@@ -119,18 +120,24 @@
   font-size: 11px;
   font-family: 'Courier New', monospace;
   letter-spacing: 0.5px;
-  min-width: 90px; /* Aumentado para acomodar "000001 000" (6 dígitos + espaço + 3 dígitos) */
+  width: 10ch; /* 6 dígitos + espaço + 3 dígitos = 10 caracteres */
+  min-width: 10ch;
+  max-width: 10ch;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(87, 0, 255, 0.3);
-  z-index: 10;
+  box-shadow: 0 2px 4px rgba(128, 128, 128, 0.3);
   white-space: nowrap; /* Garantir que não quebre em múltiplas linhas */
+  margin-right: 1ch; /* Espaço entre sequencial e linha */
+  vertical-align: middle;
+  flex-shrink: 0; /* Não encolher */
 }
 
-/* HEADER como sequencial */
+/* HEADER como sequencial - mantém cor rosa */
 .field-sequential-header {
   background: #ED008C;
   color: #FFFFFF;
-  min-width: 70px;
+  width: 6ch; /* "HEADER" tem 6 caracteres */
+  min-width: 6ch;
+  max-width: 6ch;
   box-shadow: 0 2px 4px rgba(237, 0, 140, 0.3);
 }
 
