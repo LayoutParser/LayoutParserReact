@@ -289,6 +289,9 @@ const FieldDisplay: React.FC = () => {
 
         // Debug: log dos campos
         if (groupIndex === 0) {
+          const lineValidation = parseResult?.lineValidations?.find(
+            lv => lv.lineName === group.lineName
+          );
           console.log('🔍 FieldDisplay - Primeira linha:', {
             lineName: group.lineName,
             fieldsCount: displayFields.length,
@@ -298,7 +301,7 @@ const FieldDisplay: React.FC = () => {
               startPosition: f.startPosition,
               length: f.length
             })),
-            layoutPositions: Array.from(layoutPositions.entries()).slice(0, 5)
+            calculatedPositions: lineValidation?.calculatedPositions ? Object.entries(lineValidation.calculatedPositions).slice(0, 5) : []
           });
         }
         
