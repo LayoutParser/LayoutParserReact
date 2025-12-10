@@ -195,52 +195,21 @@ const FieldDisplay: React.FC = () => {
         const groupData = group as any;
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         
-        // Determinar o sequencial a ser exibido (6 dígitos)
-        // Para HEADER: usar "HEADER"
-        // Para outras linhas: usar o initialValue do layout (ex: "000", "001")
-        // OU o valor do campo "Sequencia" da linha anterior
-        let displaySequential = '000001';
+        // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
+        // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
+        let displaySequential = '000000';
         
-        if (isHeader) {
-          displaySequential = 'HEADER';
-        } else {
-          // Primeiro: tentar buscar initialValue do layout
-          const initialValue = getLineInitialValue(group.lineName);
-          if (initialValue) {
-            // Se initialValue é numérico (ex: "000", "001"), formatar como sequencial de 6 dígitos
-            if (/^\d+$/.test(initialValue)) {
-              displaySequential = initialValue.padStart(6, '0');
-            } else {
-              displaySequential = initialValue;
-            }
-          } else {
-            // Fallback 1: buscar campo "Sequencia" da linha anterior
-            if (groupIndex > 0) {
-              const previousGroup = displayGroups[groupIndex - 1] as any;
-              const previousSequenciaField = previousGroup.fields?.find(
-                (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
-              );
-              if (previousSequenciaField?.value) {
-                const seqValue = previousSequenciaField.value.trim();
-                if (/^\d{6}$/.test(seqValue)) {
-                  displaySequential = seqValue;
-                } else if (/^\d+$/.test(seqValue)) {
-                  displaySequential = seqValue.padStart(6, '0');
-                }
-              }
-            }
-            
-            // Fallback 2: tentar extrair do txtContent
-            if (displaySequential === '000001' && txtContent && groupData.position >= 0) {
-              const lineStart = Math.floor(groupData.position / 600) * 600;
-              const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
-              if (/^\d{6}$/.test(sequentialInFile)) {
-                displaySequential = sequentialInFile;
-              } else if (groupData.lineSequence && /^\d+$/.test(groupData.lineSequence)) {
-                displaySequential = groupData.lineSequence.padStart(6, '0');
-              }
-            }
+        if (txtContent && groupData.position >= 0) {
+          const lineStart = Math.floor(groupData.position / 600) * 600;
+          const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
+          if (sequentialInFile) {
+            displaySequential = sequentialInFile;
           }
+        }
+        
+        // Para HEADER, se não encontrou no TXT, usar "HEADER" como fallback
+        if (isHeader && displaySequential === '000000') {
+          displaySequential = 'HEADER';
         }
         
         // Determinar o número da linha (3 dígitos) - formato antigo: sequencial(6) + espaço + número da linha(3)
@@ -382,8 +351,10 @@ const FieldDisplay: React.FC = () => {
         }
         
         // 2. InitialValue (HEADER, "000", "001", etc.)
+        // NÃO adicionar initialValue para HEADER - já está no sequencial destacado
+        // Apenas adicionar para outras linhas que não sejam HEADER
         const initialValue = getLineInitialValue(group.lineName) || '';
-        if (initialValue) {
+        if (initialValue && !isHeader) {
           lineParts.push({
             type: 'initial',
             content: initialValue,
