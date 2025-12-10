@@ -3,7 +3,6 @@ import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
 import type { Field } from '../../types/field';
-import type { FieldGroup } from '../../types/field';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
@@ -119,8 +118,8 @@ const FieldDisplay: React.FC = () => {
     // Agrupar por lineSequence + occurrence para distinguir múltiplas ocorrências
     actualFields.forEach(field => {
       const lineName = field.lineName || 'OUTROS';
-      const lineSequence = field.lineSequence || extractLineNumber(lineName);
-      const occurrence = field.occurrence || 1;
+      const lineSequence = (field as any).lineSequence || extractLineNumber(lineName);
+      const occurrence = (field as any).occurrence || 1;
       // Chave única: lineSequence + occurrence para distinguir múltiplas ocorrências
       const key = `${lineSequence}_${occurrence}_${lineName}`;
       
@@ -130,7 +129,7 @@ const FieldDisplay: React.FC = () => {
       groupsMap.get(key)!.push(field);
     });
     
-    return Array.from(groupsMap.entries()).map(([key, fields]) => {
+    return Array.from(groupsMap.entries()).map(([, fields]) => {
       const lineName = fields[0]?.lineName || 'OUTROS';
       const lineSequence = fields[0]?.lineSequence || extractLineNumber(lineName);
       let position = -1;
@@ -379,7 +378,7 @@ const FieldDisplay: React.FC = () => {
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
-        displayFields.forEach((field, fieldIndex) => {
+        displayFields.forEach((field) => {
           // startPosition é sempre 1-based (vem do back-end)
           let startPos = field.startPosition ?? 0;
           

@@ -166,7 +166,20 @@ jobs:
           New-Item -ItemType Directory -Path $DEPLOY_BACKUPS_PATH -Force | Out-Null
         }
         
-        # Backup do index.html atual se existir (opcional)
+        # Limpar arquivos antigos antes do deploy (importante após migração de tecnologia)
+        if (Test-Path $DEPLOY_FRONTEND_PATH) {
+          Write-Host "Limpando arquivos antigos do diretorio de deploy..."
+          $existingFiles = Get-ChildItem -Path $DEPLOY_FRONTEND_PATH -Recurse -File -ErrorAction SilentlyContinue
+          if ($existingFiles.Count -gt 0) {
+            Write-Host "Encontrados $($existingFiles.Count) arquivos antigos. Removendo..."
+            Remove-Item -Path "$DEPLOY_FRONTEND_PATH\*" -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "Limpeza concluida. Diretorio pronto para novo deploy."
+          } else {
+            Write-Host "Diretorio ja esta vazio."
+          }
+        }
+        
+        # Backup do index.html atual se existir (opcional - apenas se ainda houver algo após limpeza)
         $currentIndexHtml = Join-Path $DEPLOY_FRONTEND_PATH "index.html"
         if (Test-Path $currentIndexHtml) {
           $backupName = "index-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
@@ -190,8 +203,8 @@ jobs:
         # /NFL = No File List (menos output)
         # /R:3 = Retry 3 vezes em caso de erro
         # /W:2 = Wait 2 segundos entre tentativas
-        # /PURGE = Remover arquivos no destino que não existem na origem
-        & robocopy $BUILD_SOURCE $DEPLOY_FRONTEND_PATH /E /IS /XD .github .vscode .git node_modules /NP /NDL /NFL /R:3 /W:2 | Out-Null
+        # /PURGE = Remover arquivos no destino que não existem na origem (limpeza adicional)
+        & robocopy $BUILD_SOURCE $DEPLOY_FRONTEND_PATH /E /IS /PURGE /XD .github .vscode .git node_modules /NP /NDL /NFL /R:3 /W:2 | Out-Null
         
         $endTime = Get-Date
         $duration = ($endTime - $startTime).TotalSeconds

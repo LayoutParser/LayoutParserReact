@@ -50,7 +50,7 @@ export const monitoringService = {
       const response = await apiClient.get<MonitoringResponse>('/api/monitoring/layouts-analysis');
       return response.data;
     } catch (error) {
-      if (import.meta.env.DEV) {
+      if ((import.meta as any).env?.DEV) {
         console.error('Erro ao buscar análise de layouts:', error);
       }
       throw error;

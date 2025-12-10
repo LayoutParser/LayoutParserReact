@@ -9,7 +9,7 @@ import LineProperties from './LineProperties';
 import './AnalysisSection.css';
 
 const AnalysisSection: React.FC = () => {
-  const { parseResult, fields } = useAppStore();
+  const { parseResult } = useAppStore();
   const { setFields } = useFieldStore();
 
   // Sincronizar campos do parseResult com o useFieldStore
