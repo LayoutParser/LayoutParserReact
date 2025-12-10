@@ -42,7 +42,7 @@ export interface LineValidationInfo {
   isValid: boolean;
   hasChildren: boolean;
   fieldCount: number;
-  calculatedPositions: Record<string, number>; // Map<fieldName, startPosition (1-based)>
+  calculatedPositions?: Record<string, number>; // Map<fieldName, startPosition (1-based)>
 }
 
 export interface ParseResponse {

@@ -245,7 +245,7 @@ const MonitoringTab: React.FC = () => {
                               <span>{line.totalLength} chars</span>
                             </div>
                           </div>
-                          {Object.keys(line.calculatedPositions).length > 0 && (
+                          {line.calculatedPositions && Object.keys(line.calculatedPositions).length > 0 && (
                             <div className="calculated-positions">
                               <h5>Posições Calculadas ({Object.keys(line.calculatedPositions).length} campos)</h5>
                               <div className="positions-grid">

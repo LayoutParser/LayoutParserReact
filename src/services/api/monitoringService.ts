@@ -23,7 +23,7 @@ export interface LayoutAnalysis {
     isValid: boolean;
     hasChildren: boolean;
     fieldCount: number;
-    calculatedPositions: Record<string, number>;
+    calculatedPositions?: Record<string, number>;
   }>;
   error?: string;
 }
