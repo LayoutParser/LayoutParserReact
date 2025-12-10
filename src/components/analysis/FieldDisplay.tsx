@@ -263,19 +263,22 @@ const FieldDisplay: React.FC = () => {
         
         if (lineValidation && lineValidation.calculatedPositions) {
           // Usar posições calculadas do back-end
-          displayFields.forEach(field => {
-            const calculatedPos = lineValidation.calculatedPositions[field.fieldName];
-            if (calculatedPos) {
-              field.startPosition = calculatedPos;
-            }
-          });
-          
-          if (groupIndex === 0) {
-            console.log(`✅ Usando posições calculadas do back-end para ${group.lineName}:`, {
-              totalLength: lineValidation.totalLength,
-              isValid: lineValidation.isValid,
-              positions: Object.entries(lineValidation.calculatedPositions).slice(0, 5)
+          const calculatedPositions = lineValidation.calculatedPositions;
+          if (calculatedPositions && typeof calculatedPositions === 'object') {
+            displayFields.forEach(field => {
+              const calculatedPos = calculatedPositions[field.fieldName];
+              if (calculatedPos !== undefined && calculatedPos !== null) {
+                field.startPosition = calculatedPos;
+              }
             });
+            
+            if (groupIndex === 0) {
+              console.log(`✅ Usando posições calculadas do back-end para ${group.lineName}:`, {
+                totalLength: lineValidation.totalLength,
+                isValid: lineValidation.isValid,
+                positions: Object.entries(calculatedPositions).slice(0, 5)
+              });
+            }
           }
         } else {
           // Se não houver lineValidations (layout não configurado para cálculo), usar startPosition que já vem nos campos
