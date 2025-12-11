@@ -319,7 +319,7 @@ const FieldDisplay: React.FC = () => {
 
         // Construir linha completa com 600 caracteres usando a lógica do back-end
         const LINE_LENGTH = 600;
-        const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence'; content: string; field?: Field; start: number; end: number }> = [];
+        const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence' | 'static'; content: string; field?: Field; start: number; end: number }> = [];
         
         // Calcular a posição real da linha no TXT
         // Cada linha tem exatamente 600 caracteres: linha 0 = 0-599, linha 1 = 600-1199, etc.
@@ -442,14 +442,24 @@ const FieldDisplay: React.FC = () => {
         }
         
         // 1. Adicionar sequencial (6 dígitos) - apenas para linhas que não são HEADER
-        if (!isHeader && sequentialFromTxt) {
-          lineParts.push({
-            type: 'sequence',
-            content: sequentialFromTxt,
-            start: 0,
-            end: 6
-          });
-          currentPos = 6;
+        // IMPORTANTE: O sequencial vem da tag "Sequencia" do FINAL da linha ANTERIOR
+        // Se não encontrou, extrair do TXT (primeiras 6 posições da linha atual)
+        if (!isHeader) {
+          if (sequentialFromTxt) {
+            lineParts.push({
+              type: 'sequence',
+              content: sequentialFromTxt,
+              start: 0,
+              end: 6
+            });
+            currentPos = 6;
+          } else {
+            // Se não tem sequencial, começar na posição 0
+            currentPos = 0;
+          }
+        } else {
+          // HEADER não tem sequencial, começar na posição 0
+          currentPos = 0;
         }
         
         // 2. Adicionar número da linha (3 dígitos) - sempre adicionar
@@ -458,9 +468,20 @@ const FieldDisplay: React.FC = () => {
             type: 'initial',
             content: lineNumberFromTxt,
             start: currentPos,
-            end: currentPos + 3
+            end: currentPos + lineNumberFromTxt.length
           });
-          currentPos += 3;
+          currentPos += lineNumberFromTxt.length;
+        }
+        
+        // Debug: verificar o que foi adicionado ao lineParts
+        if (groupIndex < 3) {
+          console.log(`📝 lineParts após adicionar sequencial/linha (${group.lineName}):`, {
+            sequentialFromTxt,
+            lineNumberFromTxt,
+            currentPos,
+            linePartsCount: lineParts.length,
+            firstParts: lineParts.slice(0, 3).map(p => ({ type: p.type, content: p.content, start: p.start, end: p.end }))
+          });
         }
         
         // Ajustar posições dos campos: se o primeiro campo começa na posição 1 (incluindo sequencial),
@@ -569,11 +590,12 @@ const FieldDisplay: React.FC = () => {
         
         // 5. Adicionar a tag Sequencia desta linha no final (pertence à próxima linha)
         // Esta sequencia completa a linha atual até 600 caracteres
-        // Fórmula: sequencia anterior + InitialValue + campos (sem Sequencia própria) + Sequencia própria = 600
-        // A tag Sequencia sempre existe (6 chars padrão se não encontrada)
+        // IMPORTANTE: A tag Sequencia no final NÃO deve ser renderizada como destacada
+        // Ela é parte do conteúdo normal da linha, não um elemento destacado
+        // Vamos adicionar como 'field' ou 'static' normal, não como 'sequence'
         if (currentPos + sequenciaLength <= LINE_LENGTH) {
           lineParts.push({
-            type: 'sequence',
+            type: 'static', // Mudado de 'sequence' para 'static' - não destacar
             content: sequenciaValue.padEnd(sequenciaLength, ' '),
             start: currentPos,
             end: currentPos + sequenciaLength
@@ -659,6 +681,15 @@ const FieldDisplay: React.FC = () => {
                     // Número da linha (3 dígitos) - destacar com rosa
                     return (
                       <span key={`${part.type}-${partIndex}`} className="field-static field-line-number-static">
+                        {part.content}
+                      </span>
+                    );
+                  }
+                  
+                  if (part.type === 'static') {
+                    // Conteúdo estático (como tag Sequencia no final) - não destacar
+                    return (
+                      <span key={`${part.type}-${partIndex}`} className="field-static">
                         {part.content}
                       </span>
                     );
