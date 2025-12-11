@@ -46,10 +46,10 @@
   display: flex;
   align-items: center;
   position: relative;
-  /* Width total: sequencial (10ch) + espaço (1ch) + linha (600ch) = 611ch */
-  width: 611ch;
-  min-width: 611ch;
-  max-width: 611ch;
+  /* Width total: linha (600ch) - sequencial e linha agora fazem parte do conteúdo */
+  width: 600ch;
+  min-width: 600ch;
+  max-width: 600ch;
 }
 
 .field-line-content {
@@ -86,6 +86,26 @@
   font-family: 'Courier New', monospace;
   font-size: 11px;
   letter-spacing: 0;
+}
+
+/* Sequencial (6 dígitos) - destacado com cinza */
+.field-sequential-static {
+  background: #808080;
+  color: #FFFFFF;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+/* Número da linha (3 dígitos) - destacado com rosa */
+.field-line-number-static {
+  background: #ED008C;
+  color: #FFFFFF;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+  margin-left: 2px;
 }
 
 .field-inline {

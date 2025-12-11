@@ -350,11 +350,9 @@ const FieldDisplay: React.FC = () => {
           currentPos = sequenceFromPreviousLine;
         }
         
-        // 2. InitialValue (HEADER, "000", "001", etc.)
-        // NÃO adicionar initialValue para HEADER - já está no sequencial destacado
-        // Apenas adicionar para outras linhas que não sejam HEADER
+        // 2. InitialValue (HEADER, "000", "001", etc.) - sempre adicionar, vem do documento
         const initialValue = getLineInitialValue(group.lineName) || '';
-        if (initialValue && !isHeader) {
+        if (initialValue) {
           lineParts.push({
             type: 'initial',
             content: initialValue,
@@ -523,17 +521,6 @@ const FieldDisplay: React.FC = () => {
         return (
           <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
             <div className="field-list-inline">
-              {/* Sequencial destacado - formato: sequencial(6) + espaço + número da linha(3) */}
-              {isHeader ? (
-                <span className="field-sequential field-sequential-header" title="Sequencial: HEADER (000001)">
-                  HEADER
-                </span>
-              ) : (
-                <span className="field-sequential" title={`Sequencial: ${displaySequential} | Linha: ${lineNumber}`}>
-                  {displaySequential} {lineNumber}
-                </span>
-              )}
-              
               {/* Linha completa com exatamente 600 caracteres */}
               <span className="field-line-content">
                 {lineParts.map((part, partIndex) => {
@@ -541,10 +528,19 @@ const FieldDisplay: React.FC = () => {
                     return <span key={`space-${partIndex}`} className="field-space">{part.content}</span>;
                   }
                   
-                  if (part.type === 'sequence' || part.type === 'initial') {
-                    // Sequencia e InitialValue são renderizados como texto simples (não clicáveis)
+                  if (part.type === 'sequence') {
+                    // Sequencial (6 dígitos) - destacar com cinza
                     return (
-                      <span key={`${part.type}-${partIndex}`} className="field-static">
+                      <span key={`${part.type}-${partIndex}`} className="field-static field-sequential-static">
+                        {part.content}
+                      </span>
+                    );
+                  }
+                  
+                  if (part.type === 'initial') {
+                    // Número da linha (3 dígitos) - destacar com rosa
+                    return (
+                      <span key={`${part.type}-${partIndex}`} className="field-static field-line-number-static">
                         {part.content}
                       </span>
                     );
