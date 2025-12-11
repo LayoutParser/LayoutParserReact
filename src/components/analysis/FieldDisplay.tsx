@@ -386,6 +386,10 @@ const FieldDisplay: React.FC = () => {
           }
         }
         
+        // Sempre adicionar sequencial e número da linha do TXT (são parte da estrutura da linha)
+        // Os campos do JSON podem começar na posição 1 (incluindo sequencial) ou após
+        // Vamos sempre destacar sequencial e linha separadamente do TXT
+        
         // Debug: log para verificar extração
         if (groupIndex < 3) {
           console.log(`🔍 Linha ${groupIndex} (${group.lineName}):`, {
@@ -394,11 +398,12 @@ const FieldDisplay: React.FC = () => {
             lineNumberFromTxt,
             firstFieldStartPosition: displayFields[0]?.startPosition,
             groupDataPosition: groupData.position,
-            txtContentLength: txtContent?.length
+            txtContentLength: txtContent?.length,
+            txtContentSample: txtContent ? txtContent.substring(lineStart >= 0 ? lineStart : 0, (lineStart >= 0 ? lineStart : 0) + 20) : 'N/A'
           });
         }
         
-        // 1. Adicionar sequencial (6 dígitos) - sempre do TXT
+        // 1. Adicionar sequencial (6 dígitos) - sempre do TXT, destacado separadamente
         if (sequentialFromTxt) {
           lineParts.push({
             type: 'sequence',
@@ -409,7 +414,7 @@ const FieldDisplay: React.FC = () => {
           currentPos = 6;
         }
         
-        // 2. Adicionar número da linha (3 dígitos) - do TXT ou fallback
+        // 2. Adicionar número da linha (3 dígitos) - do TXT ou fallback, destacado separadamente
         if (lineNumberFromTxt) {
           lineParts.push({
             type: 'initial',
@@ -419,6 +424,12 @@ const FieldDisplay: React.FC = () => {
           });
           currentPos += 3;
         }
+        
+        // Ajustar posições dos campos: se o primeiro campo começa na posição 1 (incluindo sequencial),
+        // precisamos pular o sequencial e linha ao renderizar os campos
+        // Se começa na posição 9 ou maior, os campos já estão após sequencial+linha
+        const firstFieldStartPos = displayFields.length > 0 ? (displayFields[0].startPosition || 0) : 0;
+        const fieldsIncludeSequential = firstFieldStartPos <= 8; // Se primeiro campo começa na posição 1-8, inclui sequencial+linha
         
         // 3. Buscar a tag Sequencia desta linha (será adicionada no final, pertence à próxima linha)
         const sequenciaField = group.fields.find(
@@ -439,6 +450,17 @@ const FieldDisplay: React.FC = () => {
           } else {
             // Se não tem startPosition, usar posição atual
             startPos = currentPos;
+          }
+          
+          // Se os campos incluem sequencial+linha (começam na posição 1-8),
+          // ajustar para começar após sequencial+linha (posição 9)
+          if (fieldsIncludeSequential && startPos < 9) {
+            // Campos que estão nas posições 0-8 (sequencial+linha) devem ser ignorados
+            // ou ajustados para começar após sequencial+linha
+            // Por enquanto, vamos pular campos que estão nas posições 0-8
+            if (startPos < 9) {
+              return; // Pular este campo, já está incluído no sequencial/linha destacado
+            }
           }
           
           const fieldLength = field.length || 1; // Mínimo 1 para evitar campos invisíveis
