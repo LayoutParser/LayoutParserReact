@@ -326,24 +326,40 @@ const FieldDisplay: React.FC = () => {
         let lineStart = -1;
         
         if (txtContent) {
-          // Usar o índice do grupo para calcular o início da linha (mais confiável)
-          // HEADER é grupo 0 (linha 0), LINHA000 é grupo 1 (linha 600), etc.
-          lineStart = groupIndex * 600;
-          
-          // Validar: se o primeiro campo tem startPosition, verificar se está na linha correta
-          const firstField = displayFields.length > 0 ? displayFields[0] : null;
-          if (firstField && firstField.startPosition && firstField.startPosition > 0) {
-            const fieldPos = firstField.startPosition - 1; // Converter para 0-based
-            const calculatedLineStart = Math.floor(fieldPos / 600) * 600;
-            // Se a diferença for muito grande, usar o calculado
-            if (Math.abs(calculatedLineStart - lineStart) > 300) {
-              lineStart = calculatedLineStart;
+          // Prioridade 1: usar groupDataPosition se disponível (mais confiável)
+          if (groupData.position !== undefined && groupData.position >= 0) {
+            lineStart = Math.floor(groupData.position / 600) * 600;
+          } else {
+            // Prioridade 2: usar o índice do grupo para calcular
+            // HEADER é grupo 0 (linha 0), LINHA000 é grupo 1 (linha 600), etc.
+            lineStart = groupIndex * 600;
+            
+            // Validar: se o primeiro campo tem startPosition, verificar se está na linha correta
+            const firstField = displayFields.length > 0 ? displayFields[0] : null;
+            if (firstField && firstField.startPosition && firstField.startPosition > 0) {
+              const fieldPos = firstField.startPosition - 1; // Converter para 0-based
+              const calculatedLineStart = Math.floor(fieldPos / 600) * 600;
+              // Se a diferença for muito grande, usar o calculado
+              if (Math.abs(calculatedLineStart - lineStart) > 300) {
+                lineStart = calculatedLineStart;
+              }
             }
           }
           
           // Garantir que lineStart não ultrapasse o tamanho do txtContent
           if (lineStart >= txtContent.length) {
             lineStart = -1;
+          }
+          
+          // Debug: verificar cálculo do lineStart
+          if (groupIndex < 3) {
+            console.log(`📍 Cálculo lineStart para linha ${groupIndex}:`, {
+              groupDataPosition: groupData.position,
+              groupIndex,
+              calculatedByIndex: groupIndex * 600,
+              finalLineStart: lineStart,
+              firstFieldStartPosition: displayFields[0]?.startPosition
+            });
           }
         }
         
@@ -387,8 +403,13 @@ const FieldDisplay: React.FC = () => {
           }
           
           // Se não encontrou sequencial da linha anterior, tentar extrair do TXT
+          // O sequencial está nas primeiras 6 posições de cada linha (exceto HEADER)
           if (!sequentialFromTxt && txtContent && lineStart >= 0 && lineStart < txtContent.length) {
-            sequentialFromTxt = txtContent.substring(lineStart, lineStart + 6) || '000000';
+            const seqFromTxt = txtContent.substring(lineStart, lineStart + 6);
+            // Só usar se for numérico (não "HEADER")
+            if (seqFromTxt && /^\d{6}$/.test(seqFromTxt)) {
+              sequentialFromTxt = seqFromTxt;
+            }
           }
           
           // Se ainda não encontrou, usar padrão
