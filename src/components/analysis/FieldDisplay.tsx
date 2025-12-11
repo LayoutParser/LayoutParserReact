@@ -321,45 +321,66 @@ const FieldDisplay: React.FC = () => {
         const LINE_LENGTH = 600;
         const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence'; content: string; field?: Field; start: number; end: number }> = [];
         
-        // 1. Sequencia da linha anterior (6 chars) - apenas para linhas não-HEADER
-        const sequenceFromPreviousLine = isHeader ? 0 : 6;
+        // Extrair sequencial e número da linha diretamente do TXT (híbrido - funciona com qualquer layout)
+        let sequentialFromTxt = '';
+        let lineNumberFromTxt = '';
         let currentPos = 0;
         
-        if (sequenceFromPreviousLine > 0) {
-          // Buscar sequencia da linha anterior
-          let previousSequencia = '000000';
-          if (groupIndex > 0) {
-            const previousGroup = displayGroups[groupIndex - 1] as any;
-            const previousSequenciaField = previousGroup.fields?.find(
-              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
-            );
-            if (previousSequenciaField?.value) {
-              const seqValue = previousSequenciaField.value.trim();
-              if (/^\d{6}$/.test(seqValue)) {
-                previousSequencia = seqValue;
-              }
+        if (txtContent && groupData.position >= 0) {
+          // Calcular o início da linha no TXT (cada linha tem 600 caracteres)
+          const lineStart = Math.floor(groupData.position / 600) * 600;
+          
+          // Extrair sequencial das primeiras 6 posições (0-5)
+          sequentialFromTxt = txtContent.substring(lineStart, lineStart + 6) || '000000';
+          
+          // Tentar extrair número da linha das posições 6-8 (após o sequencial)
+          // Mas também pode estar em outras posições dependendo do layout
+          const lineNumberCandidate = txtContent.substring(lineStart + 6, lineStart + 9);
+          
+          // Se for numérico de 3 dígitos, usar
+          if (/^\d{3}$/.test(lineNumberCandidate)) {
+            lineNumberFromTxt = lineNumberCandidate;
+          } else {
+            // Fallback: tentar obter do initialValue do layout
+            const initialValue = getLineInitialValue(group.lineName);
+            if (initialValue && /^\d+$/.test(initialValue)) {
+              lineNumberFromTxt = initialValue.padStart(3, '0');
+            } else {
+              // Último fallback: extrair do nome da linha
+              lineNumberFromTxt = extractLineNumber(group.lineName);
             }
           }
-          
-          lineParts.push({
-            type: 'sequence',
-            content: previousSequencia,
-            start: 0,
-            end: sequenceFromPreviousLine
-          });
-          currentPos = sequenceFromPreviousLine;
+        } else {
+          // Se não tem txtContent ou position, usar valores padrão
+          sequentialFromTxt = '000000';
+          const initialValue = getLineInitialValue(group.lineName);
+          if (initialValue && /^\d+$/.test(initialValue)) {
+            lineNumberFromTxt = initialValue.padStart(3, '0');
+          } else {
+            lineNumberFromTxt = extractLineNumber(group.lineName);
+          }
         }
         
-        // 2. InitialValue (HEADER, "000", "001", etc.) - sempre adicionar, vem do documento
-        const initialValue = getLineInitialValue(group.lineName) || '';
-        if (initialValue) {
+        // 1. Adicionar sequencial (6 dígitos) - sempre do TXT
+        if (sequentialFromTxt) {
+          lineParts.push({
+            type: 'sequence',
+            content: sequentialFromTxt,
+            start: 0,
+            end: 6
+          });
+          currentPos = 6;
+        }
+        
+        // 2. Adicionar número da linha (3 dígitos) - do TXT ou fallback
+        if (lineNumberFromTxt) {
           lineParts.push({
             type: 'initial',
-            content: initialValue,
+            content: lineNumberFromTxt,
             start: currentPos,
-            end: currentPos + initialValue.length
+            end: currentPos + 3
           });
-          currentPos += initialValue.length;
+          currentPos += 3;
         }
         
         // 3. Buscar a tag Sequencia desta linha (será adicionada no final, pertence à próxima linha)
