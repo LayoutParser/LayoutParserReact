@@ -322,22 +322,28 @@ const FieldDisplay: React.FC = () => {
         const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence'; content: string; field?: Field; start: number; end: number }> = [];
         
         // Calcular a posição real da linha no TXT
+        // Cada linha tem exatamente 600 caracteres: linha 0 = 0-599, linha 1 = 600-1199, etc.
         let lineStart = -1;
         
         if (txtContent) {
-          // Tentar usar a posição do primeiro campo da linha para determinar onde a linha começa
+          // Usar o índice do grupo para calcular o início da linha (mais confiável)
+          // HEADER é grupo 0 (linha 0), LINHA000 é grupo 1 (linha 600), etc.
+          lineStart = groupIndex * 600;
+          
+          // Validar: se o primeiro campo tem startPosition, verificar se está na linha correta
           const firstField = displayFields.length > 0 ? displayFields[0] : null;
           if (firstField && firstField.startPosition && firstField.startPosition > 0) {
-            // Se o campo tem startPosition, calcular o início da linha (cada linha tem 600 caracteres)
-            // startPosition é 1-based, então subtraímos 1 para converter para 0-based
-            const fieldPos = firstField.startPosition - 1;
-            lineStart = Math.floor(fieldPos / 600) * 600;
-          } else if (groupData.position >= 0) {
-            // Fallback: usar position do groupData
-            lineStart = Math.floor(groupData.position / 600) * 600;
-          } else {
-            // Último fallback: usar o índice do grupo para calcular (assumindo linhas de 600 caracteres)
-            lineStart = groupIndex * 600;
+            const fieldPos = firstField.startPosition - 1; // Converter para 0-based
+            const calculatedLineStart = Math.floor(fieldPos / 600) * 600;
+            // Se a diferença for muito grande, usar o calculado
+            if (Math.abs(calculatedLineStart - lineStart) > 300) {
+              lineStart = calculatedLineStart;
+            }
+          }
+          
+          // Garantir que lineStart não ultrapasse o tamanho do txtContent
+          if (lineStart >= txtContent.length) {
+            lineStart = -1;
           }
         }
         
@@ -350,8 +356,8 @@ const FieldDisplay: React.FC = () => {
         if (isHeader) {
           // HEADER não tem sequencial, começa direto
           currentPos = 0;
-          // Número da linha para HEADER é "000" ou extrair do nome
-          lineNumberFromTxt = extractLineNumber(group.lineName);
+          // Número da linha para HEADER é "HEADER" (não "000")
+          lineNumberFromTxt = 'HEADER';
         } else {
           // Para outras linhas: buscar sequencial da tag "Sequencia" da linha ANTERIOR
           if (groupIndex > 0) {
@@ -359,6 +365,17 @@ const FieldDisplay: React.FC = () => {
             const previousSequenciaField = previousGroup.fields?.find(
               (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
             );
+            
+            // Debug: verificar busca da tag Sequencia
+            if (groupIndex < 3) {
+              console.log(`🔍 Buscando Sequencia da linha anterior (${previousGroup?.lineName}):`, {
+                previousGroupLineName: previousGroup?.lineName,
+                foundSequenciaField: !!previousSequenciaField,
+                sequenciaValue: previousSequenciaField?.value,
+                allFields: previousGroup?.fields?.map((f: Field) => ({ name: f.fieldName, value: f.value?.substring(0, 10) }))
+              });
+            }
+            
             if (previousSequenciaField?.value) {
               const seqValue = previousSequenciaField.value.trim();
               if (/^\d{6}$/.test(seqValue)) {
@@ -370,7 +387,7 @@ const FieldDisplay: React.FC = () => {
           }
           
           // Se não encontrou sequencial da linha anterior, tentar extrair do TXT
-          if (!sequentialFromTxt && txtContent && lineStart >= 0) {
+          if (!sequentialFromTxt && txtContent && lineStart >= 0 && lineStart < txtContent.length) {
             sequentialFromTxt = txtContent.substring(lineStart, lineStart + 6) || '000000';
           }
           
