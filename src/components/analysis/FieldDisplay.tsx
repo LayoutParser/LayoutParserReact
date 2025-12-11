@@ -321,11 +321,6 @@ const FieldDisplay: React.FC = () => {
         const LINE_LENGTH = 600;
         const lineParts: Array<{ type: 'field' | 'space' | 'initial' | 'sequence'; content: string; field?: Field; start: number; end: number }> = [];
         
-        // Extrair sequencial e número da linha diretamente do TXT (híbrido - funciona com qualquer layout)
-        let sequentialFromTxt = '';
-        let lineNumberFromTxt = '';
-        let currentPos = 0;
-        
         // Calcular a posição real da linha no TXT
         let lineStart = -1;
         
@@ -344,51 +339,55 @@ const FieldDisplay: React.FC = () => {
             // Último fallback: usar o índice do grupo para calcular (assumindo linhas de 600 caracteres)
             lineStart = groupIndex * 600;
           }
-          
-          if (lineStart >= 0 && lineStart < txtContent.length) {
-            // Extrair sequencial das primeiras 6 posições (0-5) da linha
-            sequentialFromTxt = txtContent.substring(lineStart, lineStart + 6) || '000000';
-            
-            // Tentar extrair número da linha das posições 6-8 (após o sequencial)
-            const lineNumberCandidate = txtContent.substring(lineStart + 6, lineStart + 9);
-            
-            // Se for numérico de 3 dígitos, usar
-            if (/^\d{3}$/.test(lineNumberCandidate)) {
-              lineNumberFromTxt = lineNumberCandidate;
-            } else {
-              // Fallback: tentar obter do initialValue do layout
-              const initialValue = getLineInitialValue(group.lineName);
-              if (initialValue && /^\d+$/.test(initialValue)) {
-                lineNumberFromTxt = initialValue.padStart(3, '0');
-              } else {
-                // Último fallback: extrair do nome da linha
-                lineNumberFromTxt = extractLineNumber(group.lineName);
+        }
+        
+        // Para HEADER: não tem sequencial no início, começa direto com "HEADER"
+        // Para outras linhas: o sequencial vem da tag "Sequencia" do FINAL da linha ANTERIOR
+        let sequentialFromTxt = '';
+        let lineNumberFromTxt = '';
+        let currentPos = 0;
+        
+        if (isHeader) {
+          // HEADER não tem sequencial, começa direto
+          currentPos = 0;
+          // Número da linha para HEADER é "000" ou extrair do nome
+          lineNumberFromTxt = extractLineNumber(group.lineName);
+        } else {
+          // Para outras linhas: buscar sequencial da tag "Sequencia" da linha ANTERIOR
+          if (groupIndex > 0) {
+            const previousGroup = displayGroups[groupIndex - 1] as any;
+            const previousSequenciaField = previousGroup.fields?.find(
+              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+            );
+            if (previousSequenciaField?.value) {
+              const seqValue = previousSequenciaField.value.trim();
+              if (/^\d{6}$/.test(seqValue)) {
+                sequentialFromTxt = seqValue;
+              } else if (/^\d+$/.test(seqValue)) {
+                sequentialFromTxt = seqValue.padStart(6, '0');
               }
             }
-          } else {
-            // Se lineStart é inválido, usar valores padrão
-            sequentialFromTxt = '000000';
-            const initialValue = getLineInitialValue(group.lineName);
-            if (initialValue && /^\d+$/.test(initialValue)) {
-              lineNumberFromTxt = initialValue.padStart(3, '0');
-            } else {
-              lineNumberFromTxt = extractLineNumber(group.lineName);
-            }
           }
-        } else {
-          // Se não tem txtContent, usar valores padrão
-          sequentialFromTxt = '000000';
+          
+          // Se não encontrou sequencial da linha anterior, tentar extrair do TXT
+          if (!sequentialFromTxt && txtContent && lineStart >= 0) {
+            sequentialFromTxt = txtContent.substring(lineStart, lineStart + 6) || '000000';
+          }
+          
+          // Se ainda não encontrou, usar padrão
+          if (!sequentialFromTxt) {
+            sequentialFromTxt = '000000';
+          }
+          
+          // Extrair número da linha do initialValue do layout (mais confiável que tentar do TXT)
           const initialValue = getLineInitialValue(group.lineName);
           if (initialValue && /^\d+$/.test(initialValue)) {
             lineNumberFromTxt = initialValue.padStart(3, '0');
           } else {
+            // Fallback: extrair do nome da linha
             lineNumberFromTxt = extractLineNumber(group.lineName);
           }
         }
-        
-        // Sempre adicionar sequencial e número da linha do TXT (são parte da estrutura da linha)
-        // Os campos do JSON podem começar na posição 1 (incluindo sequencial) ou após
-        // Vamos sempre destacar sequencial e linha separadamente do TXT
         
         // Debug: log para verificar extração
         if (groupIndex < 3) {
@@ -396,15 +395,16 @@ const FieldDisplay: React.FC = () => {
             lineStart,
             sequentialFromTxt,
             lineNumberFromTxt,
+            isHeader,
             firstFieldStartPosition: displayFields[0]?.startPosition,
             groupDataPosition: groupData.position,
             txtContentLength: txtContent?.length,
-            txtContentSample: txtContent ? txtContent.substring(lineStart >= 0 ? lineStart : 0, (lineStart >= 0 ? lineStart : 0) + 20) : 'N/A'
+            txtContentSample: txtContent && lineStart >= 0 ? txtContent.substring(lineStart, lineStart + 20) : 'N/A'
           });
         }
         
-        // 1. Adicionar sequencial (6 dígitos) - sempre do TXT, destacado separadamente
-        if (sequentialFromTxt) {
+        // 1. Adicionar sequencial (6 dígitos) - apenas para linhas que não são HEADER
+        if (!isHeader && sequentialFromTxt) {
           lineParts.push({
             type: 'sequence',
             content: sequentialFromTxt,
@@ -414,7 +414,7 @@ const FieldDisplay: React.FC = () => {
           currentPos = 6;
         }
         
-        // 2. Adicionar número da linha (3 dígitos) - do TXT ou fallback, destacado separadamente
+        // 2. Adicionar número da linha (3 dígitos) - sempre adicionar
         if (lineNumberFromTxt) {
           lineParts.push({
             type: 'initial',
