@@ -480,12 +480,31 @@ const FieldDisplay: React.FC = () => {
         const firstFieldStartPos = displayFields.length > 0 ? (displayFields[0].startPosition || 0) : 0;
         const fieldsIncludeSequential = firstFieldStartPos <= 8; // Se primeiro campo começa na posição 1-8, inclui sequencial+linha
         
-        // 3. Buscar a tag Sequencia desta linha (será adicionada no final, pertence à próxima linha)
-        const sequenciaField = group.fields.find(
-          (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
-        );
-        const sequenciaLength = sequenciaField?.length || 6;
-        const sequenciaValue = sequenciaField?.value || '000000';
+        // 3. Extrair o sequencial do FINAL da linha atual DIRETAMENTE do TXT
+        // IMPORTANTE: Não usar a tag "Sequencia" do layout, pois o documento é gerado pelo cliente
+        // O sequencial no final da linha atual (posições 594-599) é o mesmo que aparece
+        // no início da próxima linha (posições 0-5 da próxima linha)
+        let sequenciaValue = '000000';
+        let sequenciaLength = 6;
+        
+        if (txtContent && lineStart >= 0 && lineStart + LINE_LENGTH <= txtContent.length) {
+          // O sequencial está nas últimas 6 posições da linha atual (posições 594-599)
+          const sequenciaFromEnd = txtContent.substring(lineStart + LINE_LENGTH - 6, lineStart + LINE_LENGTH);
+          if (sequenciaFromEnd && /^\d{6}$/.test(sequenciaFromEnd)) {
+            sequenciaValue = sequenciaFromEnd;
+          } else {
+            // Se não encontrou no final, tentar extrair do início da PRÓXIMA linha
+            if (groupIndex < displayGroups.length - 1) {
+              const nextLineStart = (groupIndex + 1) * 600;
+              if (nextLineStart + 6 <= txtContent.length) {
+                const sequenciaFromNext = txtContent.substring(nextLineStart, nextLineStart + 6);
+                if (sequenciaFromNext && /^\d{6}$/.test(sequenciaFromNext)) {
+                  sequenciaValue = sequenciaFromNext;
+                }
+              }
+            }
+          }
+        }
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
