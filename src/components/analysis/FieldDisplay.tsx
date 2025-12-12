@@ -363,78 +363,90 @@ const FieldDisplay: React.FC = () => {
           }
         }
         
-        // IMPORTANTE: Extrair sequencial e número da linha DIRETAMENTE do arquivo .txt
-        // Não usar as tags "Sequencia" do layout, pois o documento é gerado pelo cliente
-        // O sequencial está nas primeiras 6 posições de cada linha (exceto HEADER)
-        // O número da linha está nas posições 6-8 (3 dígitos) de cada linha (exceto HEADER)
-        let sequentialFromTxt = '';
-        let lineNumberFromTxt = '';
+        // IMPORTANTE: Usar APENAS os dados do JSON retornado pela API
+        // O JSON já contém todas as informações parseadas:
+        // - lineSequence: número da linha (3 dígitos, ex: "000", "001", "031")
+        // - Campo "Sequencia": sequencial (6 dígitos) que pertence à PRÓXIMA linha
+        // Para obter o sequencial da linha atual, buscar o campo "Sequencia" da linha ANTERIOR
+        let sequentialFromJson = '';
+        let lineNumberFromJson = '';
         let currentPos = 0;
         
         if (isHeader) {
           // HEADER não tem sequencial, começa direto com "HEADER"
           currentPos = 0;
-          lineNumberFromTxt = 'HEADER';
+          lineNumberFromJson = 'HEADER';
         } else {
-          // Para outras linhas: extrair sequencial e número da linha DIRETAMENTE do TXT
-          if (txtContent && lineStart >= 0 && lineStart < txtContent.length) {
-            // Sequencial: primeiras 6 posições (0-5)
-            const seqFromTxt = txtContent.substring(lineStart, lineStart + 6);
-            if (seqFromTxt && /^\d{6}$/.test(seqFromTxt)) {
-              sequentialFromTxt = seqFromTxt;
-            }
+          // 1. Buscar o sequencial (6 dígitos) do campo "Sequencia" da linha ANTERIOR
+          if (groupIndex > 0) {
+            const previousGroup = displayGroups[groupIndex - 1] as any;
+            const previousSequenciaField = previousGroup.fields?.find(
+              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+            );
             
-            // Número da linha: posições 6-8 (3 dígitos)
-            const lineNumFromTxt = txtContent.substring(lineStart + 6, lineStart + 9);
-            if (lineNumFromTxt && /^\d{3}$/.test(lineNumFromTxt)) {
-              lineNumberFromTxt = lineNumFromTxt;
+            if (previousSequenciaField?.value) {
+              const seqValue = previousSequenciaField.value.trim();
+              if (/^\d{6}$/.test(seqValue)) {
+                sequentialFromJson = seqValue;
+              } else if (/^\d+$/.test(seqValue)) {
+                sequentialFromJson = seqValue.padStart(6, '0');
+              }
             }
           }
           
-          // Fallback: se não conseguiu extrair do TXT, usar valores do layout
-          if (!sequentialFromTxt) {
-            // Tentar do initialValue ou do nome da linha (último recurso)
+          // 2. Usar lineSequence do JSON para o número da linha (3 dígitos)
+          if (groupData.lineSequence) {
+            if (/^\d+$/.test(groupData.lineSequence)) {
+              lineNumberFromJson = groupData.lineSequence.padStart(3, '0');
+            } else {
+              // Se lineSequence não é numérico, tentar do initialValue do layout
+              const initialValue = getLineInitialValue(group.lineName);
+              if (initialValue && /^\d+$/.test(initialValue)) {
+                lineNumberFromJson = initialValue.padStart(3, '0');
+              } else {
+                lineNumberFromJson = extractLineNumber(group.lineName);
+              }
+            }
+          } else {
+            // Fallback: usar initialValue do layout ou extrair do nome da linha
             const initialValue = getLineInitialValue(group.lineName);
             if (initialValue && /^\d+$/.test(initialValue)) {
-              sequentialFromTxt = initialValue.padStart(6, '0');
+              lineNumberFromJson = initialValue.padStart(3, '0');
             } else {
-              sequentialFromTxt = '000000';
+              lineNumberFromJson = extractLineNumber(group.lineName);
             }
           }
           
-          if (!lineNumberFromTxt) {
-            // Extrair número da linha do initialValue do layout ou do nome
-            const initialValue = getLineInitialValue(group.lineName);
-            if (initialValue && /^\d+$/.test(initialValue)) {
-              lineNumberFromTxt = initialValue.padStart(3, '0');
-            } else {
-              lineNumberFromTxt = extractLineNumber(group.lineName);
-            }
+          // Se não encontrou sequencial da linha anterior, usar padrão
+          if (!sequentialFromJson) {
+            sequentialFromJson = '000000';
           }
         }
         
-        // Debug: log para verificar extração
+        // Debug: log para verificar extração do JSON
         if (groupIndex < 3) {
-          console.log(`🔍 Linha ${groupIndex} (${group.lineName}):`, {
-            lineStart,
-            sequentialFromTxt,
-            lineNumberFromTxt,
+          const previousGroup = groupIndex > 0 ? displayGroups[groupIndex - 1] as any : null;
+          const previousSequenciaField = previousGroup?.fields?.find(
+            (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+          );
+          console.log(`🔍 Linha ${groupIndex} (${group.lineName}) - Dados do JSON:`, {
+            lineSequence: groupData.lineSequence,
+            sequentialFromJson,
+            lineNumberFromJson,
             isHeader,
-            firstFieldStartPosition: displayFields[0]?.startPosition,
-            groupDataPosition: groupData.position,
-            txtContentLength: txtContent?.length,
-            txtContentSample: txtContent && lineStart >= 0 ? txtContent.substring(lineStart, lineStart + 20) : 'N/A'
+            previousLineName: previousGroup?.lineName,
+            previousSequenciaValue: previousSequenciaField?.value,
+            firstFieldStartPosition: displayFields[0]?.startPosition
           });
         }
         
         // 1. Adicionar sequencial (6 dígitos) - apenas para linhas que não são HEADER
-        // IMPORTANTE: O sequencial vem da tag "Sequencia" do FINAL da linha ANTERIOR
-        // Se não encontrou, extrair do TXT (primeiras 6 posições da linha atual)
+        // IMPORTANTE: O sequencial vem do campo "Sequencia" da linha ANTERIOR (já parseado pela API)
         if (!isHeader) {
-          if (sequentialFromTxt) {
+          if (sequentialFromJson) {
             lineParts.push({
               type: 'sequence',
-              content: sequentialFromTxt,
+              content: sequentialFromJson,
               start: 0,
               end: 6
             });
@@ -449,23 +461,24 @@ const FieldDisplay: React.FC = () => {
         }
         
         // 2. Adicionar número da linha (3 dígitos) - sempre adicionar
-        if (lineNumberFromTxt) {
+        // IMPORTANTE: Usar lineSequence do JSON (já parseado pela API)
+        if (lineNumberFromJson) {
           lineParts.push({
             type: 'initial',
-            content: lineNumberFromTxt,
+            content: lineNumberFromJson,
             start: currentPos,
-            end: currentPos + lineNumberFromTxt.length
+            end: currentPos + lineNumberFromJson.length
           });
-          currentPos += lineNumberFromTxt.length;
+          currentPos += lineNumberFromJson.length;
         }
         
         // Debug: verificar o que foi adicionado ao lineParts
         if (groupIndex < 3) {
           const sequencePart = lineParts.find(p => p.type === 'sequence');
           const initialPart = lineParts.find(p => p.type === 'initial');
-          console.log(`📝 lineParts após adicionar sequencial/linha (${group.lineName}):`, {
-            sequentialFromTxt,
-            lineNumberFromTxt,
+          console.log(`📝 lineParts após adicionar sequencial/linha (${group.lineName}) - DO JSON:`, {
+            sequentialFromJson,
+            lineNumberFromJson,
             currentPos,
             linePartsCount: lineParts.length,
             sequencePart: sequencePart ? { type: sequencePart.type, content: sequencePart.content, start: sequencePart.start, end: sequencePart.end } : null,
@@ -480,31 +493,18 @@ const FieldDisplay: React.FC = () => {
         const firstFieldStartPos = displayFields.length > 0 ? (displayFields[0].startPosition || 0) : 0;
         const fieldsIncludeSequential = firstFieldStartPos <= 8; // Se primeiro campo começa na posição 1-8, inclui sequencial+linha
         
-        // 3. Extrair o sequencial do FINAL da linha atual DIRETAMENTE do TXT
-        // IMPORTANTE: Não usar a tag "Sequencia" do layout, pois o documento é gerado pelo cliente
-        // O sequencial no final da linha atual (posições 594-599) é o mesmo que aparece
-        // no início da próxima linha (posições 0-5 da próxima linha)
-        let sequenciaValue = '000000';
-        let sequenciaLength = 6;
+        // 3. Buscar o campo "Sequencia" desta linha no JSON (pertence à próxima linha)
+        // IMPORTANTE: Usar o campo "Sequencia" já parseado pela API, não extrair do TXT
+        const sequenciaField = group.fields.find(
+          (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+        );
+        const sequenciaLength = sequenciaField?.length || 6;
+        const sequenciaValue = sequenciaField?.value?.trim() || '000000';
         
-        if (txtContent && lineStart >= 0 && lineStart + LINE_LENGTH <= txtContent.length) {
-          // O sequencial está nas últimas 6 posições da linha atual (posições 594-599)
-          const sequenciaFromEnd = txtContent.substring(lineStart + LINE_LENGTH - 6, lineStart + LINE_LENGTH);
-          if (sequenciaFromEnd && /^\d{6}$/.test(sequenciaFromEnd)) {
-            sequenciaValue = sequenciaFromEnd;
-          } else {
-            // Se não encontrou no final, tentar extrair do início da PRÓXIMA linha
-            if (groupIndex < displayGroups.length - 1) {
-              const nextLineStart = (groupIndex + 1) * 600;
-              if (nextLineStart + 6 <= txtContent.length) {
-                const sequenciaFromNext = txtContent.substring(nextLineStart, nextLineStart + 6);
-                if (sequenciaFromNext && /^\d{6}$/.test(sequenciaFromNext)) {
-                  sequenciaValue = sequenciaFromNext;
-                }
-              }
-            }
-          }
-        }
+        // Garantir que o sequencial tenha 6 dígitos
+        const sequenciaValueFormatted = /^\d+$/.test(sequenciaValue) 
+          ? sequenciaValue.padStart(6, '0') 
+          : sequenciaValue.padEnd(6, ' ');
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
