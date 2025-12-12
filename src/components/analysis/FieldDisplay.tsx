@@ -363,67 +363,53 @@ const FieldDisplay: React.FC = () => {
           }
         }
         
-        // Para HEADER: não tem sequencial no início, começa direto com "HEADER"
-        // Para outras linhas: o sequencial vem da tag "Sequencia" do FINAL da linha ANTERIOR
+        // IMPORTANTE: Extrair sequencial e número da linha DIRETAMENTE do arquivo .txt
+        // Não usar as tags "Sequencia" do layout, pois o documento é gerado pelo cliente
+        // O sequencial está nas primeiras 6 posições de cada linha (exceto HEADER)
+        // O número da linha está nas posições 6-8 (3 dígitos) de cada linha (exceto HEADER)
         let sequentialFromTxt = '';
         let lineNumberFromTxt = '';
         let currentPos = 0;
         
         if (isHeader) {
-          // HEADER não tem sequencial, começa direto
+          // HEADER não tem sequencial, começa direto com "HEADER"
           currentPos = 0;
-          // Número da linha para HEADER é "HEADER" (não "000")
           lineNumberFromTxt = 'HEADER';
         } else {
-          // Para outras linhas: buscar sequencial da tag "Sequencia" da linha ANTERIOR
-          if (groupIndex > 0) {
-            const previousGroup = displayGroups[groupIndex - 1] as any;
-            const previousSequenciaField = previousGroup.fields?.find(
-              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
-            );
-            
-            // Debug: verificar busca da tag Sequencia
-            if (groupIndex < 3) {
-              console.log(`🔍 Buscando Sequencia da linha anterior (${previousGroup?.lineName}):`, {
-                previousGroupLineName: previousGroup?.lineName,
-                foundSequenciaField: !!previousSequenciaField,
-                sequenciaValue: previousSequenciaField?.value,
-                allFields: previousGroup?.fields?.map((f: Field) => ({ name: f.fieldName, value: f.value?.substring(0, 10) }))
-              });
-            }
-            
-            if (previousSequenciaField?.value) {
-              const seqValue = previousSequenciaField.value.trim();
-              if (/^\d{6}$/.test(seqValue)) {
-                sequentialFromTxt = seqValue;
-              } else if (/^\d+$/.test(seqValue)) {
-                sequentialFromTxt = seqValue.padStart(6, '0');
-              }
-            }
-          }
-          
-          // Se não encontrou sequencial da linha anterior, tentar extrair do TXT
-          // O sequencial está nas primeiras 6 posições de cada linha (exceto HEADER)
-          if (!sequentialFromTxt && txtContent && lineStart >= 0 && lineStart < txtContent.length) {
+          // Para outras linhas: extrair sequencial e número da linha DIRETAMENTE do TXT
+          if (txtContent && lineStart >= 0 && lineStart < txtContent.length) {
+            // Sequencial: primeiras 6 posições (0-5)
             const seqFromTxt = txtContent.substring(lineStart, lineStart + 6);
-            // Só usar se for numérico (não "HEADER")
             if (seqFromTxt && /^\d{6}$/.test(seqFromTxt)) {
               sequentialFromTxt = seqFromTxt;
             }
+            
+            // Número da linha: posições 6-8 (3 dígitos)
+            const lineNumFromTxt = txtContent.substring(lineStart + 6, lineStart + 9);
+            if (lineNumFromTxt && /^\d{3}$/.test(lineNumFromTxt)) {
+              lineNumberFromTxt = lineNumFromTxt;
+            }
           }
           
-          // Se ainda não encontrou, usar padrão
+          // Fallback: se não conseguiu extrair do TXT, usar valores do layout
           if (!sequentialFromTxt) {
-            sequentialFromTxt = '000000';
+            // Tentar do initialValue ou do nome da linha (último recurso)
+            const initialValue = getLineInitialValue(group.lineName);
+            if (initialValue && /^\d+$/.test(initialValue)) {
+              sequentialFromTxt = initialValue.padStart(6, '0');
+            } else {
+              sequentialFromTxt = '000000';
+            }
           }
           
-          // Extrair número da linha do initialValue do layout (mais confiável que tentar do TXT)
-          const initialValue = getLineInitialValue(group.lineName);
-          if (initialValue && /^\d+$/.test(initialValue)) {
-            lineNumberFromTxt = initialValue.padStart(3, '0');
-          } else {
-            // Fallback: extrair do nome da linha
-            lineNumberFromTxt = extractLineNumber(group.lineName);
+          if (!lineNumberFromTxt) {
+            // Extrair número da linha do initialValue do layout ou do nome
+            const initialValue = getLineInitialValue(group.lineName);
+            if (initialValue && /^\d+$/.test(initialValue)) {
+              lineNumberFromTxt = initialValue.padStart(3, '0');
+            } else {
+              lineNumberFromTxt = extractLineNumber(group.lineName);
+            }
           }
         }
         
