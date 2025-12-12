@@ -667,25 +667,41 @@ const FieldDisplay: React.FC = () => {
             <div className="field-list-inline">
               {/* Linha completa com exatamente 600 caracteres */}
               <span className="field-line-content">
-                {lineParts.map((part, partIndex) => {
+                {(() => {
+                  // Debug: verificar lineParts antes de renderizar
+                  if (groupIndex < 3) {
+                    const sequencePart = lineParts.find(p => p.type === 'sequence');
+                    console.log(`🎬 ANTES DE RENDERIZAR linha ${groupIndex} (${group.lineName}):`, {
+                      linePartsCount: lineParts.length,
+                      sequencePart: sequencePart ? { type: sequencePart.type, content: sequencePart.content, start: sequencePart.start, end: sequencePart.end } : null,
+                      allSequenceParts: lineParts.filter(p => p.type === 'sequence').map(p => ({ content: p.content, start: p.start, end: p.end }))
+                    });
+                  }
+                  return lineParts.map((part, partIndex) => {
                   if (part.type === 'space') {
                     return <span key={`space-${partIndex}`} className="field-space">{part.content}</span>;
                   }
                   
                   if (part.type === 'sequence') {
                     // Sequencial (6 dígitos) - destacar com cinza
+                    // Garantir que o conteúdo seja uma string válida
+                    const sequentialContent = part.content || '000000';
+                    
                     // Debug: verificar o valor sendo renderizado
                     if (groupIndex < 3 && partIndex === 0) {
                       console.log(`🎨 Renderizando sequencial para linha ${groupIndex} (${group.lineName}):`, {
                         partContent: part.content,
+                        sequentialContent,
                         partType: part.type,
                         partStart: part.start,
-                        partEnd: part.end
+                        partEnd: part.end,
+                        partObject: part
                       });
                     }
+                    
                     return (
-                      <span key={`${part.type}-${partIndex}`} className="field-static field-sequential-static">
-                        {part.content}
+                      <span key={`${part.type}-${partIndex}-${groupIndex}`} className="field-static field-sequential-static">
+                        {sequentialContent}
                       </span>
                     );
                   }
@@ -728,7 +744,8 @@ const FieldDisplay: React.FC = () => {
                   }
                   
                   return null;
-                })}
+                });
+                })()}
               </span>
             </div>
           </div>
