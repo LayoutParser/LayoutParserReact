@@ -475,12 +475,16 @@ const FieldDisplay: React.FC = () => {
         
         // Debug: verificar o que foi adicionado ao lineParts
         if (groupIndex < 3) {
+          const sequencePart = lineParts.find(p => p.type === 'sequence');
+          const initialPart = lineParts.find(p => p.type === 'initial');
           console.log(`📝 lineParts após adicionar sequencial/linha (${group.lineName}):`, {
             sequentialFromTxt,
             lineNumberFromTxt,
             currentPos,
             linePartsCount: lineParts.length,
-            firstParts: lineParts.slice(0, 3).map(p => ({ type: p.type, content: p.content, start: p.start, end: p.end }))
+            sequencePart: sequencePart ? { type: sequencePart.type, content: sequencePart.content, start: sequencePart.start, end: sequencePart.end } : null,
+            initialPart: initialPart ? { type: initialPart.type, content: initialPart.content, start: initialPart.start, end: initialPart.end } : null,
+            allParts: lineParts.map(p => ({ type: p.type, content: p.content?.substring(0, 20), start: p.start, end: p.end }))
           });
         }
         
@@ -670,6 +674,15 @@ const FieldDisplay: React.FC = () => {
                   
                   if (part.type === 'sequence') {
                     // Sequencial (6 dígitos) - destacar com cinza
+                    // Debug: verificar o valor sendo renderizado
+                    if (groupIndex < 3 && partIndex === 0) {
+                      console.log(`🎨 Renderizando sequencial para linha ${groupIndex} (${group.lineName}):`, {
+                        partContent: part.content,
+                        partType: part.type,
+                        partStart: part.start,
+                        partEnd: part.end
+                      });
+                    }
                     return (
                       <span key={`${part.type}-${partIndex}`} className="field-static field-sequential-static">
                         {part.content}
