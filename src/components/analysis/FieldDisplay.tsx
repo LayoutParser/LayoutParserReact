@@ -377,44 +377,48 @@ const FieldDisplay: React.FC = () => {
           currentPos = 0;
           lineNumberFromJson = 'HEADER';
         } else {
-          // 1. Buscar o sequencial (6 dígitos) do campo "Sequencia" da linha ANTERIOR
+          // 1. Buscar o sequencial (6 dígitos) da linha ANTERIOR
+          // IMPORTANTE: O back-end filtra o campo "Sequencia", mas o lineSequence contém o sequencial de 6 dígitos
+          // O lineSequence é extraído das primeiras 6 posições da linha (já parseado pela API)
+          // SEMPRE buscar na linha anterior, nunca na própria linha
           if (groupIndex > 0) {
             const previousGroup = displayGroups[groupIndex - 1] as any;
+            
+            // Primeiro, tentar buscar o campo "Sequencia" da linha anterior (caso não tenha sido filtrado)
             const previousSequenciaField = previousGroup.fields?.find(
-              (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+              (f: Field) => {
+                const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
+                return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
+              }
             );
             
             if (previousSequenciaField?.value) {
-              const seqValue = previousSequenciaField.value.trim();
+              const seqValue = String(previousSequenciaField.value).trim();
               if (/^\d{6}$/.test(seqValue)) {
                 sequentialFromJson = seqValue;
               } else if (/^\d+$/.test(seqValue)) {
                 sequentialFromJson = seqValue.padStart(6, '0');
               }
+            } else if (previousGroup.lineSequence) {
+              // Se não encontrou o campo "Sequencia", usar o lineSequence da linha anterior
+              // O lineSequence contém o sequencial de 6 dígitos (extraído das primeiras 6 posições)
+              const prevLineSeq = String(previousGroup.lineSequence).trim();
+              if (/^\d{6}$/.test(prevLineSeq)) {
+                sequentialFromJson = prevLineSeq;
+              } else if (/^\d+$/.test(prevLineSeq)) {
+                sequentialFromJson = prevLineSeq.padStart(6, '0');
+              }
             }
           }
           
-          // 2. Usar lineSequence do JSON para o número da linha (3 dígitos)
-          if (groupData.lineSequence) {
-            if (/^\d+$/.test(groupData.lineSequence)) {
-              lineNumberFromJson = groupData.lineSequence.padStart(3, '0');
-            } else {
-              // Se lineSequence não é numérico, tentar do initialValue do layout
-              const initialValue = getLineInitialValue(group.lineName);
-              if (initialValue && /^\d+$/.test(initialValue)) {
-                lineNumberFromJson = initialValue.padStart(3, '0');
-              } else {
-                lineNumberFromJson = extractLineNumber(group.lineName);
-              }
-            }
+          // 2. Usar initialValue do layout para o número da linha (3 dígitos)
+          // O lineSequence contém o sequencial (6 dígitos), não o número da linha
+          const initialValue = getLineInitialValue(group.lineName);
+          if (initialValue && /^\d+$/.test(initialValue)) {
+            lineNumberFromJson = initialValue.padStart(3, '0');
           } else {
-            // Fallback: usar initialValue do layout ou extrair do nome da linha
-            const initialValue = getLineInitialValue(group.lineName);
-            if (initialValue && /^\d+$/.test(initialValue)) {
-              lineNumberFromJson = initialValue.padStart(3, '0');
-            } else {
-              lineNumberFromJson = extractLineNumber(group.lineName);
-            }
+            // Fallback: extrair do nome da linha (ex: "LINHA000" -> "000", "LINHA031" -> "031")
+            lineNumberFromJson = extractLineNumber(group.lineName);
           }
           
           // Se não encontrou sequencial da linha anterior, usar padrão
@@ -427,7 +431,16 @@ const FieldDisplay: React.FC = () => {
         if (groupIndex < 3) {
           const previousGroup = groupIndex > 0 ? displayGroups[groupIndex - 1] as any : null;
           const previousSequenciaField = previousGroup?.fields?.find(
-            (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
+            (f: Field) => {
+              const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
+              return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
+            }
+          );
+          const currentSequenciaField = group.fields?.find(
+            (f: Field) => {
+              const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
+              return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
+            }
           );
           console.log(`🔍 Linha ${groupIndex} (${group.lineName}) - Dados do JSON:`, {
             lineSequence: groupData.lineSequence,
@@ -436,6 +449,10 @@ const FieldDisplay: React.FC = () => {
             isHeader,
             previousLineName: previousGroup?.lineName,
             previousSequenciaValue: previousSequenciaField?.value,
+            previousSequenciaStartPos: previousSequenciaField?.startPosition,
+            currentSequenciaValue: currentSequenciaField?.value,
+            currentSequenciaStartPos: currentSequenciaField?.startPosition,
+            allFieldNames: group.fields?.slice(0, 5).map((f: Field) => f.fieldName),
             firstFieldStartPosition: displayFields[0]?.startPosition
           });
         }
