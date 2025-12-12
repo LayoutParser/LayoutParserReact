@@ -478,20 +478,33 @@ const FieldDisplay: React.FC = () => {
           });
         }
         
-        // 1. Adicionar sequencial (6 dígitos ou 6 espaços para HEADER/LINHA999999)
+        // 1. Adicionar sequencial (6 dígitos) - APENAS para linhas que NÃO são HEADER ou LINHA999999
         // IMPORTANTE: O sequencial vem do campo "Sequencia" da linha ANTERIOR (já parseado pela API)
-        // HEADER e LINHA999999 usam 6 espaços para manter alinhamento
-        if (sequentialFromJson) {
+        // HEADER e LINHA999999 NÃO têm sequencial, começam direto com o número da linha
+        if (!isHeader && !isLine999999) {
+          if (sequentialFromJson) {
+            lineParts.push({
+              type: 'sequence',
+              content: sequentialFromJson,
+              start: 0,
+              end: 6
+            });
+            currentPos = 6;
+          } else {
+            // Se não tem sequencial, começar na posição 0
+            currentPos = 0;
+          }
+        } else {
+          // HEADER e LINHA999999 não têm sequencial, mas precisam alinhar o número da linha
+          // na mesma posição das outras linhas (após 6 caracteres de sequencial)
+          // Adicionar 6 espaços invisíveis para manter alinhamento
           lineParts.push({
-            type: 'sequence',
-            content: sequentialFromJson,
+            type: 'space',
+            content: '      ', // 6 espaços para alinhamento
             start: 0,
             end: 6
           });
           currentPos = 6;
-        } else {
-          // Se não tem sequencial, começar na posição 0
-          currentPos = 0;
         }
         
         // 2. Adicionar número da linha (3 dígitos) - sempre adicionar
@@ -722,25 +735,19 @@ const FieldDisplay: React.FC = () => {
                   }
                   
                   if (part.type === 'sequence') {
-                    // Sequencial (6 dígitos ou 6 espaços para HEADER/LINHA999999) - destacar com cinza
-                    // IMPORTANTE: Se for apenas espaços (HEADER ou LINHA999999), preservar os espaços
-                    // Caso contrário, usar o valor numérico com padding
+                    // Sequencial (6 dígitos) - destacar com cinza
+                    // IMPORTANTE: HEADER e LINHA999999 não devem ter esta tag, apenas espaços invisíveis
                     let sequentialContent = String(part.content || '');
                     
-                    // Se for apenas espaços ou string vazia e for HEADER/LINHA999999, manter espaços
-                    if (sequentialContent.trim() === '' && (isHeader || isLine999999)) {
-                      sequentialContent = '      '; // 6 espaços
+                    // Se tiver conteúdo numérico, garantir 6 dígitos
+                    if (/^\d+$/.test(sequentialContent.trim())) {
+                      sequentialContent = sequentialContent.trim().padStart(6, '0');
                     } else if (sequentialContent.trim() === '') {
-                      // Se não for HEADER/LINHA999999 e estiver vazio, usar padrão
+                      // Se estiver vazio, usar padrão
                       sequentialContent = '000000';
                     } else {
-                      // Se tiver conteúdo numérico, garantir 6 dígitos
-                      if (/^\d+$/.test(sequentialContent.trim())) {
-                        sequentialContent = sequentialContent.trim().padStart(6, '0');
-                      } else {
-                        // Se não for numérico, garantir 6 caracteres (pode ser espaços)
-                        sequentialContent = sequentialContent.padEnd(6, ' ');
-                      }
+                      // Se não for numérico, garantir 6 caracteres
+                      sequentialContent = sequentialContent.padEnd(6, ' ');
                     }
                     
                     // Debug: verificar o valor sendo renderizado
