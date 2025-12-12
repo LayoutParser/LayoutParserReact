@@ -684,23 +684,29 @@ const FieldDisplay: React.FC = () => {
                   
                   if (part.type === 'sequence') {
                     // Sequencial (6 dígitos) - destacar com cinza
-                    // Garantir que o conteúdo seja uma string válida
-                    const sequentialContent = part.content || '000000';
+                    // IMPORTANTE: Usar diretamente part.content, não fazer fallback para '000000'
+                    // O fallback pode estar mascarando o problema
+                    const sequentialContent = String(part.content || '').padStart(6, '0');
                     
                     // Debug: verificar o valor sendo renderizado
-                    if (groupIndex < 3 && partIndex === 0) {
-                      console.log(`🎨 Renderizando sequencial para linha ${groupIndex} (${group.lineName}):`, {
+                    if (groupIndex < 3) {
+                      console.log(`🎨 Renderizando sequencial para linha ${groupIndex} (${group.lineName}) partIndex ${partIndex}:`, {
                         partContent: part.content,
+                        partContentType: typeof part.content,
                         sequentialContent,
+                        sequentialContentLength: sequentialContent.length,
                         partType: part.type,
                         partStart: part.start,
                         partEnd: part.end,
-                        partObject: part
+                        partObject: JSON.stringify(part),
+                        linePartsLength: lineParts.length,
+                        allSequenceParts: lineParts.filter(p => p.type === 'sequence').map(p => ({ content: p.content, index: lineParts.indexOf(p) }))
                       });
                     }
                     
+                    // Usar uma key única que inclui o conteúdo para forçar re-render se mudar
                     return (
-                      <span key={`${part.type}-${partIndex}-${groupIndex}`} className="field-static field-sequential-static">
+                      <span key={`seq-${groupIndex}-${partIndex}-${sequentialContent}`} className="field-static field-sequential-static" data-sequential={sequentialContent}>
                         {sequentialContent}
                       </span>
                     );
