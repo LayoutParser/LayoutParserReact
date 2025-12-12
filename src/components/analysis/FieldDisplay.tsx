@@ -399,14 +399,19 @@ const FieldDisplay: React.FC = () => {
               } else if (/^\d+$/.test(seqValue)) {
                 sequentialFromJson = seqValue.padStart(6, '0');
               }
-            } else if (previousGroup.lineSequence) {
-              // Se não encontrou o campo "Sequencia", usar o lineSequence da linha anterior
+            } else {
+              // Se não encontrou o campo "Sequencia", usar o lineSequence do primeiro field da linha anterior
               // O lineSequence contém o sequencial de 6 dígitos (extraído das primeiras 6 posições)
-              const prevLineSeq = String(previousGroup.lineSequence).trim();
-              if (/^\d{6}$/.test(prevLineSeq)) {
-                sequentialFromJson = prevLineSeq;
-              } else if (/^\d+$/.test(prevLineSeq)) {
-                sequentialFromJson = prevLineSeq.padStart(6, '0');
+              const prevLineSeq = previousGroup.lineSequence || 
+                                   (previousGroup.fields?.[0] as any)?.lineSequence || 
+                                   '';
+              const prevLineSeqStr = String(prevLineSeq).trim();
+              if (prevLineSeqStr && prevLineSeqStr !== 'HEADER') {
+                if (/^\d{6}$/.test(prevLineSeqStr)) {
+                  sequentialFromJson = prevLineSeqStr;
+                } else if (/^\d+$/.test(prevLineSeqStr)) {
+                  sequentialFromJson = prevLineSeqStr.padStart(6, '0');
+                }
               }
             }
           }
@@ -442,12 +447,16 @@ const FieldDisplay: React.FC = () => {
               return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
             }
           );
+          const prevLineSeqFromGroup = previousGroup?.lineSequence || 
+                                       (previousGroup?.fields?.[0] as any)?.lineSequence || 
+                                       'N/A';
           console.log(`🔍 Linha ${groupIndex} (${group.lineName}) - Dados do JSON:`, {
             lineSequence: groupData.lineSequence,
             sequentialFromJson,
             lineNumberFromJson,
             isHeader,
             previousLineName: previousGroup?.lineName,
+            previousLineSequence: prevLineSeqFromGroup,
             previousSequenciaValue: previousSequenciaField?.value,
             previousSequenciaStartPos: previousSequenciaField?.startPosition,
             currentSequenciaValue: currentSequenciaField?.value,
