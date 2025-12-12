@@ -194,6 +194,7 @@ const FieldDisplay: React.FC = () => {
       {displayGroups.map((group, groupIndex) => {
         const groupData = group as any;
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
+        const isLine999999 = group.lineName === 'LINHA999999' || group.lineName?.includes('999999');
         
         // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
@@ -373,9 +374,13 @@ const FieldDisplay: React.FC = () => {
         let currentPos = 0;
         
         if (isHeader) {
-          // HEADER não tem sequencial, começa direto com "HEADER"
-          currentPos = 0;
+          // HEADER não tem sequencial (6 espaços para manter alinhamento), apenas "HEADER" como linha
+          sequentialFromJson = '      '; // 6 espaços
           lineNumberFromJson = 'HEADER';
+        } else if (isLine999999) {
+          // LINHA999999 também não tem sequencial (6 espaços), apenas "999999" como linha
+          sequentialFromJson = '      '; // 6 espaços
+          lineNumberFromJson = '999999';
         } else {
           // 1. Buscar o sequencial (6 dígitos) da linha ANTERIOR
           // IMPORTANTE: O back-end filtra o campo "Sequencia", mas o lineSequence contém o sequencial de 6 dígitos
@@ -383,34 +388,41 @@ const FieldDisplay: React.FC = () => {
           // SEMPRE buscar na linha anterior, nunca na própria linha
           if (groupIndex > 0) {
             const previousGroup = displayGroups[groupIndex - 1] as any;
+            const prevIsHeader = previousGroup?.lineName === 'HEADER' || 
+                                 (previousGroup?.fields?.[0] as any)?.lineSequence === 'HEADER';
+            const prevIsLine999999 = previousGroup?.lineName === 'LINHA999999' || 
+                                     previousGroup?.lineName?.includes('999999');
             
-            // Primeiro, tentar buscar o campo "Sequencia" da linha anterior (caso não tenha sido filtrado)
-            const previousSequenciaField = previousGroup.fields?.find(
-              (f: Field) => {
-                const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
-                return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
-              }
-            );
-            
-            if (previousSequenciaField?.value) {
-              const seqValue = String(previousSequenciaField.value).trim();
-              if (/^\d{6}$/.test(seqValue)) {
-                sequentialFromJson = seqValue;
-              } else if (/^\d+$/.test(seqValue)) {
-                sequentialFromJson = seqValue.padStart(6, '0');
-              }
-            } else {
-              // Se não encontrou o campo "Sequencia", usar o lineSequence do primeiro field da linha anterior
-              // O lineSequence contém o sequencial de 6 dígitos (extraído das primeiras 6 posições)
-              const prevLineSeq = previousGroup.lineSequence || 
-                                   (previousGroup.fields?.[0] as any)?.lineSequence || 
-                                   '';
-              const prevLineSeqStr = String(prevLineSeq).trim();
-              if (prevLineSeqStr && prevLineSeqStr !== 'HEADER') {
-                if (/^\d{6}$/.test(prevLineSeqStr)) {
-                  sequentialFromJson = prevLineSeqStr;
-                } else if (/^\d+$/.test(prevLineSeqStr)) {
-                  sequentialFromJson = prevLineSeqStr.padStart(6, '0');
+            // Se a linha anterior é HEADER ou LINHA999999, não tem sequencial para passar
+            if (!prevIsHeader && !prevIsLine999999) {
+              // Primeiro, tentar buscar o campo "Sequencia" da linha anterior (caso não tenha sido filtrado)
+              const previousSequenciaField = previousGroup.fields?.find(
+                (f: Field) => {
+                  const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
+                  return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
+                }
+              );
+              
+              if (previousSequenciaField?.value) {
+                const seqValue = String(previousSequenciaField.value).trim();
+                if (/^\d{6}$/.test(seqValue)) {
+                  sequentialFromJson = seqValue;
+                } else if (/^\d+$/.test(seqValue)) {
+                  sequentialFromJson = seqValue.padStart(6, '0');
+                }
+              } else {
+                // Se não encontrou o campo "Sequencia", usar o lineSequence do primeiro field da linha anterior
+                // O lineSequence contém o sequencial de 6 dígitos (extraído das primeiras 6 posições)
+                const prevLineSeq = previousGroup.lineSequence || 
+                                     (previousGroup.fields?.[0] as any)?.lineSequence || 
+                                     '';
+                const prevLineSeqStr = String(prevLineSeq).trim();
+                if (prevLineSeqStr && prevLineSeqStr !== 'HEADER') {
+                  if (/^\d{6}$/.test(prevLineSeqStr)) {
+                    sequentialFromJson = prevLineSeqStr;
+                  } else if (/^\d+$/.test(prevLineSeqStr)) {
+                    sequentialFromJson = prevLineSeqStr.padStart(6, '0');
+                  }
                 }
               }
             }
@@ -466,23 +478,19 @@ const FieldDisplay: React.FC = () => {
           });
         }
         
-        // 1. Adicionar sequencial (6 dígitos) - apenas para linhas que não são HEADER
+        // 1. Adicionar sequencial (6 dígitos ou 6 espaços para HEADER/LINHA999999)
         // IMPORTANTE: O sequencial vem do campo "Sequencia" da linha ANTERIOR (já parseado pela API)
-        if (!isHeader) {
-          if (sequentialFromJson) {
-            lineParts.push({
-              type: 'sequence',
-              content: sequentialFromJson,
-              start: 0,
-              end: 6
-            });
-            currentPos = 6;
-          } else {
-            // Se não tem sequencial, começar na posição 0
-            currentPos = 0;
-          }
+        // HEADER e LINHA999999 usam 6 espaços para manter alinhamento
+        if (sequentialFromJson) {
+          lineParts.push({
+            type: 'sequence',
+            content: sequentialFromJson,
+            start: 0,
+            end: 6
+          });
+          currentPos = 6;
         } else {
-          // HEADER não tem sequencial, começar na posição 0
+          // Se não tem sequencial, começar na posição 0
           currentPos = 0;
         }
         
@@ -714,10 +722,26 @@ const FieldDisplay: React.FC = () => {
                   }
                   
                   if (part.type === 'sequence') {
-                    // Sequencial (6 dígitos) - destacar com cinza
-                    // IMPORTANTE: Usar diretamente part.content, não fazer fallback para '000000'
-                    // O fallback pode estar mascarando o problema
-                    const sequentialContent = String(part.content || '').padStart(6, '0');
+                    // Sequencial (6 dígitos ou 6 espaços para HEADER/LINHA999999) - destacar com cinza
+                    // IMPORTANTE: Se for apenas espaços (HEADER ou LINHA999999), preservar os espaços
+                    // Caso contrário, usar o valor numérico com padding
+                    let sequentialContent = String(part.content || '');
+                    
+                    // Se for apenas espaços ou string vazia e for HEADER/LINHA999999, manter espaços
+                    if (sequentialContent.trim() === '' && (isHeader || isLine999999)) {
+                      sequentialContent = '      '; // 6 espaços
+                    } else if (sequentialContent.trim() === '') {
+                      // Se não for HEADER/LINHA999999 e estiver vazio, usar padrão
+                      sequentialContent = '000000';
+                    } else {
+                      // Se tiver conteúdo numérico, garantir 6 dígitos
+                      if (/^\d+$/.test(sequentialContent.trim())) {
+                        sequentialContent = sequentialContent.trim().padStart(6, '0');
+                      } else {
+                        // Se não for numérico, garantir 6 caracteres (pode ser espaços)
+                        sequentialContent = sequentialContent.padEnd(6, ' ');
+                      }
+                    }
                     
                     // Debug: verificar o valor sendo renderizado
                     if (groupIndex < 3) {
@@ -726,6 +750,8 @@ const FieldDisplay: React.FC = () => {
                         partContentType: typeof part.content,
                         sequentialContent,
                         sequentialContentLength: sequentialContent.length,
+                        isHeader,
+                        isLine999999,
                         partType: part.type,
                         partStart: part.start,
                         partEnd: part.end,
@@ -737,7 +763,7 @@ const FieldDisplay: React.FC = () => {
                     
                     // Usar uma key única que inclui o conteúdo para forçar re-render se mudar
                     return (
-                      <span key={`seq-${groupIndex}-${partIndex}-${sequentialContent}`} className="field-static field-sequential-static" data-sequential={sequentialContent}>
+                      <span key={`seq-${groupIndex}-${partIndex}-${sequentialContent.replace(/\s/g, '_')}`} className="field-static field-sequential-static" data-sequential={sequentialContent}>
                         {sequentialContent}
                       </span>
                     );
