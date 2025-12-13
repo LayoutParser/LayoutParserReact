@@ -497,14 +497,8 @@ const FieldDisplay: React.FC = () => {
         } else {
           // HEADER e LINHA999999 não têm sequencial, mas precisam alinhar o número da linha
           // na mesma posição das outras linhas (após 6 caracteres de sequencial)
-          // Adicionar 6 espaços invisíveis para manter alinhamento
-          lineParts.push({
-            type: 'space',
-            content: '      ', // 6 espaços para alinhamento
-            start: 0,
-            end: 6
-          });
-          currentPos = 6;
+          // Não adicionar espaços - o número da linha começará na posição 0, mas será alinhado via CSS
+          currentPos = 0;
         }
         
         // 2. Adicionar número da linha (3 dígitos) - sempre adicionar
@@ -606,11 +600,14 @@ const FieldDisplay: React.FC = () => {
             fieldValue = ' ';
           }
           
-          // Adicionar espaço antes do campo se necessário
+          // Adicionar espaço antes do campo se necessário (reduzir espaços múltiplos)
           if (startPos > currentPos) {
+            const spaceCount = startPos - currentPos;
+            // Reduzir espaços múltiplos - se houver muitos espaços, usar apenas 1
+            const spaceContent = spaceCount > 1 ? ' ' : ' '.repeat(spaceCount);
             lineParts.push({
               type: 'space',
-              content: ' '.repeat(startPos - currentPos),
+              content: spaceContent,
               start: currentPos,
               end: startPos
             });
@@ -731,7 +728,10 @@ const FieldDisplay: React.FC = () => {
                   }
                   return lineParts.map((part, partIndex) => {
                   if (part.type === 'space') {
-                    return <span key={`space-${partIndex}`} className="field-space">{part.content}</span>;
+                    // Renderizar espaços diretamente sem span, mas reduzir espaços múltiplos
+                    const spaceContent = part.content.replace(/\s+/g, ' '); // Reduzir múltiplos espaços para um único
+                    // Renderizar como string diretamente (React renderiza strings)
+                    return spaceContent || null;
                   }
                   
                   if (part.type === 'sequence') {
