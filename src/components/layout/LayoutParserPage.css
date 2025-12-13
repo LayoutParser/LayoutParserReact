@@ -132,7 +132,8 @@
   padding: 1.5rem;
   background: #FFFFFF;
   border-right: 2px solid #e0e0e0;
-  overflow-y: auto;
+  overflow-y: visible; /* Removido scroll */
+  overflow-x: hidden;
   transition: all 0.3s ease;
 }
 
@@ -316,41 +317,89 @@
 }
 
 /* Scrollbar personalizado */
-.l-bottom-left::-webkit-scrollbar,
 .l-bottom-right::-webkit-scrollbar,
 .l-top-right::-webkit-scrollbar {
   width: 8px;
 }
 
-.l-bottom-left::-webkit-scrollbar-track,
 .l-bottom-right::-webkit-scrollbar-track,
 .l-top-right::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 4px;
 }
 
-.l-bottom-left::-webkit-scrollbar-thumb,
 .l-bottom-right::-webkit-scrollbar-thumb,
 .l-top-right::-webkit-scrollbar-thumb {
   background: #5700FF;
   border-radius: 4px;
 }
 
-.l-bottom-left::-webkit-scrollbar-thumb:hover,
 .l-bottom-right::-webkit-scrollbar-thumb:hover,
 .l-top-right::-webkit-scrollbar-thumb:hover {
   background: #ED008C;
 }
 
 /* Responsividade */
-@media (max-width: 1200px) {
+@media (max-width: 1600px) {
   .l-layout-container {
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 280px 1fr;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1400px) {
   .l-layout-container {
+    grid-template-columns: 250px 1fr;
+  }
+  
+  .l-bottom-left {
+    padding: 1rem;
+  }
+  
+  .combobox-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .l-layout-container {
+    grid-template-columns: 220px 1fr;
+  }
+  
+  .l-bottom-left {
+    padding: 0.75rem;
+  }
+  
+  .combobox-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .l-layout-container {
+    grid-template-columns: 200px 1fr;
+  }
+  
+  .l-bottom-left {
+    padding: 0.5rem;
+  }
+  
+  .combobox-label {
+    font-size: 11px;
+  }
+  
+  .combobox-trigger {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 900px) {
+  .l-layout-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .l-layout-container:has(.l-bottom-left.hidden) {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
   }
@@ -373,10 +422,17 @@
 
   .l-bottom-left {
     grid-row: 3;
+    padding: 1rem;
+    border-right: none;
+    border-bottom: 2px solid #e0e0e0;
   }
 
   .l-bottom-right {
     grid-row: 4;
+  }
+  
+  .combobox-label {
+    font-size: 14px;
   }
 }
 
