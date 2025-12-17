@@ -196,6 +196,10 @@ const FieldDisplay: React.FC = () => {
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         const isLine999999 = group.lineName === 'LINHA999999' || group.lineName?.includes('999999');
         
+        // ✅ Obter informação de ocorrência para exibição
+        const occurrence = groupData.occurrence || 1;
+        const hasMultipleOccurrences = displayGroups.filter(g => g.lineName === group.lineName).length > 1;
+        
         // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
         let displaySequential = '000000';
@@ -712,7 +716,13 @@ const FieldDisplay: React.FC = () => {
         }
         
         return (
-          <div key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`} className="field-line-container">
+          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className="field-line-container">
+            {/* ✅ Indicador de múltiplas ocorrências */}
+            {hasMultipleOccurrences && occurrence > 1 && (
+              <div className="line-occurrence-indicator">
+                {group.lineName} - Ocorrência {occurrence}
+              </div>
+            )}
             <div className="field-list-inline">
               {/* Linha completa com exatamente 600 caracteres */}
               <span className="field-line-content">

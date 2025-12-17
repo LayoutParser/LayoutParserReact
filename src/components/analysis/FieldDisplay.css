@@ -244,3 +244,16 @@
   background: #ED008C;
 }
 
+/* Indicador de ocorrência múltipla */
+.line-occurrence-indicator {
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 600;
+  padding: 2px 8px;
+  background-color: #f0f0f0;
+  border-left: 3px solid #5700FF;
+  border-radius: 3px;
+  display: inline-block;
+}
+
