@@ -217,9 +217,10 @@ const FieldDisplay: React.FC = () => {
           fontSize: '14px',
           fontWeight: 600
         }}>
-          ⚠️ <strong>Aviso de Validação:</strong> {parseResult.validationWarning}
+          ⚠️ <strong>Erro no Documento:</strong> {parseResult.validationWarning.replace('⚠️ Erro no Documento: ', '')}
           <div style={{ fontSize: '12px', marginTop: '8px', fontWeight: 400 }}>
-            Linhas com erro serão destacadas em vermelho. A partir da primeira linha com erro, todas as linhas seguintes estão desalinhadas.
+            <strong>Onde está o erro:</strong> No documento TXT processado (não no layout).<br/>
+            As linhas com erro serão destacadas em vermelho no documento. A partir da primeira linha com erro, todas as linhas seguintes estão desalinhadas.
           </div>
         </div>
       )}
