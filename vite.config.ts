@@ -32,6 +32,8 @@ export default defineConfig({
         },
       },
     },
+    // Copiar web.config para dist durante o build
+    copyPublicDir: true,
   },
 })
 
