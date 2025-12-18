@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import LayoutParserPage from '../layout/LayoutParserPage';
 import MonitoringTab from './MonitoringTab';
+import LayoutValidationTab from './LayoutValidationTab';
 import './AdminPage.css';
 
 const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'processing' | 'monitoring'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'monitoring' | 'validation'>('processing');
 
   return (
     <div className="admin-page">
@@ -25,6 +26,13 @@ const AdminPage: React.FC = () => {
           >
             Monitoramento
           </button>
+          <button
+            type="button"
+            className={`admin-tab ${activeTab === 'validation' ? 'active' : ''}`}
+            onClick={() => setActiveTab('validation')}
+          >
+            Validação de Layouts
+          </button>
         </div>
       </div>
 
@@ -38,6 +46,12 @@ const AdminPage: React.FC = () => {
         {activeTab === 'monitoring' && (
           <div className="admin-tab-content">
             <MonitoringTab />
+          </div>
+        )}
+
+        {activeTab === 'validation' && (
+          <div className="admin-tab-content">
+            <LayoutValidationTab />
           </div>
         )}
       </div>
