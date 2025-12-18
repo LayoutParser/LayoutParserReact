@@ -189,8 +189,41 @@ const FieldDisplay: React.FC = () => {
     );
   }
 
+  // ✅ Verificar se há erros de validação de tamanho de linha
+  const validationErrors = parseResult?.validationErrors || [];
+  const firstErrorLineIndex = validationErrors.length > 0 ? Math.min(...validationErrors.map(e => e.lineIndex)) : -1;
+  const hasValidationErrors = validationErrors.length > 0;
+
+  // ✅ Função para verificar se uma linha tem erro (ou está após primeira linha com erro)
+  const isLineWithError = (lineIndex: number, lineStartPosition: number): boolean => {
+    if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
+    
+    // ✅ Se há erro, marcar TODAS as linhas a partir da primeira linha com erro
+    // Isso inclui a linha com erro e todas as seguintes (desalinhamento)
+    return lineIndex >= firstErrorLineIndex;
+  };
+
   return (
     <div className="field-display">
+      {/* ✅ Aviso de validação */}
+      {hasValidationErrors && parseResult?.validationWarning && (
+        <div className="validation-error-alert" style={{
+          backgroundColor: '#fff3cd',
+          border: '2px solid #ffc107',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          color: '#856404',
+          fontSize: '14px',
+          fontWeight: 600
+        }}>
+          ⚠️ <strong>Aviso de Validação:</strong> {parseResult.validationWarning}
+          <div style={{ fontSize: '12px', marginTop: '8px', fontWeight: 400 }}>
+            Linhas com erro serão destacadas em vermelho. A partir da primeira linha com erro, todas as linhas seguintes estão desalinhadas.
+          </div>
+        </div>
+      )}
+      
       {displayGroups.map((group, groupIndex) => {
         const groupData = group as any;
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
@@ -199,6 +232,18 @@ const FieldDisplay: React.FC = () => {
         // ✅ Obter informação de ocorrência para exibição
         const occurrence = groupData.occurrence || 1;
         const hasMultipleOccurrences = displayGroups.filter(g => g.lineName === group.lineName).length > 1;
+        
+        // ✅ Verificar se esta linha tem erro de validação
+        // Calcular posição da linha no TXT (baseado no índice do grupo)
+        let lineStartPosition = -1;
+        if (txtContent && groupData.position >= 0) {
+          lineStartPosition = Math.floor(groupData.position / 600) * 600;
+        } else {
+          // Tentar calcular baseado no índice do grupo (cada linha tem 600 chars)
+          lineStartPosition = groupIndex * 600;
+        }
+        
+        const hasLineError = isLineWithError(groupIndex, lineStartPosition);
         
         // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)

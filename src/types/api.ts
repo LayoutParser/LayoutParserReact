@@ -62,6 +62,18 @@ export interface ParseResponse {
     errorFields?: number;
   };
   lineValidations?: LineValidationInfo[]; // NOVO: Validações e posições calculadas pelo back-end
+  validationErrors?: DocumentValidationError[]; // Erros de validação de tamanho de linha
+  validationWarning?: string; // Aviso se houver erros de validação
+}
+
+export interface DocumentValidationError {
+  lineIndex: number;
+  sequence: string;
+  expectedLength: number;
+  actualLength: number;
+  errorMessage: string;
+  startPosition: number;
+  endPosition: number;
 }
 
 export interface Layout {
