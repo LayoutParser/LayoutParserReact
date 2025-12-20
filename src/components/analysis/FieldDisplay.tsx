@@ -172,15 +172,6 @@ const FieldDisplay: React.FC = () => {
       // Se mesmo sequencial, ordenar por occurrence
       return (a.occurrence || 1) - (b.occurrence || 1);
     });
-
-    // ✅ Se há erro de validação, cortar na linha com erro (inclusive)
-    if (!shouldProcessAllLines && firstErrorLineIndex >= 0) {
-      const filteredGroups = groups.slice(0, firstErrorLineIndex + 1);
-      console.log(`🚫 Cortando displayGroups no erro: mantendo ${filteredGroups.length} de ${groups.length} grupos`);
-      return filteredGroups;
-    }
-
-    return groups;
   })();
 
 
@@ -203,11 +194,27 @@ const FieldDisplay: React.FC = () => {
   const firstErrorLineIndex = validationErrors.length > 0 ? Math.min(...validationErrors.map(e => e.lineIndex)) : -1;
   const hasValidationErrors = validationErrors.length > 0;
 
-  // ✅ Quando há erro de validação, processar apenas até a linha com erro (inclusive)
-  const shouldProcessAllLines = !hasValidationErrors;
+  // ✅ Índice físico da linha no TXT (0-based, considerando blocos de 600 chars)
+  // Preferimos calcular via `position` (mais confiável) para não depender do índice do array.
+  const getPhysicalLineIndex = (group: any, fallbackIndex: number): number => {
+    const pos = group?.position;
+    if (typeof pos === 'number' && pos >= 0) {
+      return Math.floor(pos / 600);
+    }
+    return fallbackIndex;
+  };
+
+  // ✅ Quando há erro de validação, renderizar apenas até a linha com erro (inclusive)
+  // IMPORTANTE: como o TXT é posicional, qualquer erro de tamanho invalida as linhas seguintes
+  const groupsToRender = hasValidationErrors && firstErrorLineIndex >= 0
+    ? displayGroups.filter((g, idx) => getPhysicalLineIndex(g, idx) <= firstErrorLineIndex)
+    : displayGroups;
 
   // ✅ Identificar o primeiro erro para mostrar detalhes específicos
   const firstError = validationErrors.length > 0 ? validationErrors[0] : null;
+  const firstErrorLineLabel = firstError
+    ? (firstError.lineIndex === 0 ? 'HEADER' : String(firstError.lineIndex - 1).padStart(3, '0'))
+    : null;
 
   // ✅ Função para verificar se uma linha tem erro específico
   const isLineWithError = (lineIndex: number): boolean => {
@@ -215,14 +222,6 @@ const FieldDisplay: React.FC = () => {
 
     // ✅ Verificar se esta linha específica tem erro de validação
     return validationErrors.some(error => error.lineIndex === lineIndex);
-  };
-
-  // ✅ Função para verificar se uma linha está desalinhada (após primeira linha com erro)
-  const isLineDesaligned = (lineIndex: number): boolean => {
-    if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
-
-    // ✅ Marcar linhas após a primeira com erro como desalinhadas (mas não com erro específico)
-    return lineIndex > firstErrorLineIndex;
   };
 
   // ✅ Função para identificar qual campo específico está causando erro na linha
@@ -281,7 +280,9 @@ const FieldDisplay: React.FC = () => {
   };
 
   // ✅ Log informativo sobre processamento
-  console.log(`📊 FieldDisplay: processando ${displayGroups.length} grupos de linhas${hasValidationErrors ? ` (cortado no erro da linha ${firstErrorLineIndex})` : ''}`);
+  console.log(
+    `📊 FieldDisplay: renderizando ${groupsToRender.length} grupos de linhas${hasValidationErrors ? ` (cortado no erro na linha física ${firstErrorLineIndex})` : ''}`
+  );
 
   return (
     <div className="field-display">
@@ -302,32 +303,31 @@ const FieldDisplay: React.FC = () => {
             <strong>Onde está o erro:</strong> No documento TXT processado (não no layout).<br/>
             {firstError && (
               <>
-                <strong>Primeiro erro na linha {firstError.lineIndex + 1}:</strong> {firstError.errorMessage}<br/>
+                <strong>Primeiro erro na linha {firstErrorLineLabel}:</strong> {firstError.errorMessage}<br/>
                 <strong>Campo problemático:</strong> O campo específico com problema será destacado em vermelho com sublinhado ondulado no documento.<br/>
               </>
             )}
-            <strong>Visualização:</strong> Linhas com erro específico em <span style={{color: '#dc3545'}}>vermelho</span>,
-            linhas desalinhadas em <span style={{color: '#ffc107'}}>amarelo</span>.
+            <strong>Visualização:</strong> Linha com erro em <span style={{color: '#dc3545'}}>vermelho</span>. As linhas seguintes não serão exibidas.
           </div>
         </div>
       )}
       
-      {displayGroups.map((group, groupIndex) => {
+      {groupsToRender.map((group, groupIndex) => {
         const groupData = group as any;
+        const physicalLineIndex = getPhysicalLineIndex(groupData, groupIndex);
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         const isLine999999 = group.lineName === 'LINHA999999' || group.lineName?.includes('999999');
         
         // ✅ Obter informação de ocorrência para exibição
         const occurrence = groupData.occurrence || 1;
-        const hasMultipleOccurrences = displayGroups.filter(g => g.lineName === group.lineName).length > 1;
+        const hasMultipleOccurrences = groupsToRender.filter(g => g.lineName === group.lineName).length > 1;
         
         // ✅ Verificar se esta linha tem erro de validação
         // Calcular posição da linha no TXT (baseado no índice do grupo)
         // let lineStartPosition = -1; - não usado diretamente, calculado quando necessário
         
-        const hasLineError = isLineWithError(groupIndex);
-        const isLineDesalignedAfterError = isLineDesaligned(groupIndex);
-        const problematicField = hasLineError ? getProblematicField(group, groupIndex) : null;
+        const hasLineError = isLineWithError(physicalLineIndex);
+        const problematicField = hasLineError ? getProblematicField(group, physicalLineIndex) : null;
         
         // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
@@ -501,7 +501,7 @@ const FieldDisplay: React.FC = () => {
           // O lineSequence é extraído das primeiras 6 posições da linha (já parseado pela API)
           // SEMPRE buscar na linha anterior, nunca na própria linha
           if (groupIndex > 0) {
-            const previousGroup = displayGroups[groupIndex - 1] as any;
+            const previousGroup = groupsToRender[groupIndex - 1] as any;
             const prevIsHeader = previousGroup?.lineName === 'HEADER' || 
                                  (previousGroup?.fields?.[0] as any)?.lineSequence === 'HEADER';
             const prevIsLine999999 = previousGroup?.lineName === 'LINHA999999' || 
@@ -545,7 +545,7 @@ const FieldDisplay: React.FC = () => {
           // 2. Calcular o número da linha sequencialmente (3 dígitos): 000, 001, 002, etc.
           // O número da linha é baseado na posição sequencial da linha no documento
           // groupIndex 0 = HEADER, groupIndex 1 = linha 000, groupIndex 2 = linha 001, etc.
-          const lineNumberSequential = (groupIndex - 1).toString().padStart(3, '0');
+          const lineNumberSequential = (physicalLineIndex - 1).toString().padStart(3, '0');
           lineNumberFromJson = lineNumberSequential;
 
           // Debug: verificar cálculo do número da linha
@@ -565,7 +565,7 @@ const FieldDisplay: React.FC = () => {
         
         // Debug: log para verificar extração do JSON
         if (groupIndex < 3) {
-          const previousGroup = groupIndex > 0 ? displayGroups[groupIndex - 1] as any : null;
+          const previousGroup = groupIndex > 0 ? (groupsToRender[groupIndex - 1] as any) : null;
           const previousSequenciaField = previousGroup?.fields?.find(
             (f: Field) => {
               const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
@@ -831,16 +831,16 @@ const FieldDisplay: React.FC = () => {
         }
         
         return (
-          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className={`field-line-container ${hasLineError ? 'line-with-error' : ''} ${isLineDesalignedAfterError ? 'line-desaligned' : ''}`}>
+          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className={`field-line-container ${hasLineError ? 'line-with-error' : ''}`}>
             {/* ✅ Indicador de múltiplas ocorrências */}
             {hasMultipleOccurrences && occurrence > 1 && (
               <div className="line-occurrence-indicator">
                 {group.lineName} - Ocorrência {occurrence}
               </div>
             )}
-            <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''} ${isLineDesalignedAfterError ? 'line-desaligned-content' : ''}`}>
+            <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''}`}>
               {/* Linha completa com exatamente 600 caracteres */}
-              <span className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''} ${isLineDesalignedAfterError ? 'line-desaligned-content' : ''}`}>
+              <span className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''}`}>
                 {(() => {
                   // Debug: verificar lineParts antes de renderizar
                   if (groupIndex < 3) {
