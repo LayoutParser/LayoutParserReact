@@ -762,16 +762,16 @@ const FieldDisplay: React.FC = () => {
         }
         
         return (
-          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className="field-line-container">
+          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className={`field-line-container ${hasLineError ? 'line-with-error' : ''}`}>
             {/* ✅ Indicador de múltiplas ocorrências */}
             {hasMultipleOccurrences && occurrence > 1 && (
               <div className="line-occurrence-indicator">
                 {group.lineName} - Ocorrência {occurrence}
               </div>
             )}
-            <div className="field-list-inline">
+            <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''}`}>
               {/* Linha completa com exatamente 600 caracteres */}
-              <span className="field-line-content">
+              <span className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''}`}>
                 {(() => {
                   // Debug: verificar lineParts antes de renderizar
                   if (groupIndex < 3) {
