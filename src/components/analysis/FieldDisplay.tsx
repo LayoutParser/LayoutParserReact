@@ -172,6 +172,15 @@ const FieldDisplay: React.FC = () => {
       // Se mesmo sequencial, ordenar por occurrence
       return (a.occurrence || 1) - (b.occurrence || 1);
     });
+
+    // ✅ Se há erro de validação, cortar na linha com erro (inclusive)
+    if (!shouldProcessAllLines && firstErrorLineIndex >= 0) {
+      const filteredGroups = groups.slice(0, firstErrorLineIndex + 1);
+      console.log(`🚫 Cortando displayGroups no erro: mantendo ${filteredGroups.length} de ${groups.length} grupos`);
+      return filteredGroups;
+    }
+
+    return groups;
   })();
 
 
@@ -193,6 +202,9 @@ const FieldDisplay: React.FC = () => {
   const validationErrors = parseResult?.validationErrors || [];
   const firstErrorLineIndex = validationErrors.length > 0 ? Math.min(...validationErrors.map(e => e.lineIndex)) : -1;
   const hasValidationErrors = validationErrors.length > 0;
+
+  // ✅ Quando há erro de validação, processar apenas até a linha com erro (inclusive)
+  const shouldProcessAllLines = !hasValidationErrors;
 
   // ✅ Identificar o primeiro erro para mostrar detalhes específicos
   const firstError = validationErrors.length > 0 ? validationErrors[0] : null;
@@ -267,6 +279,9 @@ const FieldDisplay: React.FC = () => {
       actualSize: lineError.actualLength
     };
   };
+
+  // ✅ Log informativo sobre processamento
+  console.log(`📊 FieldDisplay: processando ${displayGroups.length} grupos de linhas${hasValidationErrors ? ` (cortado no erro da linha ${firstErrorLineIndex})` : ''}`);
 
   return (
     <div className="field-display">
