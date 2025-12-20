@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useStructureStore } from '../../store/useStructureStore';
 import { useFieldStore } from '../../store/useFieldStore';
-import { usePropertiesStore } from '../../store/usePropertiesStore';
 import { buildTreeFromFields, buildTreeFromLayout } from '../../utils/treeBuilder';
 import type { TreeNode } from '../../types/structure';
 import './StructureTree.css';
@@ -11,7 +10,6 @@ const StructureTree: React.FC = () => {
   const { parseResult, fields } = useAppStore();
   const { 
     treeData, 
-    expandedNodes, 
     selectedNodeId, 
     setTreeData, 
     toggleNode, 
@@ -21,6 +19,7 @@ const StructureTree: React.FC = () => {
     isExpanded 
   } = useStructureStore();
   const { setFields } = useFieldStore();
+  const fieldStoreFields = useFieldStore(s => s.fields);
   // const { showLineProperties } = usePropertiesStore(); // Removido temporariamente
 
   // Construir árvore quando parseResult mudar
@@ -32,6 +31,33 @@ const StructureTree: React.FC = () => {
 
     // Usar campos do parseResult se fields estiver vazio
     const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
+
+    // ✅ Se houver erro de validação (linha > 600), o documento fica desalinhado.
+    // Portanto, o StructureTree deve mostrar apenas até a primeira linha com erro (inclusive).
+    const validationErrors = parseResult.validationErrors || [];
+    const hasValidationErrors = validationErrors.length > 0;
+    const firstErrorLineIndex = hasValidationErrors
+      ? Math.min(...validationErrors.map(e => e.lineIndex))
+      : -1;
+
+    const cleanText = (parseResult.text || '').replace(/\r/g, '').replace(/\n/g, '');
+    const allowedLineSequences = new Set<string>();
+    if (hasValidationErrors && firstErrorLineIndex >= 0 && cleanText.length >= 6) {
+      for (let i = 0; i <= firstErrorLineIndex; i++) {
+        const start = i * 600;
+        if (start + 6 <= cleanText.length) {
+          allowedLineSequences.add(cleanText.substring(start, start + 6));
+        }
+      }
+    }
+
+    const fieldsForTree =
+      hasValidationErrors && firstErrorLineIndex >= 0 && allowedLineSequences.size > 0
+        ? actualFields.filter(f => {
+            const seq = String((f as any).lineSequence || '').trim();
+            return allowedLineSequences.has(seq);
+          })
+        : actualFields;
     
     // Verificar se elements é um array de strings JSON ou objetos
     const layoutElements = parseResult.layout?.elements;
@@ -47,6 +73,9 @@ const StructureTree: React.FC = () => {
       fieldsFromStore: fields.length,
       fieldsFromResult: parseResult.fields?.length || 0,
       actualFields: actualFields.length,
+      fieldsForTree: fieldsForTree.length,
+      hasValidationErrors,
+      firstErrorLineIndex,
       documentStructure: parseResult.documentStructure,
       summary: parseResult.summary,
     });
@@ -55,14 +84,19 @@ const StructureTree: React.FC = () => {
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
     
-    if (hasLayoutElements) {
+    if (hasValidationErrors) {
+      // ✅ Em caso de erro de tamanho, NÃO exibir estrutura completa do layout,
+      // pois ela induz o usuário ao erro (linhas seguintes não são confiáveis).
+      console.log('🌳 Documento com erro de validação: usando buildTreeFromFields (cortado no erro)');
+      tree = buildTreeFromFields(fieldsForTree);
+    } else if (hasLayoutElements) {
       console.log('🌳 Usando buildTreeFromLayout com', layoutElements.length, 'elementos');
       console.log('🌳 Primeiro elemento:', layoutElements[0]);
       tree = buildTreeFromLayout(layoutElements);
       console.log('🌳 Árvore construída do layout:', tree.length, 'nós raiz');
-    } else if (actualFields && actualFields.length > 0) {
-      console.log('🌳 Usando buildTreeFromFields com', actualFields.length, 'campos');
-      tree = buildTreeFromFields(actualFields);
+    } else if (fieldsForTree && fieldsForTree.length > 0) {
+      console.log('🌳 Usando buildTreeFromFields com', fieldsForTree.length, 'campos');
+      tree = buildTreeFromFields(fieldsForTree);
     } else {
       console.warn('⚠️ StructureTree: Nenhum dado disponível para construir árvore');
       console.warn('⚠️ Layout completo:', parseResult.layout);
@@ -73,7 +107,7 @@ const StructureTree: React.FC = () => {
 
     console.log('🌳 Árvore construída com', tree.length, 'nós raiz');
     setTreeData(tree);
-    setFields(actualFields);
+    setFields(fieldsForTree);
   }, [parseResult, fields, setTreeData, setFields]);
 
   // Função auxiliar para encontrar a linha pai de um nó
@@ -106,7 +140,7 @@ const StructureTree: React.FC = () => {
     if (node.type === 'LineElementVO' || node.type.includes('Line')) {
       // Quando clica em uma linha, destacar o primeiro campo da linha
       const lineName = node.name;
-      const lineFields = fields.filter(f => f.lineName === lineName);
+      const lineFields = fieldStoreFields.filter(f => f.lineName === lineName);
       
       if (lineFields.length > 0) {
         const { highlightField } = useFieldStore.getState();
