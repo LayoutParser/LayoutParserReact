@@ -277,6 +277,31 @@
   border: 1px solid #dc3545;
 }
 
+/* Linha desalinhada (após erro) */
+.field-line-container.line-desaligned {
+  border-left: 4px solid #ffc107;
+  background-color: #fffbf0;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.field-list-inline.line-desaligned-content,
+.field-line-content.line-desaligned-content {
+  background-color: #fffae6;
+  border: 1px solid #ffc107;
+  opacity: 0.8;
+}
+
+/* Campo problemático específico */
+.field-inline.field-problematic {
+  background-color: #f8d7da !important;
+  border: 2px solid #dc3545 !important;
+  border-radius: 3px;
+  text-decoration: underline;
+  text-decoration-color: #dc3545;
+  text-decoration-style: wavy;
+}
+
 /* Alerta de erro de validação */
 .validation-error-alert {
   animation: slideDown 0.3s ease-out;

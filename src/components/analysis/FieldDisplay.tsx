@@ -194,13 +194,78 @@ const FieldDisplay: React.FC = () => {
   const firstErrorLineIndex = validationErrors.length > 0 ? Math.min(...validationErrors.map(e => e.lineIndex)) : -1;
   const hasValidationErrors = validationErrors.length > 0;
 
-  // ✅ Função para verificar se uma linha tem erro (ou está após primeira linha com erro)
-  const isLineWithError = (lineIndex: number, lineStartPosition: number): boolean => {
+  // ✅ Identificar o primeiro erro para mostrar detalhes específicos
+  const firstError = validationErrors.length > 0 ? validationErrors[0] : null;
+
+  // ✅ Função para verificar se uma linha tem erro específico
+  const isLineWithError = (lineIndex: number): boolean => {
     if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
-    
-    // ✅ Se há erro, marcar TODAS as linhas a partir da primeira linha com erro
-    // Isso inclui a linha com erro e todas as seguintes (desalinhamento)
-    return lineIndex >= firstErrorLineIndex;
+
+    // ✅ Verificar se esta linha específica tem erro de validação
+    return validationErrors.some(error => error.lineIndex === lineIndex);
+  };
+
+  // ✅ Função para verificar se uma linha está desalinhada (após primeira linha com erro)
+  const isLineDesaligned = (lineIndex: number): boolean => {
+    if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
+
+    // ✅ Marcar linhas após a primeira com erro como desalinhadas (mas não com erro específico)
+    return lineIndex > firstErrorLineIndex;
+  };
+
+  // ✅ Função para identificar qual campo específico está causando erro na linha
+  const getProblematicField = (group: any, groupIndex: number): { fieldName: string; issue: string; expectedSize?: number; actualSize?: number } | null => {
+    const lineError = validationErrors.find(error => error.lineIndex === groupIndex);
+    if (!lineError) return null;
+
+    // Para linhas com erro de tamanho, identificar qual campo está causando o problema
+    const displayFields = group.fields
+      .filter((field: any) => !field.fieldName?.toUpperCase().includes('SEQUENCIA'))
+      .sort((a: any, b: any) => (a.startPosition ?? a.sequence ?? 0) - (b.startPosition ?? b.sequence ?? 0));
+
+    // Calcular posições cumulativas para identificar onde o problema ocorre
+    let currentPosition = 0;
+    const sequenceLength = 6; // Sequencial sempre 6 chars
+    const lineNumberLength = 3; // Número da linha sempre 3 chars
+
+    // Adicionar sequencial e número da linha
+    currentPosition += sequenceLength + lineNumberLength;
+
+    // Verificar cada campo
+    for (const field of displayFields) {
+      const fieldStart = field.startPosition ? field.startPosition - 1 : currentPosition; // converter para 0-based
+      const fieldLength = field.length || field.value?.length || 1;
+
+      // Se a posição do campo + seu tamanho excederia 600, este campo é problemático
+      if (fieldStart + fieldLength > 600) {
+        return {
+          fieldName: field.fieldName || 'Campo Desconhecido',
+          issue: 'Campo excede limite de 600 caracteres da linha',
+          expectedSize: 600 - fieldStart,
+          actualSize: fieldLength
+        };
+      }
+
+      // Se chegamos ao limite de 600 caracteres antes de processar todos os campos
+      if (currentPosition >= 600) {
+        return {
+          fieldName: field.fieldName || 'Campo Desconhecido',
+          issue: 'Campo não cabe na linha (limite de 600 caracteres atingido)',
+          expectedSize: 0,
+          actualSize: fieldLength
+        };
+      }
+
+      currentPosition = fieldStart + fieldLength;
+    }
+
+    // Se não encontrou campo específico, pode ser um problema geral de tamanho
+    return {
+      fieldName: 'Estrutura da Linha',
+      issue: `Linha tem ${lineError.actualLength} caracteres (esperado: ${lineError.expectedLength})`,
+      expectedSize: lineError.expectedLength,
+      actualSize: lineError.actualLength
+    };
   };
 
   return (
@@ -220,7 +285,14 @@ const FieldDisplay: React.FC = () => {
           ⚠️ <strong>Erro no Documento:</strong> {parseResult.validationWarning.replace('⚠️ Erro no Documento: ', '')}
           <div style={{ fontSize: '12px', marginTop: '8px', fontWeight: 400 }}>
             <strong>Onde está o erro:</strong> No documento TXT processado (não no layout).<br/>
-            As linhas com erro serão destacadas em vermelho no documento. A partir da primeira linha com erro, todas as linhas seguintes estão desalinhadas.
+            {firstError && (
+              <>
+                <strong>Primeiro erro na linha {firstError.lineIndex + 1}:</strong> {firstError.errorMessage}<br/>
+                <strong>Campo problemático:</strong> O campo específico com problema será destacado em vermelho com sublinhado ondulado no documento.<br/>
+              </>
+            )}
+            <strong>Visualização:</strong> Linhas com erro específico em <span style={{color: '#dc3545'}}>vermelho</span>,
+            linhas desalinhadas em <span style={{color: '#ffc107'}}>amarelo</span>.
           </div>
         </div>
       )}
@@ -236,15 +308,11 @@ const FieldDisplay: React.FC = () => {
         
         // ✅ Verificar se esta linha tem erro de validação
         // Calcular posição da linha no TXT (baseado no índice do grupo)
-        let lineStartPosition = -1;
-        if (txtContent && groupData.position >= 0) {
-          lineStartPosition = Math.floor(groupData.position / 600) * 600;
-        } else {
-          // Tentar calcular baseado no índice do grupo (cada linha tem 600 chars)
-          lineStartPosition = groupIndex * 600;
-        }
+        // let lineStartPosition = -1; - não usado diretamente, calculado quando necessário
         
-        const hasLineError = isLineWithError(groupIndex, lineStartPosition);
+        const hasLineError = isLineWithError(groupIndex);
+        const isLineDesalignedAfterError = isLineDesaligned(groupIndex);
+        const problematicField = hasLineError ? getProblematicField(group, groupIndex) : null;
         
         // Determinar o sequencial a ser exibido (6 dígitos) - sempre do TXT
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
@@ -264,7 +332,7 @@ const FieldDisplay: React.FC = () => {
         }
         
         // Determinar o número da linha (3 dígitos) - formato antigo: sequencial(6) + espaço + número da linha(3)
-        let lineNumber = '000'; // Padrão: 3 dígitos
+        // let lineNumber = '000'; // Padrão: 3 dígitos - não usado diretamente, calculado no loop
         if (!isHeader) {
           // Tentar obter do initialValue do layout (ex: "000", "001", "004")
           const initialValue = getLineInitialValue(group.lineName);
@@ -593,9 +661,9 @@ const FieldDisplay: React.FC = () => {
         const sequenciaValue = sequenciaField?.value?.trim() || '000000';
         
         // Garantir que o sequencial tenha 6 dígitos
-        const sequenciaValueFormatted = /^\d+$/.test(sequenciaValue) 
-          ? sequenciaValue.padStart(6, '0') 
-          : sequenciaValue.padEnd(6, ' ');
+        // const sequenciaValueFormatted = /^\d+$/.test(sequenciaValue)
+        //   ? sequenciaValue.padStart(6, '0')
+        //   : sequenciaValue.padEnd(6, ' '); - não usado diretamente
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
@@ -762,16 +830,16 @@ const FieldDisplay: React.FC = () => {
         }
         
         return (
-          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className={`field-line-container ${hasLineError ? 'line-with-error' : ''}`}>
+          <div key={`${group.lineName}_${occurrence}_${groupIndex}`} className={`field-line-container ${hasLineError ? 'line-with-error' : ''} ${isLineDesalignedAfterError ? 'line-desaligned' : ''}`}>
             {/* ✅ Indicador de múltiplas ocorrências */}
             {hasMultipleOccurrences && occurrence > 1 && (
               <div className="line-occurrence-indicator">
                 {group.lineName} - Ocorrência {occurrence}
               </div>
             )}
-            <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''}`}>
+            <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''} ${isLineDesalignedAfterError ? 'line-desaligned-content' : ''}`}>
               {/* Linha completa com exatamente 600 caracteres */}
-              <span className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''}`}>
+              <span className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''} ${isLineDesalignedAfterError ? 'line-desaligned-content' : ''}`}>
                 {(() => {
                   // Debug: verificar lineParts antes de renderizar
                   if (groupIndex < 3) {
@@ -855,14 +923,17 @@ const FieldDisplay: React.FC = () => {
                     const fieldId = `${field.lineName}_${field.fieldName}`;
                     const highlighted = isFieldHighlighted(field);
                     const inSearch = isFieldInSearch(field);
-                    
+
+                    // ✅ Verificar se este campo é o problemático na linha com erro
+                    const isProblematicField = problematicField && problematicField.fieldName === field.fieldName;
+
                     return (
                       <span
                         key={`field-${partIndex}`}
                         data-field-id={fieldId}
-                        className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''}`}
+                        className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''} ${isProblematicField ? 'field-problematic' : ''}`}
                         onClick={() => handleFieldClick(field)}
-                        title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}`}
+                        title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}${isProblematicField ? ` - ❌ ${problematicField.issue}` : ''}`}
                       >
                         {part.content}
                       </span>
