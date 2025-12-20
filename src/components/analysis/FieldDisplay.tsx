@@ -13,16 +13,16 @@ const FieldDisplay: React.FC = () => {
   // Usar campos do parseResult se fields estiver vazio
   const actualFields = fields.length > 0 ? fields : (parseResult?.fields || []);
 
-  // Função para obter o initialValue de uma linha do layout
-  const getLineInitialValue = (lineName: string): string | null => {
-    if (!parseResult?.layout?.elements) return null;
-    
-    const lineElement = parseResult.layout.elements.find(
-      (el: any) => el.type === 'LineElementVO' && el.name === lineName
-    );
-    
-    return lineElement?.initialValue || null;
-  };
+  // Função comentada - não utilizada (número da linha agora é sequencial)
+  // const getLineInitialValue = (lineName: string): string | null => {
+  //   if (!parseResult?.layout?.elements) return null;
+  //
+  //   const lineElement = parseResult.layout.elements.find(
+  //     (el: any) => el.type === 'LineElementVO' && el.name === lineName
+  //   );
+  //
+  //   return lineElement?.initialValue || null;
+  // };
 
 
   useEffect(() => {
@@ -331,26 +331,7 @@ const FieldDisplay: React.FC = () => {
           displaySequential = 'HEADER';
         }
         
-        // Determinar o número da linha (3 dígitos) - formato antigo: sequencial(6) + espaço + número da linha(3)
-        // let lineNumber = '000'; // Padrão: 3 dígitos - não usado diretamente, calculado no loop
-        if (!isHeader) {
-          // Tentar obter do initialValue do layout (ex: "000", "001", "004")
-          const initialValue = getLineInitialValue(group.lineName);
-          if (initialValue && /^\d+$/.test(initialValue)) {
-            lineNumber = initialValue.padStart(3, '0');
-          } else if (groupData.lineSequence) {
-            // Usar lineSequence se disponível
-            if (/^\d+$/.test(groupData.lineSequence)) {
-              lineNumber = groupData.lineSequence.padStart(3, '0');
-            } else {
-              // Extrair número do nome da linha (ex: "LINHA000" -> "000", "LINHA001" -> "001")
-              lineNumber = extractLineNumber(group.lineName);
-            }
-          } else {
-            // Extrair número do nome da linha
-            lineNumber = extractLineNumber(group.lineName);
-          }
-        }
+        // O número da linha agora é calculado posteriormente como lineNumberFromJson
         
         // Filtrar e ordenar campos (excluir Sequencia, incluir Filler)
         const displayFields = group.fields
@@ -546,14 +527,19 @@ const FieldDisplay: React.FC = () => {
             }
           }
           
-          // 2. Usar initialValue do layout para o número da linha (3 dígitos)
-          // O lineSequence contém o sequencial (6 dígitos), não o número da linha
-          const initialValue = getLineInitialValue(group.lineName);
-          if (initialValue && /^\d+$/.test(initialValue)) {
-            lineNumberFromJson = initialValue.padStart(3, '0');
-          } else {
-            // Fallback: extrair do nome da linha (ex: "LINHA000" -> "000", "LINHA031" -> "031")
-            lineNumberFromJson = extractLineNumber(group.lineName);
+          // 2. Calcular o número da linha sequencialmente (3 dígitos): 000, 001, 002, etc.
+          // O número da linha é baseado na posição sequencial da linha no documento
+          // groupIndex 0 = HEADER, groupIndex 1 = linha 000, groupIndex 2 = linha 001, etc.
+          const lineNumberSequential = (groupIndex - 1).toString().padStart(3, '0');
+          lineNumberFromJson = lineNumberSequential;
+
+          // Debug: verificar cálculo do número da linha
+          if (groupIndex < 5) {
+            console.log(`🔢 Cálculo lineNumber para linha ${groupIndex} (${group.lineName}):`, {
+              groupIndex,
+              lineNumberSequential,
+              lineNumberFromJson
+            });
           }
           
           // Se não encontrou sequencial da linha anterior, usar padrão
