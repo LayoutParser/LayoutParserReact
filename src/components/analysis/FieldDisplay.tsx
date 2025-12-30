@@ -71,6 +71,14 @@ const FieldDisplay: React.FC = () => {
     return '000';
   };
 
+  // Função para extrair SEMPRE apenas os últimos 3 dígitos do nome da linha
+  // Ex: "LINHA096" -> "096", "LINHA999999" -> "999"
+  const extractLineNumber3 = (lineName: string): string => {
+    const digits = (lineName.match(/(\d+)$/)?.[1] ?? '').trim();
+    if (!digits) return '000';
+    return digits.slice(-3).padStart(3, '0');
+  };
+
   // Função para extrair o sequencial do arquivo baseado na posição da linha
   const extractSequentialFromFile = (lineName: string, lineSequence: string, txtContent: string, position: number): string => {
     if (!txtContent) {
@@ -488,79 +496,30 @@ const FieldDisplay: React.FC = () => {
         let currentPos = 0;
         
         if (isHeader) {
-          // HEADER não tem sequencial (6 espaços para manter alinhamento), apenas "HEADER" como linha
-          sequentialFromJson = '      '; // 6 espaços
-          lineNumberFromJson = 'HEADER';
+          // HEADER: usar "HEADER" como sequencial (6 chars) e "HDR" como identificador da linha (3 chars)
+          sequentialFromJson = 'HEADER';
+          lineNumberFromJson = 'HDR';
         } else if (isLine999999) {
-          // LINHA999999 também não tem sequencial (6 espaços), apenas "999999" como linha
-          sequentialFromJson = '      '; // 6 espaços
-          lineNumberFromJson = '999999';
+          // LINHA999999: usar sequencial do JSON se existir; caso contrário, usar "999999"
+          const seqCandidate = String(groupData.lineSequence || groupData.sequential || '').trim();
+          sequentialFromJson = /^\d{6}$/.test(seqCandidate) ? seqCandidate : '999999';
+          lineNumberFromJson = extractLineNumber3(group.lineName);
         } else {
-          // 1. Buscar o sequencial (6 dígitos) da linha ANTERIOR
-          // IMPORTANTE: O back-end filtra o campo "Sequencia", mas o lineSequence contém o sequencial de 6 dígitos
-          // O lineSequence é extraído das primeiras 6 posições da linha (já parseado pela API)
-          // SEMPRE buscar na linha anterior, nunca na própria linha
-          if (groupIndex > 0) {
-            const previousGroup = groupsToRender[groupIndex - 1] as any;
-            const prevIsHeader = previousGroup?.lineName === 'HEADER' || 
-                                 (previousGroup?.fields?.[0] as any)?.lineSequence === 'HEADER';
-            const prevIsLine999999 = previousGroup?.lineName === 'LINHA999999' || 
-                                     previousGroup?.lineName?.includes('999999');
-            
-            // Se a linha anterior é HEADER ou LINHA999999, não tem sequencial para passar
-            if (!prevIsHeader && !prevIsLine999999) {
-              // Primeiro, tentar buscar o campo "Sequencia" da linha anterior (caso não tenha sido filtrado)
-              const previousSequenciaField = previousGroup.fields?.find(
-                (f: Field) => {
-                  const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
-                  return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
-                }
-              );
-              
-              if (previousSequenciaField?.value) {
-                const seqValue = String(previousSequenciaField.value).trim();
-                if (/^\d{6}$/.test(seqValue)) {
-                  sequentialFromJson = seqValue;
-                } else if (/^\d+$/.test(seqValue)) {
-                  sequentialFromJson = seqValue.padStart(6, '0');
-                }
-              } else {
-                // Se não encontrou o campo "Sequencia", usar o lineSequence do primeiro field da linha anterior
-                // O lineSequence contém o sequencial de 6 dígitos (extraído das primeiras 6 posições)
-                const prevLineSeq = previousGroup.lineSequence || 
-                                     (previousGroup.fields?.[0] as any)?.lineSequence || 
-                                     '';
-                const prevLineSeqStr = String(prevLineSeq).trim();
-                if (prevLineSeqStr && prevLineSeqStr !== 'HEADER') {
-                  if (/^\d{6}$/.test(prevLineSeqStr)) {
-                    sequentialFromJson = prevLineSeqStr;
-                  } else if (/^\d+$/.test(prevLineSeqStr)) {
-                    sequentialFromJson = prevLineSeqStr.padStart(6, '0');
-                  }
-                }
-              }
-            }
-          }
-          
-          // 2. Calcular o número da linha sequencialmente (3 dígitos): 000, 001, 002, etc.
-          // O número da linha é baseado na posição sequencial da linha no documento
-          // groupIndex 0 = HEADER, groupIndex 1 = linha 000, groupIndex 2 = linha 001, etc.
-          const lineNumberSequential = (physicalLineIndex - 1).toString().padStart(3, '0');
-          lineNumberFromJson = lineNumberSequential;
-
-          // Debug: verificar cálculo do número da linha
-          if (groupIndex < 5) {
-            console.log(`🔢 Cálculo lineNumber para linha ${groupIndex} (${group.lineName}):`, {
-              groupIndex,
-              lineNumberSequential,
-              lineNumberFromJson
-            });
-          }
-          
-          // Se não encontrou sequencial da linha anterior, usar padrão
-          if (!sequentialFromJson) {
+          // ✅ Usar APENAS o JSON do back-end:
+          // - sequencial (6 dígitos) vem do ParsedField.LineSequence (primeiros 6 chars da linha)
+          // - número da linha (3 dígitos) vem do nome da linha (LINHA096 -> 096)
+          const seqCandidate = String(groupData.lineSequence || (group.fields?.[0] as any)?.lineSequence || '').trim();
+          if (/^\d{6}$/.test(seqCandidate)) {
+            sequentialFromJson = seqCandidate;
+          } else if (seqCandidate === 'HEADER') {
+            sequentialFromJson = 'HEADER';
+          } else if (/^\d+$/.test(seqCandidate)) {
+            sequentialFromJson = seqCandidate.padStart(6, '0').slice(-6);
+          } else {
             sequentialFromJson = '000000';
           }
+
+          lineNumberFromJson = extractLineNumber3(group.lineName);
         }
         
         // Debug: log para verificar extração do JSON
@@ -647,24 +606,11 @@ const FieldDisplay: React.FC = () => {
           });
         }
         
-        // Ajustar posições dos campos: se o primeiro campo começa na posição 1 (incluindo sequencial),
-        // precisamos pular o sequencial e linha ao renderizar os campos
-        // Se começa na posição 9 ou maior, os campos já estão após sequencial+linha
-        const firstFieldStartPos = displayFields.length > 0 ? (displayFields[0].startPosition || 0) : 0;
-        const fieldsIncludeSequential = firstFieldStartPos <= 8; // Se primeiro campo começa na posição 1-8, inclui sequencial+linha
+        // ✅ As posições (startPosition/length) já vêm corretas do back-end (1-based).
+        // Não tentar "adivinhar" offsets no front-end.
         
-        // 3. Buscar o campo "Sequencia" desta linha no JSON (pertence à próxima linha)
-        // IMPORTANTE: Usar o campo "Sequencia" já parseado pela API, não extrair do TXT
-        const sequenciaField = group.fields.find(
-          (f: Field) => (f.fieldName?.toUpperCase() || '') === 'SEQUENCIA'
-        );
-        const sequenciaLength = sequenciaField?.length || 6;
-        const sequenciaValue = sequenciaField?.value?.trim() || '000000';
-        
-        // Garantir que o sequencial tenha 6 dígitos
-        // const sequenciaValueFormatted = /^\d+$/.test(sequenciaValue)
-        //   ? sequenciaValue.padStart(6, '0')
-        //   : sequenciaValue.padEnd(6, ' '); - não usado diretamente
+        // OBS: O back-end não retorna o campo "Sequencia" (ele é filtrado).
+        // Então não tentamos completar a linha adicionando "Sequencia" no final.
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
@@ -680,16 +626,7 @@ const FieldDisplay: React.FC = () => {
             startPos = currentPos;
           }
           
-          // Se os campos incluem sequencial+linha (começam na posição 1-8),
-          // ajustar para começar após sequencial+linha (posição 9)
-          if (fieldsIncludeSequential && startPos < 9) {
-            // Campos que estão nas posições 0-8 (sequencial+linha) devem ser ignorados
-            // ou ajustados para começar após sequencial+linha
-            // Por enquanto, vamos pular campos que estão nas posições 0-8
-            if (startPos < 9) {
-              return; // Pular este campo, já está incluído no sequencial/linha destacado
-            }
-          }
+          // Não pular campos com base em heurística de offset; confiar no startPosition do back-end.
           
           const fieldLength = field.length || 1; // Mínimo 1 para evitar campos invisíveis
           let fieldValue = field.value || '';
@@ -760,23 +697,7 @@ const FieldDisplay: React.FC = () => {
           }
         });
         
-        // 5. Adicionar a tag Sequencia desta linha no final (pertence à próxima linha)
-        // Esta sequencia completa a linha atual até 600 caracteres
-        // IMPORTANTE: A tag Sequencia no final NÃO deve ser renderizada como destacada
-        // Ela é parte do conteúdo normal da linha, não um elemento destacado
-        // Vamos adicionar como 'field' ou 'static' normal, não como 'sequence'
-        if (currentPos + sequenciaLength <= LINE_LENGTH) {
-          lineParts.push({
-            type: 'static', // Mudado de 'sequence' para 'static' - não destacar
-            content: sequenciaValue.padEnd(sequenciaLength, ' '),
-            start: currentPos,
-            end: currentPos + sequenciaLength
-          });
-          currentPos += sequenciaLength;
-        } else {
-          // Se não há espaço para a sequencia, algo está errado
-          console.warn(`⚠️ Linha ${group.lineName}: não há espaço para tag Sequencia (${currentPos} + ${sequenciaLength} > ${LINE_LENGTH})`);
-        }
+        // Não adicionar "Sequencia" ao final no front-end.
         
         // 5. Preencher até 600 caracteres se necessário (não deveria acontecer se cálculo estiver correto)
         if (currentPos < LINE_LENGTH) {
