@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { ApiConfig, ParseRequest, ParseResponse } from '../types/api';
+import { createCorrelationId } from '../utils/correlation';
 
 // Configuração da API
 const getApiBaseUrl = (): string => {
@@ -45,6 +46,16 @@ const apiClient = axios.create({
   baseURL: API_CONFIG.baseUrl,
   timeout: 120000, // 2 minutos - necessário para buscar layouts do banco
   // Não definir Content-Type para FormData - axios faz isso automaticamente com boundary
+});
+
+// ✅ CorrelationId nasce no front-end e é enviado em TODAS as chamadas
+apiClient.interceptors.request.use((config) => {
+  const headers = (config.headers ?? {}) as any;
+  if (!headers['X-Correlation-ID']) {
+    headers['X-Correlation-ID'] = createCorrelationId();
+  }
+  config.headers = headers;
+  return config;
 });
 
 // Serviço de parsing
