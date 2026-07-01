@@ -1,0 +1,15 @@
+{
+  "//": "Conecta o Claude Code deste FRONT ao MCP Server da API (LayoutParserMcp, C#).",
+  "//como-usar": "Copie para .mcp.json na raiz. Pre-requisito: buildar o MCP na API (dotnet build -c Release em ../LayoutParserApi/mcp/LayoutParserMcp). Aponte para a DLL, nunca 'dotnet run'. Gestao de MCP = @lp-devops (ver .claude/rules/mcp-usage.md).",
+  "mcpServers": {
+    "layoutparser": {
+      "command": "dotnet",
+      "args": [
+        "C:\\Users\\elson.lopes\\source\\repos\\LayoutParserApi\\mcp\\LayoutParserMcp\\bin\\Release\\net10.0\\LayoutParserMcp.dll"
+      ],
+      "env": {
+        "LAYOUTPARSER_API_URL": "http://localhost:5000"
+      }
+    }
+  }
+}

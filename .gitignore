@@ -34,3 +34,8 @@ coverage
 # Build outputs
 build/
 dist/
+
+# Claude Code — config local/máquina (use os .example versionados)
+.claude/settings.json
+.claude/settings.local.json
+.mcp.json
