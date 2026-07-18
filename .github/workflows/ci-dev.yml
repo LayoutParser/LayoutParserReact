@@ -1,0 +1,60 @@
+name: CI Dev (LayoutParserReact)
+
+# CI de DESENVOLVIMENTO — roda exclusivamente no runner local de dev (label 'dev-local').
+# Deploys de produção exigem a label 'production' (ver deploy.yml): os dois pools nunca se cruzam.
+# Este workflow NÃO faz deploy — apenas valida install + build.
+
+on:
+  push:
+    branches:
+      - develop
+      - 'feat/**'
+  workflow_dispatch:
+
+# Um push novo na mesma branch cancela o run anterior ainda em andamento
+# (o runner de dev é único — evita fila desnecessária).
+concurrency:
+  group: ci-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # NUNCA adicionar a label 'production' aqui.
+    runs-on: [self-hosted, windows, dev-local]
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout LayoutParserReact
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install dependencies (npm ci)
+      run: |
+        # npm ci usa o package-lock.json versionado — instalação limpa e reprodutível.
+        npm ci
+
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Falha ao instalar dependencias (npm ci)"
+          exit 1
+        }
+
+        Write-Host "Dependencias instaladas com sucesso"
+
+    - name: Build (tsc + vite)
+      run: |
+        # 'npm run build' roda 'tsc && vite build' — inclui type-check completo,
+        # mais estrito que o 'build:prod' usado no deploy. Sem deploy aqui.
+        npm run build
+
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Falha ao compilar LayoutParserReact"
+          exit 1
+        }
+
+        Write-Host "Build concluido com sucesso"
