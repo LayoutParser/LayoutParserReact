@@ -10,22 +10,16 @@ import './LayoutSearch.css';
 const LayoutSearch: React.FC = () => {
   const {
     allLayouts,
-    filteredLayouts,
-    selectedLayoutIndex,
     isSearching,
     searchError,
     showSearchResults,
-    searchTerm,
     showSearchButton,
     setAllLayouts,
-    setFilteredLayouts,
     setSelectedLayoutIndex,
     setIsSearching,
     setSearchError,
     setShowSearchResults,
-    setSearchTerm,
     setShowSearchButton,
-    filterLayouts,
   } = useLayoutStore();
 
   const { selectedLayout, setSelectedLayout } = useAppStore();
@@ -107,12 +101,6 @@ const LayoutSearch: React.FC = () => {
       guid: layout.layoutGuid,
       index: index
     });
-  };
-
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value;
-    setSearchTerm(term);
-    filterLayouts(term);
   };
 
   const handleRefreshCache = async () => {

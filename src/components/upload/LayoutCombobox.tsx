@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLayoutStore } from '../../store/useLayoutStore';
-import { useAppStore } from '../../store/useAppStore';
 import type { Layout } from '../../types/layout';
 import './LayoutCombobox.css';
 

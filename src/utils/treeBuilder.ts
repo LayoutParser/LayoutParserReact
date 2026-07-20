@@ -115,14 +115,14 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
  * Converte campos parseados em uma árvore simples agrupada por linha
  */
 export const buildTreeFromFields = (fields: any[]): TreeNode[] => {
-  const groupedByLine = fields.reduce((acc, field) => {
+  const groupedByLine = fields.reduce<Record<string, any[]>>((acc, field) => {
     const lineName = field.lineName || 'OUTROS';
     if (!acc[lineName]) {
       acc[lineName] = [];
     }
     acc[lineName].push(field);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {});
 
   return Object.keys(groupedByLine)
     .sort()
