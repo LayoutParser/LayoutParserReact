@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { parseService } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { useAppStore } from '../../store/useAppStore';
+import { useTransformationStore } from '../../store/useTransformationStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
-import StructureTree from '../analysis/StructureTree';
-import FieldDisplay from '../analysis/FieldDisplay';
+import AnalysisModeTabs from '../analysis/AnalysisModeTabs';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
 import type { ParseRequest } from '../../types/api';
@@ -32,6 +32,10 @@ const LayoutParserPage: React.FC = () => {
     setFields,
     setSelectedLayout,
   } = useAppStore();
+
+  // Só para saber qual aba de análise está ativa (ver AnalysisModeTabs) e decidir se a busca
+  // de campos faz sentido na tela — não interfere no fluxo de upload/parse abaixo.
+  const { activeMode } = useTransformationStore();
 
   // Carregar layouts do cache ao montar
   React.useEffect(() => {
@@ -210,7 +214,11 @@ const LayoutParserPage: React.FC = () => {
             <div className="structure-content">
               <h2>Estrutura de Layout</h2>
               <DocumentSummary />
-              <FieldSearch />
+              {/* FieldSearch destaca campos em FieldDisplay (aba "TXT Posicional"). Na aba
+                  "XML Transformação Final" esse componente não é renderizado, então buscar
+                  não teria nenhum efeito visível — por isso escondemos a busca nesse modo,
+                  em vez de deixar um controle que parece funcionar mas não faz nada em tela. */}
+              {activeMode !== 'xml-transformacao' && <FieldSearch />}
             </div>
           ) : (
             <div className="structure-placeholder">
@@ -287,14 +295,7 @@ const LayoutParserPage: React.FC = () => {
         {/* Bottom-Right: Visualização do Arquivo (oculta até escolher arquivo) */}
         <div className="l-bottom-right">
           {parseResult && parseResult.success && txtFile ? (
-            <div className="file-visualization">
-              <div className="file-visualization-content">
-                <FieldDisplay />
-              </div>
-              <div className="file-visualization-header">
-                <StructureTree />
-              </div>
-            </div>
+            <AnalysisModeTabs />
           ) : (
             <div className="file-visualization-placeholder">
               <p>Vai ficar oculto até o usuário escolher um arquivo</p>
