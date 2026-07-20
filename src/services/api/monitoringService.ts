@@ -1,5 +1,4 @@
 import apiClient from '../api';
-import type { LineValidationInfo } from '../../types/api';
 
 export interface LayoutAnalysis {
   layoutGuid: string;

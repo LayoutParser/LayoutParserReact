@@ -1,0 +1,62 @@
+.analysis-mode-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-mode-tabs-checking {
+  padding: 0.5rem 1rem;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* className extra passado ao Tabs compartilhado (components/shared/Tabs.tsx) */
+.analysis-mode-tabs-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-mode-tabs-container .tabs-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Conteúdo da aba "TXT Posicional" (FieldDisplay + StructureTree).
+   Movido de LayoutParserPage.css — antes era renderizado direto em .l-bottom-right,
+   agora é o conteúdo de uma aba dentro de AnalysisModeTabs. */
+.file-visualization {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.file-visualization-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #ffffff;
+  margin-bottom: 0.75rem;
+}
+
+.file-visualization-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.file-visualization-header .structure-tree {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #ffffff;
+}

@@ -1,0 +1,92 @@
+.xml-transformation-display {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.xml-transformation-actions {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.xml-transformation-generate-btn {
+  background: linear-gradient(135deg, #5700ff 0%, #ed008c 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(87, 0, 255, 0.3);
+}
+
+.xml-transformation-generate-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(87, 0, 255, 0.4);
+}
+
+.xml-transformation-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.xml-transformation-generate-btn:focus-visible {
+  outline: 3px solid #5700ff;
+  outline-offset: 2px;
+}
+
+.xml-transformation-error {
+  background: rgba(237, 0, 140, 0.1);
+  color: #ed008c;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #ed008c;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.xml-transformation-result h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  color: #000000;
+  font-weight: 600;
+}
+
+.xml-transformation-content {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* O bloco ganhou tabIndex para rolagem via teclado (ver XmlTransformationDisplay.tsx) —
+   precisa de um indicador de foco visível, já que <pre> não tem um nativo tão claro
+   quanto um botão. */
+.xml-transformation-content:focus-visible {
+  outline: 3px solid #5700ff;
+  outline-offset: 2px;
+}
+
+.xml-transformation-placeholder {
+  /* #666 (não #999) para manter contraste AA em texto normal — mesmo tom já usado em
+     .structure-placeholder (LayoutParserPage.css) e .analysis-mode-tabs-checking. */
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+  padding: 2rem 0;
+}

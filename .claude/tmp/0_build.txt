@@ -1,0 +1,131 @@
+﻿2026-07-20T20:08:18.5499064Z Current runner version: '2.335.1'
+2026-07-20T20:08:18.5522533Z Runner name: 'NDD-NOT-10910'
+2026-07-20T20:08:18.5523803Z Runner group name: 'default'
+2026-07-20T20:08:18.5525173Z Machine name: 'NDD-NOT-10910'
+2026-07-20T20:08:18.5531579Z ##[group]GITHUB_TOKEN Permissions
+2026-07-20T20:08:18.5536848Z Contents: read
+2026-07-20T20:08:18.5537626Z Metadata: read
+2026-07-20T20:08:18.5538261Z Packages: read
+2026-07-20T20:08:18.5539105Z ##[endgroup]
+2026-07-20T20:08:18.5543240Z Secret source: Actions
+2026-07-20T20:08:18.5544482Z Prepare workflow directory
+2026-07-20T20:08:18.7012164Z Prepare all required actions
+2026-07-20T20:08:18.7092778Z Getting action download info
+2026-07-20T20:08:19.3492798Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-07-20T20:08:20.0901321Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-07-20T20:08:21.7383705Z Complete job name: build
+2026-07-20T20:08:21.9930728Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T20:08:21.9956319Z ##[group]Run actions/checkout@v4
+2026-07-20T20:08:21.9960843Z with:
+2026-07-20T20:08:21.9962816Z   fetch-depth: 1
+2026-07-20T20:08:21.9964721Z   repository: LayoutParser/LayoutParserReact
+2026-07-20T20:08:21.9979652Z   token: ***
+2026-07-20T20:08:21.9981100Z   ssh-strict: true
+2026-07-20T20:08:21.9982396Z   ssh-user: git
+2026-07-20T20:08:21.9983616Z   persist-credentials: true
+2026-07-20T20:08:21.9984925Z   clean: true
+2026-07-20T20:08:21.9986179Z   sparse-checkout-cone-mode: true
+2026-07-20T20:08:21.9987501Z   fetch-tags: false
+2026-07-20T20:08:21.9988692Z   show-progress: true
+2026-07-20T20:08:21.9989784Z   lfs: false
+2026-07-20T20:08:21.9990924Z   submodules: false
+2026-07-20T20:08:21.9991999Z   set-safe-directory: true
+2026-07-20T20:08:21.9993258Z   allow-unsafe-pr-checkout: false
+2026-07-20T20:08:21.9996335Z ##[endgroup]
+2026-07-20T20:08:22.2947211Z Syncing repository: LayoutParser/LayoutParserReact
+2026-07-20T20:08:22.2952503Z ##[group]Getting Git version info
+2026-07-20T20:08:22.2954829Z Working directory is 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact'
+2026-07-20T20:08:22.3106346Z ##[endgroup]
+2026-07-20T20:08:22.3108069Z Deleting the contents of 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact'
+2026-07-20T20:08:23.4238820Z The repository will be downloaded using the GitHub REST API
+2026-07-20T20:08:23.4245020Z To create a local Git repository instead, add Git 2.18 or higher to the PATH
+2026-07-20T20:08:23.4248031Z Downloading the archive
+2026-07-20T20:08:24.3128093Z Writing archive to disk
+2026-07-20T20:08:24.3199361Z Extracting the archive
+2026-07-20T20:08:24.6296741Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "$ErrorActionPreference = 'Stop' ; try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ; try { [System.IO.Compression.ZipFile]::ExtractToDirectory('C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\ebefbb6d-7d21-464b-96aa-9d6609ed1d97.zip', 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\ebefbb6d-7d21-464b-96aa-9d6609ed1d97', $true) } catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\ebefbb6d-7d21-464b-96aa-9d6609ed1d97.zip' -DestinationPath 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\ebefbb6d-7d21-464b-96aa-9d6609ed1d97' -Force } else { throw $_ } } ;"
+2026-07-20T20:08:26.6673619Z Resolved version LayoutParser-LayoutParserReact-995e915
+2026-07-20T20:08:27.1383175Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T20:08:27.1386567Z ##[group]Run actions/setup-node@v4
+2026-07-20T20:08:27.1387043Z with:
+2026-07-20T20:08:27.1387409Z   node-version: 20.x
+2026-07-20T20:08:27.1387790Z   always-auth: false
+2026-07-20T20:08:27.1388168Z   check-latest: false
+2026-07-20T20:08:27.1391833Z   token: ***
+2026-07-20T20:08:27.1392199Z ##[endgroup]
+2026-07-20T20:08:27.4431428Z Found in cache @ C:\actions-runner\_work\_tool\node\20.20.2\x64
+2026-07-20T20:08:27.4444035Z (node:24236) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-07-20T20:08:27.4444829Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-07-20T20:08:27.4463769Z ##[group]Environment details
+2026-07-20T20:08:29.3477024Z node: v20.20.2
+2026-07-20T20:08:29.3478869Z npm: 10.8.2
+2026-07-20T20:08:29.3479224Z yarn: 
+2026-07-20T20:08:29.3480025Z ##[endgroup]
+2026-07-20T20:08:29.4098503Z ##[group]Run # npm ci usa o package-lock.json versionado — instalação limpa e reprodutível.
+2026-07-20T20:08:29.4099438Z [36;1m# npm ci usa o package-lock.json versionado — instalação limpa e reprodutível.[0m
+2026-07-20T20:08:29.4099863Z [36;1mnpm ci[0m
+2026-07-20T20:08:29.4100045Z [36;1m[0m
+2026-07-20T20:08:29.4100261Z [36;1mif ($LASTEXITCODE -ne 0) {[0m
+2026-07-20T20:08:29.4100603Z [36;1m  Write-Error "Falha ao instalar dependencias (npm ci)"[0m
+2026-07-20T20:08:29.4100995Z [36;1m  exit 1[0m
+2026-07-20T20:08:29.4101161Z [36;1m}[0m
+2026-07-20T20:08:29.4101310Z [36;1m[0m
+2026-07-20T20:08:29.4101523Z [36;1mWrite-Host "Dependencias instaladas com sucesso"[0m
+2026-07-20T20:08:29.4196487Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-07-20T20:08:29.4197843Z ##[endgroup]
+2026-07-20T20:08:34.2226859Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+2026-07-20T20:08:34.4707607Z npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+2026-07-20T20:08:35.3843561Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+2026-07-20T20:08:35.6396390Z npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+2026-07-20T20:08:37.4720358Z npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+2026-07-20T20:08:45.0375394Z npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+2026-07-20T20:08:48.4086700Z 
+2026-07-20T20:08:48.4088136Z added 237 packages, and audited 238 packages in 17s
+2026-07-20T20:08:48.4090252Z 
+2026-07-20T20:08:48.4091368Z 53 packages are looking for funding
+2026-07-20T20:08:48.4092445Z   run `npm fund` for details
+2026-07-20T20:08:49.0307412Z 
+2026-07-20T20:08:49.0309653Z 22 vulnerabilities (1 low, 6 moderate, 15 high)
+2026-07-20T20:08:49.0311132Z 
+2026-07-20T20:08:49.0312514Z To address issues that do not require attention, run:
+2026-07-20T20:08:49.0314275Z   npm audit fix
+2026-07-20T20:08:49.0314737Z 
+2026-07-20T20:08:49.0315248Z To address all issues (including breaking changes), run:
+2026-07-20T20:08:49.0315916Z   npm audit fix --force
+2026-07-20T20:08:49.0316177Z 
+2026-07-20T20:08:49.0316456Z Run `npm audit` for details.
+2026-07-20T20:08:49.2907778Z Dependencias instaladas com sucesso
+2026-07-20T20:08:49.5726185Z ##[group]Run # 'npm run build' roda 'tsc && vite build' — inclui type-check completo,
+2026-07-20T20:08:49.5727038Z [36;1m# 'npm run build' roda 'tsc && vite build' — inclui type-check completo,[0m
+2026-07-20T20:08:49.5728750Z [36;1m# mais estrito que o 'build:prod' usado no deploy. Sem deploy aqui.[0m
+2026-07-20T20:08:49.5729121Z [36;1mnpm run build[0m
+2026-07-20T20:08:49.5729331Z [36;1m[0m
+2026-07-20T20:08:49.5729537Z [36;1mif ($LASTEXITCODE -ne 0) {[0m
+2026-07-20T20:08:49.5729865Z [36;1m  Write-Error "Falha ao compilar LayoutParserReact"[0m
+2026-07-20T20:08:49.5730182Z [36;1m  exit 1[0m
+2026-07-20T20:08:49.5730362Z [36;1m}[0m
+2026-07-20T20:08:49.5730528Z [36;1m[0m
+2026-07-20T20:08:49.5730736Z [36;1mWrite-Host "Build concluido com sucesso"[0m
+2026-07-20T20:08:49.5826493Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-07-20T20:08:49.5827049Z ##[endgroup]
+2026-07-20T20:08:52.0694558Z 
+2026-07-20T20:08:59.8231608Z > layout-parser-react@1.0.0 build
+2026-07-20T20:08:59.8232366Z > tsc && vite build
+2026-07-20T20:08:59.8232659Z 
+2026-07-20T20:08:59.8291104Z ##[error]src/components/analysis/LineProperties.tsx(3,1): error TS6133: 'LayoutElement' is declared but its value is never read.
+2026-07-20T20:08:59.8313808Z ##[error]src/components/upload/LayoutCombobox.tsx(2,1): error TS6133: 'useLayoutStore' is declared but its value is never read.
+2026-07-20T20:08:59.8317021Z ##[error]src/components/upload/LayoutCombobox.tsx(3,1): error TS6133: 'useAppStore' is declared but its value is never read.
+2026-07-20T20:08:59.8319587Z ##[error]src/components/upload/LayoutSearch.tsx(13,5): error TS6133: 'filteredLayouts' is declared but its value is never read.
+2026-07-20T20:08:59.8323181Z ##[error]src/components/upload/LayoutSearch.tsx(14,5): error TS6133: 'selectedLayoutIndex' is declared but its value is never read.
+2026-07-20T20:08:59.8332458Z ##[error]src/components/upload/LayoutSearch.tsx(18,5): error TS6133: 'searchTerm' is declared but its value is never read.
+2026-07-20T20:08:59.8338963Z ##[error]src/components/upload/LayoutSearch.tsx(21,5): error TS6133: 'setFilteredLayouts' is declared but its value is never read.
+2026-07-20T20:08:59.8344406Z ##[error]src/components/upload/LayoutSearch.tsx(112,9): error TS6133: 'handleSearchInputChange' is declared but its value is never read.
+2026-07-20T20:08:59.8352090Z ##[error]src/layouts/MainLayout.tsx(2,10): error TS6133: 'NavLink' is declared but its value is never read.
+2026-07-20T20:08:59.8356259Z ##[error]src/services/api/monitoringService.ts(2,1): error TS6133: 'LineValidationInfo' is declared but its value is never read.
+2026-07-20T20:08:59.8359455Z ##[error]src/utils/treeBuilder.ts(135,46): error TS7006: Parameter 'field' implicitly has an 'any' type.
+2026-07-20T20:08:59.8362347Z ##[error]src/utils/treeBuilder.ts(135,53): error TS7006: Parameter 'fieldIndex' implicitly has an 'any' type.
+2026-07-20T20:09:06.4413219Z [31;1mWrite-Error: [31;1mFalha ao compilar LayoutParserReact[0m
+2026-07-20T20:09:06.6367022Z ##[error]Process completed with exit code 1.
+2026-07-20T20:09:06.8809555Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-07-20T20:09:06.8816131Z Post job cleanup.
+2026-07-20T20:09:08.3182597Z Cleaning up orphan processes
+2026-07-20T20:09:08.4359313Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

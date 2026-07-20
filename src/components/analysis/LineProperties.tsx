@@ -1,6 +1,5 @@
 import React from 'react';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
-import type { LayoutElement } from '../../types/structure';
 import './LineProperties.css';
 
 const LineProperties: React.FC = () => {
