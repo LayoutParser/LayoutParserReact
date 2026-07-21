@@ -2,7 +2,14 @@ name: CI Dev (LayoutParserReact)
 
 # CI de DESENVOLVIMENTO — roda exclusivamente no runner local de dev (label 'dev-local').
 # Deploys de produção exigem a label 'production' (ver deploy.yml): os dois pools nunca se cruzam.
-# Este workflow NÃO faz deploy — apenas valida install + build.
+#
+# Push em 'feat/**': só valida (install + build, tsc estrito). Push em 'develop': além de
+# validar, publica o front de verdade nesta máquina — site IIS de dev DEDICADO na porta
+# vars.FRONTEND_DEV_PORT (ex.: 8081), deliberadamente separado do Default Web Site (porta 80)
+# e de C:\inetpub\wwwroot\layoutparser (já usado pelo deploy de dev do back-end). Variables
+# necessárias (repo Settings -> Secrets and variables -> Actions -> aba Variables, NÃO
+# Secrets — nenhuma delas é sensível): DEPLOY_PATH_DEV_FRONTEND, FRONTEND_DEV_PORT,
+# API_URL_DEV.
 
 on:
   push:
@@ -21,7 +28,7 @@ jobs:
   build:
     # NUNCA adicionar a label 'production' aqui.
     runs-on: [self-hosted, windows, dev-local]
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
     - name: Checkout LayoutParserReact
@@ -58,3 +65,182 @@ jobs:
         }
 
         Write-Host "Build concluido com sucesso"
+
+    # ── Deploy local de DEV (site IIS dedicado, só em push para 'develop') ──────────
+
+    - name: Resolver variaveis de deploy dev (front)
+      if: github.ref == 'refs/heads/develop'
+      env:
+        DEPLOY_PATH_DEV_FRONTEND: ${{ vars.DEPLOY_PATH_DEV_FRONTEND }}
+        FRONTEND_DEV_PORT: ${{ vars.FRONTEND_DEV_PORT }}
+        API_URL_DEV: ${{ vars.API_URL_DEV }}
+      run: |
+        # DEPLOY_PATH_DEV_FRONTEND/FRONTEND_DEV_PORT/API_URL_DEV sao Variables do repositorio
+        # (nao Secrets — nenhuma e sensivel). Raiz deliberadamente separada de
+        # C:\inetpub\wwwroot\layoutparser (ja usada pelo Default Web Site e pelo deploy de dev
+        # do back-end) para nao colidir com o que ja existe nesta maquina.
+        $DEPLOY_ROOT = "$env:DEPLOY_PATH_DEV_FRONTEND".Trim('"', "'", ' ')
+        if ([string]::IsNullOrWhiteSpace($DEPLOY_ROOT)) {
+          Write-Error ("A Variable DEPLOY_PATH_DEV_FRONTEND nao esta configurada! " +
+            "Crie em: GitHub -> repo LayoutParserReact -> Settings -> Secrets and variables -> Actions -> aba Variables. " +
+            "Valor sugerido nesta maquina de dev: C:\inetpub\layoutparser-front-dev")
+          exit 1
+        }
+
+        $PORT = "$env:FRONTEND_DEV_PORT".Trim('"', "'", ' ')
+        if ([string]::IsNullOrWhiteSpace($PORT)) { $PORT = "8081" }
+
+        $API_URL = "$env:API_URL_DEV".Trim('"', "'", ' ', '/')
+        if ([string]::IsNullOrWhiteSpace($API_URL)) { $API_URL = "http://localhost:5100" }
+
+        $SITE_PATH = Join-Path $DEPLOY_ROOT "front-end"
+        $BACKUPS_PATH = Join-Path $DEPLOY_ROOT "backups"
+        $SITE_URL = "http://localhost:$PORT/"
+
+        Add-Content -Path $env:GITHUB_ENV -Value "SITE_PATH_RESOLVED=$SITE_PATH"
+        Add-Content -Path $env:GITHUB_ENV -Value "BACKUPS_PATH_RESOLVED=$BACKUPS_PATH"
+        Add-Content -Path $env:GITHUB_ENV -Value "PORT_RESOLVED=$PORT"
+        Add-Content -Path $env:GITHUB_ENV -Value "SITE_URL_RESOLVED=$SITE_URL"
+        Add-Content -Path $env:GITHUB_ENV -Value "API_URL_RESOLVED_FRONT=$API_URL"
+
+        Write-Host "Site fisico: $SITE_PATH"
+        Write-Host "Backups: $BACKUPS_PATH"
+        Write-Host "Porta: $PORT"
+        Write-Host "URL do site: $SITE_URL"
+        Write-Host "API URL usada no build: $API_URL"
+
+    - name: Build de producao (dev) com API URL correta
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        # 'build:prod' (= vite build --mode production) NAO roda tsc — mesmo comando do
+        # deploy.yml de producao. VITE_API_BASE_URL e sobrescrito aqui para apontar pra API
+        # de dev desta maquina (servico Windows nativo, porta 5100 — ver ci-dev.yml do
+        # LayoutParserApi) em vez do fallback por hostname em src/services/api.ts, que
+        # aponta 'localhost' para :5000 (porta do 'dotnet run' manual, nao da API de dev
+        # publicada).
+        $env:VITE_API_BASE_URL = $env:API_URL_RESOLVED_FRONT
+
+        npm run build:prod
+
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Falha ao compilar LayoutParserReact (build:prod, dev)"
+          exit 1
+        }
+
+        if (-not (Test-Path "dist/index.html")) {
+          Write-Error "dist/index.html nao foi gerado"
+          exit 1
+        }
+
+        Write-Host "Build de producao (dev) concluido"
+
+    - name: Provisionar site IIS de dev (idempotente)
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        # Roda como LocalSystem (conta do servico do runner) — privilegio suficiente para
+        # gerenciar IIS, mesmo que a sessao interativa que preparou este workflow nao tivesse.
+        # Idempotente: so cria o site se ele ainda nao existir; em runs seguintes so os
+        # arquivos sao atualizados (step seguinte).
+        $siteName = "layoutparser-front-dev"
+
+        New-Item -ItemType Directory -Path $env:SITE_PATH_RESOLVED -Force | Out-Null
+        New-Item -ItemType Directory -Path $env:BACKUPS_PATH_RESOLVED -Force | Out-Null
+
+        try {
+          Import-Module WebAdministration -ErrorAction Stop
+        } catch {
+          Write-Error "Nao foi possivel carregar o modulo WebAdministration (IIS Management Tools instalado? Elevacao suficiente?): $($_.Exception.Message)"
+          exit 1
+        }
+
+        $existing = Get-Website -Name $siteName -ErrorAction SilentlyContinue
+        if ($existing) {
+          Write-Host "Site IIS '$siteName' ja existe (PhysicalPath: $($existing.PhysicalPath)) — nao recriando."
+        } else {
+          Write-Host "Criando site IIS '$siteName' na porta $env:PORT_RESOLVED, raiz $env:SITE_PATH_RESOLVED..."
+          try {
+            New-Website -Name $siteName -PhysicalPath $env:SITE_PATH_RESOLVED -Port ([int]$env:PORT_RESOLVED) -ErrorAction Stop | Out-Null
+          } catch {
+            Write-Error "Falha ao criar o site IIS '$siteName' na porta $($env:PORT_RESOLVED): $($_.Exception.Message)"
+            exit 1
+          }
+          Write-Host "Site IIS '$siteName' criado."
+        }
+
+        # Diagnostico nao-fatal: sem o modulo URL Rewrite, as rotas do React Router fora de
+        # '/' dao 404 ao dar refresh/link direto (ver public/web.config). Nao instalamos
+        # automaticamente aqui — so avisamos, pra nao mexer em modulo global do IIS sem pedido
+        # explicito.
+        $rewriteModule = Get-WebGlobalModule -Name "RewriteModule" -ErrorAction SilentlyContinue
+        if (-not $rewriteModule) {
+          Write-Warning "Modulo IIS 'URL Rewrite' nao encontrado — rotas do SPA fora de '/' podem dar 404 (instalar manualmente se necessario)."
+        }
+
+    - name: Backup + deploy via robocopy (dev, front)
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        $SRC = Join-Path $PWD.Path "dist"
+        $DEST = $env:SITE_PATH_RESOLVED
+        $BACKUPS = $env:BACKUPS_PATH_RESOLVED
+
+        if (-not (Test-Path $SRC)) {
+          Write-Error "dist/ nao encontrado em $SRC"
+          exit 1
+        }
+
+        # Mesma politica do deploy.yml de producao: backup do index.html atual antes do purge.
+        $currentIndex = Join-Path $DEST "index.html"
+        if (Test-Path $currentIndex) {
+          $backupName = "index-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
+          Copy-Item -Path $currentIndex -Destination (Join-Path $BACKUPS $backupName) -Force -ErrorAction SilentlyContinue
+          Write-Host "Backup do index.html atual: $backupName"
+        }
+
+        Write-Host "Copiando $SRC -> $DEST..."
+        & robocopy $SRC $DEST /E /IS /PURGE /XD .github .vscode .git node_modules /NP /NDL /NFL /R:3 /W:2 | Out-Null
+        $robocopyExitCode = $LASTEXITCODE
+        $LASTEXITCODE = 0
+
+        # Codigos 0-7 do robocopy sao sucesso/avisos menores; 8+ e erro critico.
+        if ($robocopyExitCode -ge 8) {
+          Write-Error "Erro critico no robocopy (exit code: $robocopyExitCode)"
+          exit 1
+        }
+
+        if (-not (Test-Path (Join-Path $DEST "index.html"))) {
+          Write-Error "index.html nao encontrado no destino apos a copia"
+          exit 1
+        }
+
+        Write-Host "Deploy de dev (front) concluido em $DEST"
+
+    - name: Smoke test HTTP (dev, front)
+      if: github.ref == 'refs/heads/develop'
+      run: |
+        $url = $env:SITE_URL_RESOLVED
+        $status = $null
+        for ($i = 1; $i -le 6; $i++) {
+          try {
+            $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5
+            $status = [int]$resp.StatusCode
+            break
+          } catch {
+            $r = $_.Exception.Response
+            if ($r -and $r.StatusCode) { $status = [int]$r.StatusCode; break }
+            Write-Host "  tentativa $i/6: site ainda nao responde, aguardando 3s..."
+            Start-Sleep -Seconds 3
+          }
+        }
+
+        if ($null -eq $status) {
+          Write-Error "Site de dev nao respondeu em $url apos 6 tentativas."
+          exit 1
+        }
+
+        Write-Host "Smoke test: HTTP $status em $url"
+        if ($status -ne 200) {
+          Write-Error "Status HTTP inesperado no smoke test: $status (esperado: 200)"
+          exit 1
+        }
+
+        Write-Host "Front de dev servido com sucesso em $url"
