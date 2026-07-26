@@ -379,9 +379,20 @@ const FieldDisplay: React.FC = () => {
           const calculatedPositions = lineValidation.calculatedPositions;
           if (calculatedPositions && typeof calculatedPositions === 'object') {
             displayFields.forEach(field => {
-              const calculatedPos = calculatedPositions[field.fieldName];
+              // ⚠️ Chave do mapa NÃO é mais field.fieldName puro: layouts com nomes de campo
+              // duplicados na mesma linha (ex: LINHA037/038/055/090 do layout NFe da Fiat)
+              // faziam vários campos colidirem na mesma startPosition. Back-end confirmou
+              // (@lp-backend-dev) chave composta "Name#Sequence", ex: "ValorDaBase...#9".
+              const key = field.sequence !== undefined && field.sequence !== null
+                ? `${field.fieldName}#${field.sequence}`
+                : field.fieldName; // fallback defensivo se sequence não vier preenchido
+              const calculatedPos = calculatedPositions[key];
               if (calculatedPos !== undefined && calculatedPos !== null) {
                 field.startPosition = calculatedPos;
+              } else if (field.sequence === undefined || field.sequence === null) {
+                console.warn(`⚠️ Campo "${field.fieldName}" da linha ${group.lineName} sem "sequence" definido; usando fieldName puro como chave de posição pode colidir com campos de mesmo nome na linha.`);
+              } else {
+                console.warn(`⚠️ Chave "${key}" não encontrada em calculatedPositions para o campo "${field.fieldName}" da linha ${group.lineName}.`);
               }
             });
             
@@ -614,6 +625,23 @@ const FieldDisplay: React.FC = () => {
         
         // 4. Campos da linha (já ordenados por startPosition, SEM a tag Sequencia própria)
         // A tag Sequencia desta linha será adicionada no final para completar 600 caracteres
+
+        // ✅ Checagem defensiva: dois campos consecutivos com startPosition idêntico ou fora de
+        // ordem crescente indicam colisão na chave do mapa de posições calculadas (ex: nome de
+        // campo duplicado na linha, ver comentário acima sobre calculatedPositions). Detectar
+        // aqui em vez de deixar o overflow estourar silenciosamente só no total final da linha.
+        for (let i = 1; i < displayFields.length; i++) {
+          const prev = displayFields[i - 1];
+          const curr = displayFields[i];
+          if (prev.startPosition !== undefined && curr.startPosition !== undefined) {
+            if (curr.startPosition <= prev.startPosition) {
+              console.warn(
+                `⚠️ Possível nome de campo duplicado na linha ${group.lineName}: "${curr.fieldName}" (startPosition=${curr.startPosition}) não é maior que "${prev.fieldName}" (startPosition=${prev.startPosition}). Verificar mapeador/back-end (calculatedPositions).`
+              );
+            }
+          }
+        }
+
         displayFields.forEach((field) => {
           // startPosition é sempre 1-based (vem do back-end)
           let startPos = field.startPosition ?? 0;

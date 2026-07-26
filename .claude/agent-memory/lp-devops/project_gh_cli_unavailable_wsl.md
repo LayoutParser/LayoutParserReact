@@ -1,20 +1,39 @@
 ---
 name: gh-cli-unavailable-wsl-bash
-description: gh CLI não está instalado/no PATH do shell bash (WSL) usado por este agente — comandos gh (pr list/create/merge/comment) falham com "command not found"
+description: gh CLI não existe neste ambiente (nem WSL nem Windows) — mas git/ssh via WSL interop (git.exe/ssh.exe) resolvem push/fetch normalmente com as credenciais do lado Windows
 metadata:
   type: project
 ---
 
-`gh` não está disponível no bash/WSL que este agente usa por padrão neste working directory
-(`/mnt/c/Users/elson.lopes/source/repos/LayoutParserReact`). Testado em 2026-07-20:
-`command -v gh` → exit 1; `where.exe gh` → "Could not find files for the given pattern(s)".
+`gh` não está disponível **em lugar nenhum** deste ambiente — nem no bash/WSL nem no Windows.
+Testado em 2026-07-20: `command -v gh`/`where.exe gh` → nada; busca por `gh.exe` em
+`AppData/Local/Programs` e via `powershell.exe Get-Command gh` → nada. Não insista em `gh`,
+não existe instalado.
 
-**Why:** o ambiente principal do usuário é PowerShell no Windows (ver
-`.claude/CLAUDE.md` §7, "Shell primário: PowerShell"); `gh` provavelmente só está
-instalado/autenticado lá, não neste shell bash.
+**O problema real (e a solução) é mais específico — não é falta de credencial, é o shell
+errado:** o `git` **nativo do WSL** (`/usr/bin/git` ou equivalente) não tem `~/.ssh`
+(`/home/<user>/.ssh` não existe) — então `git fetch`/`git push` direto no bash falham com
+`Host key verification failed` / `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or
+directory`. As chaves do usuário **existem**, só que do lado Windows:
+`/mnt/c/Users/<user>/.ssh/id_ed25519` (+ `known_hosts` já populado).
 
-**How to apply:** antes de tentar `gh pr list/create/merge/comment` a partir deste bash, ter
-em mente que provavelmente vai falhar. Se precisar checar/mexer em PR e o comando falhar, não
-concluir "não existe PR" — sinalizar ao usuário/orquestrador que a verificação via `gh` não
-pôde ser feita a partir deste shell e sugerir rodar do PowerShell (onde a autoridade de
-push/PR também é exercida), ou pedir para o usuário confirmar via GitHub web.
+**Why:** o working directory deste repo é `/mnt/c/Users/.../LayoutParserReact` — ou seja, é o
+mesmo filesystem/`.git` acessado tanto pelo Windows quanto pelo WSL (não são clones
+separados), mas cada shell tem seu próprio `$HOME`/`~/.ssh`. O usuário só configurou SSH no
+lado Windows (onde ele mesmo dá push manualmente às vezes).
+
+**How to apply:** para qualquer operação de rede (`fetch`/`push`/`ls-remote`) a partir deste
+agente, **não use o `git` do PATH do bash** — use os binários Windows via WSL interop, que
+funcionam direto porque herdam o ambiente/credenciais do usuário:
+```bash
+git.exe fetch --all --prune     # em vez de `git fetch`
+git.exe push -u origin <branch> # em vez de `git push`
+git.exe ls-remote --heads origin
+```
+Confirmados disponíveis via interop: `git.exe`
+(`/mnt/c/Users/<user>/AppData/Local/Programs/Git/cmd/git.exe`), `ssh.exe`
+(`/mnt/c/Windows/System32/OpenSSH/ssh.exe`), `powershell.exe` (útil para `Get-Service`/checar
+o runner). Continue usando o `git` nativo do bash para tudo **local** (log/status/diff/show/
+branch/merge-base) — só troque para `git.exe` no momento de tocar a rede. Ver também
+[[project_ci_validation_via_runner_diag_logs]] para como validar o resultado de um CI sem
+`gh` nenhum.

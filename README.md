@@ -195,5 +195,5 @@ framework de lab e regras de negócio complexas). Veja a análise de aderência 
 
 - [ ] Suite de testes (Vitest + React Testing Library).
 - [ ] Externalizar a base URL de produção (hoje há IP hardcoded em `api.ts`/`vite.config.ts`).
-- [ ] `.env.example` documentando `VITE_API_BASE_URL`.
+- [x] `.env.example` documentando `VITE_API_BASE_URL` (e a origin que a API precisa liberar via CORS).
 - [ ] Diagrama de componentes da árvore de estrutura.
