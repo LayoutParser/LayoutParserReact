@@ -42,7 +42,12 @@ export interface LineValidationInfo {
   isValid: boolean;
   hasChildren: boolean;
   fieldCount: number;
-  calculatedPositions?: Record<string, number>; // Map<fieldName, startPosition (1-based)>
+  // Map<"Name#Sequence", startPosition (1-based)>. Confirmado com @lp-backend-dev.
+  // NOTA: a chave NÃO é mais o fieldName puro — layouts com nomes de campo duplicados na
+  // mesma linha (ex: LINHA037/038/055/090 do layout NFe da Fiat) colidiam e faziam vários
+  // campos apontarem para a mesma posição. Chave composta "Name#Sequence" resolve a colisão
+  // (ex: "ValorDaBaseDeCalculoDoFCPRetidoAnteriormente#9" vs "...#10").
+  calculatedPositions?: Record<string, number>;
 }
 
 export interface ParseResponse {
