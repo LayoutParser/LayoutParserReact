@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import type { AnalysisMode } from '../../store/useTransformationStore';
 import { transformationService } from '../../services/api/transformationService';
+import { logService } from '../../services/api/logService';
 import Tabs from '../shared/Tabs';
 import FieldDisplay from './FieldDisplay';
 import StructureTree from './StructureTree';
@@ -49,7 +50,10 @@ const AnalysisModeTabs: React.FC = () => {
       .checkMapperAvailability(layoutGuid)
       .then(result => setMapperAvailable(result.available))
       .catch(error => {
-        console.error('Erro ao verificar disponibilidade de transformação XML:', error);
+        logService.error('Erro ao verificar disponibilidade de transformação XML', {
+          layoutGuid,
+          error: error instanceof Error ? error.message : String(error),
+        });
         setMapperAvailable(false);
       })
       .finally(() => setCheckingMapper(false));
@@ -84,10 +88,18 @@ const AnalysisModeTabs: React.FC = () => {
     },
   ];
 
+  // Estado assíncrono da transformação vindo do próprio parse (`transformationsStatus`),
+  // além da checagem de Mapper acima — cobre o caso em que o back-end ainda está processando
+  // a transformação em segundo plano (ex.: pathway TCL-XSL mais custoso).
+  const transformationsStatus = parseResult.transformationsStatus;
+  const isTransformationProcessing = transformationsStatus === 'processing';
+
   if (mapperAvailable) {
     tabs.push({
       id: 'xml-transformacao',
-      label: 'XML Transformação Final',
+      label: isTransformationProcessing
+        ? 'XML Transformação Final (processando...)'
+        : 'XML Transformação Final',
       content: <XmlTransformationDisplay />,
     });
   }
@@ -97,6 +109,11 @@ const AnalysisModeTabs: React.FC = () => {
       {isCheckingMapper && (
         <div className="analysis-mode-tabs-checking" role="status" aria-live="polite">
           Verificando transformações disponíveis...
+        </div>
+      )}
+      {transformationsStatus === 'error' && (
+        <div className="analysis-mode-tabs-checking" role="alert">
+          A transformação XML deste documento terminou com erro no back-end.
         </div>
       )}
       <Tabs

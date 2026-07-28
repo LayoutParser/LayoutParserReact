@@ -83,3 +83,37 @@ export interface TransformationExecutionFailure {
 export type TransformationExecutionResponse =
   | TransformationExecutionSuccess
   | TransformationExecutionFailure;
+
+// ---------------------------------------------------------------------------------------
+// PONTOS DE EXTENSÃO (ainda não implementados no front) — handoff @lp-architect (Aria):
+// aba de análise deve eventualmente suportar seleção de candidato (multi-candidato) e
+// diagnóstico de erro de validação via IA (Ollama). O contrato exato de
+// XmlAnalysisController/TransformationController para esses dois pontos NÃO foi confirmado
+// com @lp-backend-dev (Dex) ainda — os tipos abaixo são um rascunho razoável para não travar
+// o design da UI, mas NÃO devem ser tratados como contrato fechado. Não wire-ar em
+// componentes até confirmação.
+// ---------------------------------------------------------------------------------------
+
+/**
+ * TODO (pendente confirmação de contrato): quando o back-end tem mais de um caminho possível
+ * de transformação para o mesmo input (ex.: Sysmiddle/LowCode-auto vs TCL-XSL/Canônico
+ * gerando resultados distintos), a resposta deve trazer todos os candidatos para o usuário
+ * escolher — não só o primeiro. Rascunho de shape; não usado em nenhum componente ainda.
+ */
+export interface TransformationCandidate {
+  candidateId: string;
+  pathway: 'sysmiddle' | 'tcl-xsl';
+  transformedXml: string;
+  score?: number; // confiança/heurística de escolha, se o back-end expuser
+}
+
+/**
+ * TODO (pendente confirmação de contrato): diagnóstico gerado por IA (Ollama) quando a
+ * validação de um documento falha, explicando a causa provável em linguagem natural.
+ * Rascunho de shape; não usado em nenhum componente ainda.
+ */
+export interface ValidationDiagnostic {
+  summary: string;
+  suggestedFix?: string;
+  confidence?: number;
+}

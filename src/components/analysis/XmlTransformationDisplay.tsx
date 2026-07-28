@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { transformationService } from '../../services/api/transformationService';
+import { logService } from '../../services/api/logService';
 import './XmlTransformationDisplay.css';
 
 /**
@@ -99,17 +100,37 @@ const XmlTransformationDisplay: React.FC = () => {
       setTransformationResult(result);
 
       if (!result.success) {
-        setExecutionError(result.errors[0] || 'Erro ao gerar transformação XML.');
+        const errorMessage = result.errors[0] || 'Erro ao gerar transformação XML.';
+        setExecutionError(errorMessage);
+        logService.error('Falha de negócio ao gerar transformação XML', {
+          layoutName: selectedLayout.name,
+          errors: result.errors,
+          warnings: result.warnings,
+        });
+        // TODO (ponto de extensão — diagnóstico IA): quando o contrato de diagnóstico via
+        // Ollama for confirmado (ver ValidationDiagnostic em types/transformation.ts), este
+        // é o lugar de disparar a chamada e exibir a explicação em linguagem natural para o
+        // erro de validação, em vez de só a mensagem crua do back-end.
       }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Erro desconhecido ao gerar transformação XML';
       setExecutionError(message);
       setTransformationResult(null);
+      logService.error('Erro de infraestrutura ao executar transformação XML', {
+        layoutName: selectedLayout.name,
+        error: message,
+      });
     } finally {
       setExecuting(false);
     }
   };
+
+  // TODO (ponto de extensão — multi-candidato): quando o back-end passar a retornar mais de
+  // um caminho de transformação (Sysmiddle/LowCode-auto vs TCL-XSL/Canônico — ver
+  // TransformationCandidate em types/transformation.ts), este componente deve listar os
+  // candidatos e deixar o usuário escolher qual visualizar, em vez de assumir sempre um único
+  // `transformationResult`. Contrato ainda não confirmado com @lp-backend-dev.
 
   return (
     <div className="xml-transformation-display">

@@ -69,6 +69,10 @@ export interface ParseResponse {
   lineValidations?: LineValidationInfo[]; // NOVO: Validações e posições calculadas pelo back-end
   validationErrors?: DocumentValidationError[]; // Erros de validação de tamanho de linha
   validationWarning?: string; // Aviso se houver erros de validação
+  // Estado assíncrono da transformação XML (Sysmiddle/TCL-XSL) associada a este parse.
+  // 'not_applicable' quando o layout não tem Mapper cadastrado (ver transformationService).
+  // Usado por AnalysisModeTabs para refletir loading/erro sem precisar de polling manual.
+  transformationsStatus?: 'completed' | 'processing' | 'not_applicable' | 'error';
 }
 
 export interface DocumentValidationError {
