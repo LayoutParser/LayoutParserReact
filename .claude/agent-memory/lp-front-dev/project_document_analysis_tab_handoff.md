@@ -1,6 +1,6 @@
 ---
 name: project_document_analysis_tab_handoff
-description: Handoff da @lp-architect (Aria) para a aba de análise (multi-candidato + diagnóstico IA) — o que já existia, o que foi feito, o que falta.
+description: Aba de análise (multi-candidato de transformação + diagnóstico de erro via IA/Ollama) — histórico do handoff e estado atual, Gaps 1 e 2 já integrados.
 metadata:
   type: project
 ---
@@ -40,14 +40,30 @@ não pushado):
 ainda não confirmado com @lp-backend-dev (Dex). Não fixar tipos definitivos nem UI real até
 confirmação — próximo passo é essa confirmação, depois vira feature separada.
 
-**Atualização 2026-07-29 — resolvido:** @lp-architect (Aria) confirmou os dois contratos
-(implementados por @lp-backend-dev/Dex e @lp-parser-llm/Lia). Tipos fechados em
-`transformation.ts` (sem mais TODO), services `transformationService.executeTransformation-
-Candidates` (POST `/api/transformation-execution/execute-candidates`) e novo
-`xmlAnalysisService.diagnoseValidationError` (POST `/api/xml-analysis/diagnose-validation-
-error`), store estendido e UI ligada em `XmlTransformationDisplay.tsx` (seletor de candidato,
-estado vazio, painel de diagnóstico). Commit `6311444` em `feat/document-analysis-tab`, não
-pushado. Ponto de atenção herdado do handoff: `diagnose-validation-error` só foi validado
-isoladamente contra Ollama real (~150s de latência, CPU-only) — não end-to-end; loading da UI
-foi feito propositalmente "não é spinner de 2-3s" por causa disso, não simplificar sem
-confirmar que já há GPU em produção.
+**Atualização 2026-07-29 — Gaps 1 e 2 integrados (não mais pendentes):** @lp-architect (Aria)
+confirmou os dois contratos (implementados por @lp-backend-dev/Dex e @lp-parser-llm/Lia).
+Tipos fechados em `transformation.ts` (sem mais TODO), services
+`transformationService.executeTransformationCandidates` (POST
+`/api/transformation-execution/execute-candidates`) e novo
+`xmlAnalysisService.diagnoseValidationError` (POST
+`/api/xml-analysis/diagnose-validation-error`), store estendido e UI ligada em
+`XmlTransformationDisplay.tsx` (seletor de candidato, estado vazio, painel de diagnóstico).
+Commits `6311444` (feature) e `699788f` (memória) em `feat/document-analysis-tab`, não
+pushado.
+
+Pontos de atenção que continuam válidos para qualquer trabalho futuro nesses dois fluxos:
+- `candidateId` **"tclxsl-1" é fixo** para o pathway TCL/XSL — não é gerado dinamicamente.
+- `score` do candidato existe no contrato mas **ainda não é usado para ordenação** na UI.
+- `validation` só vem preenchido no candidato `tcl-xsl` — os demais não trazem esse campo.
+- **Zero candidatos é caso de sucesso**, não erro: API responde 200 com array vazio +
+  `warnings`; UI trata como estado vazio, não como falha.
+- Diagnóstico via Ollama pode levar **dezenas de segundos a minutos** em ambiente sem GPU
+  (~150s observado) — por isso tem loading state dedicado na UI, propositalmente diferente de
+  um spinner genérico de 2-3s. Não simplificar esse loading sem confirmar que já há GPU em
+  produção.
+- `analyze-xsd-error-with-ai` **não existe mais referenciado no repo** (confirmado via grep) —
+  não há nada a migrar desse endpoint antigo.
+
+**Pendente:** o fluxo real não foi exercitado end-to-end contra Ollama/API real nesta sessão —
+só validação estática/build. Quando alguém testar contra ambiente real, validar principalmente
+o timeout longo do diagnóstico (ver ponto acima).
