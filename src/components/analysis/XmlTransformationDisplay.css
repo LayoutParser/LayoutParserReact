@@ -81,6 +81,125 @@
   outline-offset: 2px;
 }
 
+.xml-transformation-empty {
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.xml-transformation-empty ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+}
+
+.xml-transformation-candidate-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.xml-transformation-candidate-btn {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  color: #000000;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.xml-transformation-candidate-btn.active {
+  background: linear-gradient(135deg, #5700ff 0%, #ed008c 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.xml-transformation-candidate-btn:focus-visible {
+  outline: 3px solid #5700ff;
+  outline-offset: 2px;
+}
+
+.xml-transformation-warnings {
+  background: rgba(255, 193, 7, 0.12);
+  color: #7a5900;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.xml-transformation-warnings p {
+  margin: 0.25rem 0;
+}
+
+.xml-transformation-diagnose-action {
+  margin-top: 0.5rem;
+}
+
+.xml-transformation-diagnose-btn {
+  background: #ffffff;
+  color: #ed008c;
+  border: 1px solid #ed008c;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.xml-transformation-diagnose-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.xml-transformation-diagnose-btn:focus-visible {
+  outline: 3px solid #5700ff;
+  outline-offset: 2px;
+}
+
+/* Estado de loading explícito para o diagnóstico de IA — NÃO é um spinner genérico: o
+   endpoint foi validado com ~150s de latência em ambiente sem GPU, então a mensagem avisa
+   explicitamente que a espera pode ser longa (ver xmlAnalysisService.ts). */
+.xml-transformation-diagnosing {
+  background: rgba(87, 0, 255, 0.08);
+  color: #5700ff;
+  border: 1px solid #5700ff;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
+}
+
+.xml-transformation-diagnostic {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+.xml-transformation-diagnostic h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #000000;
+}
+
+.xml-transformation-diagnostic-low-confidence {
+  color: #7a5900;
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.xml-transformation-diagnostic-fix {
+  margin-top: 0.5rem;
+}
+
 .xml-transformation-placeholder {
   /* #666 (não #999) para manter contraste AA em texto normal — mesmo tom já usado em
      .structure-placeholder (LayoutParserPage.css) e .analysis-mode-tabs-checking. */

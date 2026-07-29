@@ -25,6 +25,7 @@
 
 ## Aprendizados
 - (adicione aqui o que descobrir: gotchas de build, quirks de stores, etc.)
+- [Handoff aba de análise (multi-candidato/diagnóstico IA)](project_document_analysis_tab_handoff.md) — antes de "criar a aba de análise" checar se já não existe via `AnalysisModeTabs`/`useTransformationStore`; contrato multi-candidato/Ollama ainda pendente de confirmação com backend.
 - [Feature TXT Posicional vs XML Transformação Final](project_xml_transformation_feature.md) — achados cross-repo + contrato validado em runtime (mapper é o critério certo, layoutType é sempre "2" nos dados reais) + implementação já feita em `feat/xml-transformation-toggle`.
 - [Convenções reais vs. doc escrita](feedback_convencoes_reais_vs_doc.md) — código real não usa alias `@/` nem pasta própria por componente; seguir o código, não a doc.
 - `components/analysis/AnalysisSection.tsx` **e também** `components/upload/UploadSection.tsx` + `components/upload/LayoutSearch.tsx` são código morto (árvore inteira não alcançável a partir de `routes.tsx`) — fluxo real é o layout em "L" de `LayoutParserPage.tsx`, que usa `LayoutCombobox` diretamente. `LayoutCombobox` em si é vivo (usado pelos dois lados).

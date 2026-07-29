@@ -10,6 +10,8 @@ export interface ApiConfig {
     learning: string;
     xmlAnalysis: string;
     transformationExecution: string;
+    transformationExecutionCandidates: string;
+    xmlAnalysisDiagnose: string;
     testing: string;
     metrics: string;
   };

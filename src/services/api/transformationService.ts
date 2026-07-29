@@ -3,6 +3,8 @@ import apiClient from '../api';
 import type {
   MapperAvailability,
   MapperInfo,
+  TransformationCandidatesRequest,
+  TransformationCandidatesResponse,
   TransformationExecutionRequest,
   TransformationExecutionResponse,
 } from '../../types/transformation';
@@ -14,6 +16,9 @@ import type {
  * Rotas validadas em 2026-07-20 contra a API real (ambiente 172.25.32.42:5000):
  * - GET  /api/mapperdatabase/by-input/{layoutGuid} -> 200 com o mapper | 404 se não existe
  * - POST /api/transformationexecution/execute      -> ver types/transformation.ts
+ *
+ * Rota multi-candidato confirmada por handoff @lp-architect (Aria) em 2026-07-29:
+ * - POST /api/transformation-execution/execute-candidates -> ver types/transformation.ts
  */
 export const transformationService = {
   /**
@@ -70,6 +75,33 @@ export const transformationService = {
           return data as TransformationExecutionResponse;
         }
         throw new Error(data?.error || error.message || 'Erro ao executar transformação XML');
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Executa a transformação e devolve TODOS os caminhos possíveis (multi-candidato), em vez
+   * de assumir um único resultado. Ao contrário de `executeTransformation`, esta rota sempre
+   * responde 200 em sucesso — mesmo com `candidates: []` (zero candidatos é estado válido,
+   * não falha), então não há um shape de "falha de negócio" paralelo aqui: qualquer exceção
+   * lançada é infraestrutura (rede, 5xx) e vira `Error`.
+   */
+  async executeTransformationCandidates(
+    request: TransformationCandidatesRequest
+  ): Promise<TransformationCandidatesResponse> {
+    try {
+      const response = await apiClient.post<TransformationCandidatesResponse>(
+        '/api/transformation-execution/execute-candidates',
+        request
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const data = error.response?.data;
+        throw new Error(
+          data?.error || error.message || 'Erro ao executar transformação XML (multi-candidato)'
+        );
       }
       throw error;
     }

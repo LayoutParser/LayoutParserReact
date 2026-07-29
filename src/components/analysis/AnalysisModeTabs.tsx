@@ -29,6 +29,10 @@ const AnalysisModeTabs: React.FC = () => {
     setCheckingMapper,
     setTransformationResult,
     setExecutionError,
+    setCandidatesResult,
+    setCandidatesError,
+    setDiagnostic,
+    setDiagnosticError,
   } = useTransformationStore();
 
   // Ao processar um novo documento (novo parseResult/layout), verificar se existe
@@ -42,6 +46,10 @@ const AnalysisModeTabs: React.FC = () => {
 
     setTransformationResult(null);
     setExecutionError(null);
+    setCandidatesResult([], []);
+    setCandidatesError(null);
+    setDiagnostic(null);
+    setDiagnosticError(null);
     setActiveMode('txt-posicional');
     setMapperAvailable(null);
     setCheckingMapper(true);
@@ -65,6 +73,10 @@ const AnalysisModeTabs: React.FC = () => {
     setCheckingMapper,
     setTransformationResult,
     setExecutionError,
+    setCandidatesResult,
+    setCandidatesError,
+    setDiagnostic,
+    setDiagnosticError,
   ]);
 
   if (!parseResult || !parseResult.success) {

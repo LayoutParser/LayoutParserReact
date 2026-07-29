@@ -3,6 +3,10 @@ import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { transformationService } from '../../services/api/transformationService';
 import { logService } from '../../services/api/logService';
+import {
+  DiagnoseValidationErrorException,
+  xmlAnalysisService,
+} from '../../services/api/xmlAnalysisService';
 import './XmlTransformationDisplay.css';
 
 /**
@@ -51,10 +55,16 @@ const formatXmlForDisplay = (xml: string): string => {
   }
 };
 
+const PATHWAY_LABEL: Record<string, string> = {
+  sysmiddle: 'Sysmiddle',
+  'tcl-xsl': 'TCL/XSL',
+};
+
 /**
- * Exibe o resultado da "XML Transformação Final": o back-end valida o input e devolve o
- * XML transformado, este componente só dispara a chamada e renderiza o retorno (front é
- * só apresentação — nenhuma transformação roda aqui).
+ * Exibe o resultado da "XML Transformação Final": o back-end valida o input e devolve o(s)
+ * XML(s) transformado(s) — hoje via multi-candidato (`execute-candidates`), que substitui a
+ * chamada de candidato único. Este componente só dispara as chamadas e renderiza o retorno
+ * (front é só apresentação — nenhuma transformação roda aqui).
  *
  * Disparo é via botão explícito (não automático ao abrir a aba), já que a transformação
  * pode ser custosa no back-end.
@@ -62,75 +72,117 @@ const formatXmlForDisplay = (xml: string): string => {
 const XmlTransformationDisplay: React.FC = () => {
   const { selectedLayout, txtContent } = useAppStore();
   const {
-    isExecuting,
-    executionError,
-    transformationResult,
-    setExecuting,
-    setExecutionError,
-    setTransformationResult,
+    isLoadingCandidates,
+    candidatesError,
+    candidates,
+    candidatesWarnings,
+    activeCandidateId,
+    setLoadingCandidates,
+    setCandidatesError,
+    setCandidatesResult,
+    setActiveCandidateId,
+    isDiagnosing,
+    diagnosticError,
+    diagnostic,
+    setDiagnosing,
+    setDiagnosticError,
+    setDiagnostic,
   } = useTransformationStore();
 
-  // Formatação é recalculada só quando o resultado muda (evita reformatar a cada render).
+  // Sem ordenação por score (back-end ainda não preenche de verdade): candidato ativo é o
+  // selecionado pelo usuário ou, por padrão, o primeiro do array.
+  const activeCandidate = useMemo(
+    () => candidates.find(c => c.candidateId === activeCandidateId) ?? candidates[0] ?? null,
+    [candidates, activeCandidateId]
+  );
+
   const formattedXml = useMemo(() => {
-    if (transformationResult && transformationResult.success) {
-      return formatXmlForDisplay(transformationResult.transformedXml);
+    if (activeCandidate) {
+      return formatXmlForDisplay(activeCandidate.transformedXml);
     }
     return '';
-  }, [transformationResult]);
+  }, [activeCandidate]);
 
   const handleGenerate = async () => {
     if (!selectedLayout || !txtContent) {
-      setExecutionError('Documento processado ou layout selecionado não encontrado.');
+      setCandidatesError('Documento processado ou layout selecionado não encontrado.');
       return;
     }
 
-    setExecuting(true);
-    setExecutionError(null);
+    setLoadingCandidates(true);
+    setCandidatesError(null);
+    setDiagnostic(null);
+    setDiagnosticError(null);
 
     try {
-      const result = await transformationService.executeTransformation({
+      const result = await transformationService.executeTransformationCandidates({
         inputContent: txtContent,
         layoutName: selectedLayout.name,
-        sourceDocumentType: '',
-        targetDocumentType: '',
-        expectedOutput: '',
+        sourceDocumentType: null,
+        targetDocumentType: null,
         validate: true,
+        expectedOutput: null,
       });
 
-      setTransformationResult(result);
+      setCandidatesResult(result.candidates, result.warnings);
 
-      if (!result.success) {
-        const errorMessage = result.errors[0] || 'Erro ao gerar transformação XML.';
-        setExecutionError(errorMessage);
-        logService.error('Falha de negócio ao gerar transformação XML', {
+      if (result.candidates.length === 0) {
+        logService.warn('Nenhum candidato de transformação XML gerado', {
           layoutName: selectedLayout.name,
-          errors: result.errors,
           warnings: result.warnings,
         });
-        // TODO (ponto de extensão — diagnóstico IA): quando o contrato de diagnóstico via
-        // Ollama for confirmado (ver ValidationDiagnostic em types/transformation.ts), este
-        // é o lugar de disparar a chamada e exibir a explicação em linguagem natural para o
-        // erro de validação, em vez de só a mensagem crua do back-end.
       }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Erro desconhecido ao gerar transformação XML';
-      setExecutionError(message);
-      setTransformationResult(null);
-      logService.error('Erro de infraestrutura ao executar transformação XML', {
+      setCandidatesError(message);
+      setCandidatesResult([], []);
+      logService.error('Erro de infraestrutura ao executar transformação XML (multi-candidato)', {
         layoutName: selectedLayout.name,
         error: message,
       });
     } finally {
-      setExecuting(false);
+      setLoadingCandidates(false);
     }
   };
 
-  // TODO (ponto de extensão — multi-candidato): quando o back-end passar a retornar mais de
-  // um caminho de transformação (Sysmiddle/LowCode-auto vs TCL-XSL/Canônico — ver
-  // TransformationCandidate em types/transformation.ts), este componente deve listar os
-  // candidatos e deixar o usuário escolher qual visualizar, em vez de assumir sempre um único
-  // `transformationResult`. Contrato ainda não confirmado com @lp-backend-dev.
+  const handleDiagnose = async () => {
+    if (!activeCandidate?.failureReason) {
+      return;
+    }
+
+    setDiagnosing(true);
+    setDiagnosticError(null);
+    setDiagnostic(null);
+
+    try {
+      const result = await xmlAnalysisService.diagnoseValidationError({
+        errorMessage: activeCandidate.failureReason,
+        fieldName: null,
+        mqSeriesSegment: null,
+        documentType: selectedLayout?.name ?? null,
+        transformedXml: activeCandidate.transformedXml || null,
+      });
+      setDiagnostic(result.diagnostic);
+    } catch (error) {
+      if (error instanceof DiagnoseValidationErrorException) {
+        setDiagnosticError({ status: error.status, message: error.message });
+        logService.error('Falha ao diagnosticar erro de validação via IA', {
+          status: error.status,
+          message: error.message,
+        });
+      } else {
+        const message =
+          error instanceof Error ? error.message : 'Erro desconhecido ao diagnosticar';
+        setDiagnosticError({ status: 500, message });
+        logService.error('Erro de infraestrutura ao diagnosticar erro de validação via IA', {
+          error: message,
+        });
+      }
+    } finally {
+      setDiagnosing(false);
+    }
+  };
 
   return (
     <div className="xml-transformation-display">
@@ -138,42 +190,155 @@ const XmlTransformationDisplay: React.FC = () => {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isExecuting}
-          aria-busy={isExecuting}
+          disabled={isLoadingCandidates}
+          aria-busy={isLoadingCandidates}
           className="xml-transformation-generate-btn"
         >
-          {isExecuting ? 'Gerando transformação...' : 'Gerar Transformação XML'}
+          {isLoadingCandidates ? 'Gerando transformação...' : 'Gerar Transformação XML'}
         </button>
       </div>
 
-      {executionError && (
+      {candidatesError && (
         <div className="xml-transformation-error" role="alert">
-          ❌ {executionError}
+          ❌ {candidatesError}
         </div>
       )}
 
-      {transformationResult && transformationResult.success && (
-        <div className="xml-transformation-result">
-          <h3>XML Transformado</h3>
-          {/* tabIndex + role="region" permitem rolar o bloco via teclado (Tab + setas/Page
-              Down) — sem isso, quem não usa mouse não conseguia rolar um XML longo. */}
-          <pre
-            className="xml-transformation-content"
-            tabIndex={0}
-            role="region"
-            aria-label="Conteúdo XML transformado"
-          >
-            {formattedXml}
-          </pre>
-        </div>
+      {!isLoadingCandidates &&
+        !candidatesError &&
+        candidates.length === 0 &&
+        candidatesWarnings.length > 0 && (
+          <div className="xml-transformation-empty" role="status">
+            <p>Nenhum candidato de transformação foi gerado para este documento.</p>
+            <ul>
+              {candidatesWarnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+      {candidates.length > 0 && (
+        <>
+          {candidates.length > 1 && (
+            <div
+              className="xml-transformation-candidate-selector"
+              role="tablist"
+              aria-label="Candidatos de transformação"
+            >
+              {candidates.map(candidate => (
+                <button
+                  key={candidate.candidateId}
+                  type="button"
+                  role="tab"
+                  aria-selected={candidate.candidateId === activeCandidate?.candidateId}
+                  className={`xml-transformation-candidate-btn ${
+                    candidate.candidateId === activeCandidate?.candidateId ? 'active' : ''
+                  }`}
+                  onClick={() => setActiveCandidateId(candidate.candidateId)}
+                >
+                  {PATHWAY_LABEL[candidate.pathway] || candidate.pathway}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {candidatesWarnings.length > 0 && (
+            <div className="xml-transformation-warnings" role="status">
+              {candidatesWarnings.map((warning, index) => (
+                <p key={index}>⚠️ {warning}</p>
+              ))}
+            </div>
+          )}
+
+          {activeCandidate && (
+            <div className="xml-transformation-result">
+              <h3>
+                XML Transformado (
+                {PATHWAY_LABEL[activeCandidate.pathway] || activeCandidate.pathway})
+              </h3>
+
+              {activeCandidate.failureReason && (
+                <div className="xml-transformation-error" role="alert">
+                  ❌ {activeCandidate.failureReason}
+                  <div className="xml-transformation-diagnose-action">
+                    <button
+                      type="button"
+                      onClick={handleDiagnose}
+                      disabled={isDiagnosing}
+                      aria-busy={isDiagnosing}
+                      className="xml-transformation-diagnose-btn"
+                    >
+                      {isDiagnosing ? 'Diagnosticando...' : 'Diagnosticar erro com IA'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isDiagnosing && (
+                <div className="xml-transformation-diagnosing" role="status" aria-live="polite">
+                  A IA (Ollama local) está analisando o erro. Isso pode levar de dezenas de segundos
+                  a alguns minutos em ambientes sem GPU — aguarde, não é um travamento.
+                </div>
+              )}
+
+              {diagnosticError && (
+                <div className="xml-transformation-error" role="alert">
+                  {diagnosticError.status === 400 && '❌ '}
+                  {diagnosticError.status === 503 && '🔌 '}
+                  {diagnosticError.status === 504 && '⏱️ '}
+                  {diagnosticError.status === 500 && '⚠️ '}
+                  {diagnosticError.message}
+                </div>
+              )}
+
+              {diagnostic && (
+                <div
+                  className="xml-transformation-diagnostic"
+                  role="region"
+                  aria-label="Diagnóstico de IA"
+                >
+                  <h4>
+                    Diagnóstico da IA{' '}
+                    {diagnostic.confidence < 0.5 && (
+                      <span className="xml-transformation-diagnostic-low-confidence">
+                        (baixa certeza — {Math.round(diagnostic.confidence * 100)}%)
+                      </span>
+                    )}
+                  </h4>
+                  <p>{diagnostic.summary}</p>
+                  {diagnostic.suggestedFix && (
+                    <p className="xml-transformation-diagnostic-fix">
+                      <strong>Sugestão:</strong> {diagnostic.suggestedFix}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* tabIndex + role="region" permitem rolar o bloco via teclado (Tab + setas/Page
+                  Down) — sem isso, quem não usa mouse não conseguia rolar um XML longo. */}
+              <pre
+                className="xml-transformation-content"
+                tabIndex={0}
+                role="region"
+                aria-label="Conteúdo XML transformado"
+              >
+                {formattedXml}
+              </pre>
+            </div>
+          )}
+        </>
       )}
 
-      {!transformationResult && !executionError && !isExecuting && (
-        <p className="xml-transformation-placeholder">
-          Clique em &quot;Gerar Transformação XML&quot; para validar o documento e gerar a
-          transformação final.
-        </p>
-      )}
+      {!isLoadingCandidates &&
+        !candidatesError &&
+        candidates.length === 0 &&
+        candidatesWarnings.length === 0 && (
+          <p className="xml-transformation-placeholder">
+            Clique em &quot;Gerar Transformação XML&quot; para validar o documento e gerar a
+            transformação final.
+          </p>
+        )}
     </div>
   );
 };
