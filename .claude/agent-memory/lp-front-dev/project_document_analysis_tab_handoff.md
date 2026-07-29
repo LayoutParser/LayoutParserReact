@@ -39,3 +39,15 @@ não pushado):
 `XmlAnalysisController`/`TransformationController` para multi-candidato e diagnóstico Ollama
 ainda não confirmado com @lp-backend-dev (Dex). Não fixar tipos definitivos nem UI real até
 confirmação — próximo passo é essa confirmação, depois vira feature separada.
+
+**Atualização 2026-07-29 — resolvido:** @lp-architect (Aria) confirmou os dois contratos
+(implementados por @lp-backend-dev/Dex e @lp-parser-llm/Lia). Tipos fechados em
+`transformation.ts` (sem mais TODO), services `transformationService.executeTransformation-
+Candidates` (POST `/api/transformation-execution/execute-candidates`) e novo
+`xmlAnalysisService.diagnoseValidationError` (POST `/api/xml-analysis/diagnose-validation-
+error`), store estendido e UI ligada em `XmlTransformationDisplay.tsx` (seletor de candidato,
+estado vazio, painel de diagnóstico). Commit `6311444` em `feat/document-analysis-tab`, não
+pushado. Ponto de atenção herdado do handoff: `diagnose-validation-error` só foi validado
+isoladamente contra Ollama real (~150s de latência, CPU-only) — não end-to-end; loading da UI
+foi feito propositalmente "não é spinner de 2-3s" por causa disso, não simplificar sem
+confirmar que já há GPU em produção.
