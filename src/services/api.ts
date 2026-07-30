@@ -36,6 +36,15 @@ const API_CONFIG: ApiConfig = {
     learning: '/api/learning',
     xmlAnalysis: '/api/xmlanalysis',
     transformationExecution: '/api/transformationexecution',
+    // Rotas kebab-case confirmadas por handoff @lp-architect (2026-07-29) — coexistem com as
+    // acima (sem hífen), que seguem servindo os endpoints já em uso (`execute`,
+    // `checkMapperAvailability`). Não unificar sem confirmar com o back-end.
+    // Nota: `API_CONFIG` não é exportado deste módulo (os services existentes já usam path
+    // literal direto na chamada `apiClient.post(...)`, ver transformationService.ts) — as duas
+    // chaves abaixo documentam a rota mesmo sem serem lidas em runtime, para não perder essa
+    // fonte única de verdade quando o service for escrito.
+    transformationExecutionCandidates: '/api/transformation-execution/execute-candidates',
+    xmlAnalysisDiagnose: '/api/xml-analysis/diagnose-validation-error',
     testing: '/api/testing',
     metrics: '/api/metrics',
   },
