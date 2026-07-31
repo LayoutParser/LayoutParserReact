@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import LayoutParserPage from '../layout/LayoutParserPage';
 import MonitoringTab from './MonitoringTab';
 import LayoutValidationTab from './LayoutValidationTab';
+import AiMetricsPanel from '../aiMetrics/AiMetricsPanel';
 import './AdminPage.css';
 
 const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'processing' | 'monitoring' | 'validation'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'monitoring' | 'validation' | 'aiMetrics'>('processing');
 
   return (
     <div className="admin-page">
@@ -33,6 +34,13 @@ const AdminPage: React.FC = () => {
           >
             Validação de Layouts
           </button>
+          <button
+            type="button"
+            className={`admin-tab ${activeTab === 'aiMetrics' ? 'active' : ''}`}
+            onClick={() => setActiveTab('aiMetrics')}
+          >
+            Métricas IA
+          </button>
         </div>
       </div>
 
@@ -52,6 +60,12 @@ const AdminPage: React.FC = () => {
         {activeTab === 'validation' && (
           <div className="admin-tab-content">
             <LayoutValidationTab />
+          </div>
+        )}
+
+        {activeTab === 'aiMetrics' && (
+          <div className="admin-tab-content">
+            <AiMetricsPanel />
           </div>
         )}
       </div>
