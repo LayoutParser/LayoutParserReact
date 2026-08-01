@@ -1,0 +1,205 @@
+/* =============================================================================
+ * Design tokens — LayoutParser React
+ * =============================================================================
+ * Fonte única de verdade para cor, tipografia, espaçamento e raio de borda.
+ * Componentes NÃO devem usar hexadecimal solto: consomem `var(--token)` daqui.
+ * Se faltar um valor, ADICIONE um token neste arquivo em vez de inventar um
+ * hex novo no CSS do componente — é assim que a padronização se sustenta.
+ *
+ * -----------------------------------------------------------------------------
+ * PROCEDÊNCIA DAS CORES (leia antes de alterar)
+ * -----------------------------------------------------------------------------
+ * O alvo visual é o portal real da NDD (`ndd-frontend`, Angular, codinome
+ * "Nigéria"). Os tokens de design oficiais vivem em pacotes npm privados
+ * (`@ndk/nigeria/styles/variables`, `@ndk/theme-default`) que NÃO estão
+ * instalados naquele checkout — logo, não há como extrair os valores canônicos.
+ * Foi verificado em 2026-07-31 que `node_modules/@ndk` não existe lá e que
+ * `themes/main-nigeria.scss` apenas re-exporta esses pacotes, sem literais.
+ *
+ * Por isso os valores abaixo têm dois níveis de confiança, sinalizados por
+ * comentário em cada bloco:
+ *
+ *   [VERIFICADO] — lido de um arquivo real e não ambíguo do `ndd-frontend`.
+ *   [OBSERVADO]  — hexadecimal mais recorrente no SCSS próprio do portal
+ *                  (fora de `@ndk`). A COR é real; o PAPEL semântico
+ *                  (ex.: "isto é a cor de erro") é inferência nossa.
+ *
+ * Nada aqui deve ser descrito como "a cor exata da NDD" sem antes conferir no
+ * portal rodando via DevTools. Quando isso for feito, corrija os [OBSERVADO].
+ * ========================================================================== */
+
+/* -----------------------------------------------------------------------------
+ * Tipografia — Raleway
+ * [VERIFICADO] Fonte oficial do portal. Os .woff em `src/assets/fonts/` foram
+ * copiados de `ndd-frontend/portal/projects/global-styles/client/src/raleway/`.
+ *
+ * Servida localmente (sem Google Fonts / CDN) de propósito: o app é publicado
+ * em rede interna (IIS em IP privado), onde acesso a CDN externa não é
+ * garantido — um <link> para fonts.googleapis.com degradaria a fonte
+ * silenciosamente. Local também mantém byte-a-byte o mesmo arquivo do portal.
+ *
+ * Obs.: o `_style.scss` de origem declara os 4 arquivos com `font-weight: 100`
+ * (bug de lá). Aqui os pesos são declarados corretamente.
+ * -------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/raleway-v18-latin-regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/raleway-v18-latin-500.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/raleway-v18-latin-600.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Raleway';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fonts/raleway-v18-latin-700.woff') format('woff');
+}
+
+:root {
+  /* ---------------------------------------------------------------------------
+   * Tipografia
+   * ------------------------------------------------------------------------ */
+  --font-family-base: 'Raleway', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Usada onde alinhamento por coluna importa (posições de campo no TXT). */
+  --font-family-mono: 'Courier New', ui-monospace, monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.85rem;
+  --font-size-md: 0.95rem;
+  --font-size-lg: 1.15rem;
+  --font-size-xl: 1.5rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-base: 1.5;
+
+  /* ---------------------------------------------------------------------------
+   * Marca / cor primária
+   * [VERIFICADO] #00263c é `headerBgColor` e `spinnerColor` dos temas `nigeria`
+   * e `nigeriands` em `ndd-frontend/portal/configs/themes.spec.json`
+   * (title: "Neogrid Fiscal"). É o azul-marinho do cabeçalho do portal.
+   * [OBSERVADO] #0f70ae é o azul corporativo mais recorrente no SCSS do portal
+   * (33 ocorrências) — usado aqui como azul de ação/interação (links, foco).
+   * ------------------------------------------------------------------------ */
+  --color-primary: #00263c;
+  --color-primary-hover: #003a5c;
+  --color-primary-contrast: #ffffff;
+
+  --color-accent: #0f70ae;
+  --color-accent-hover: #0c5a8b;
+  --color-accent-soft: #e6f0f7;
+
+  /* ---------------------------------------------------------------------------
+   * Superfícies e texto
+   * [OBSERVADO] Neutros mais recorrentes no SCSS do portal:
+   * #f5f5f5 (93x), #f0f0f0 (40x), #dadada (110x), #393939 (41x), #a1a1a1 (11x).
+   * ------------------------------------------------------------------------ */
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f0f0f0;
+  --color-surface-hover: #e9eef2;
+
+  --color-text: #393939;
+  --color-text-strong: #1f1f1f;
+  --color-text-muted: #707070;
+  --color-text-inverse: #ffffff;
+
+  --color-border: #dadada;
+  --color-border-strong: #b5b5b5;
+  --color-border-subtle: #ececec;
+
+  /* ---------------------------------------------------------------------------
+   * Cores de estado
+   *
+   * ATENÇÃO — CONTRATO DE DOMÍNIO, não é só estética:
+   * no painel de métricas de IA os campos `xsdValido`, `cypressValidado` e
+   * `cStatPollux` chegam `null` enquanto a etapa do pipeline IA→validação não
+   * estiver cabeada. `null` significa "AINDA NÃO AVALIADO", NUNCA "falhou".
+   * Use `--color-pending` (neutro) para null — jamais `--color-danger`, que
+   * comunicaria fracasso onde a verdade é "próxima etapa do roadmap".
+   *
+   * [OBSERVADO] Matizes vindos do portal: verde #009e7e / #0fbd8e,
+   * amarelo #f4c414 e laranja-vermelho #f45414 (estes dois aparecem juntos no
+   * gradiente da classe `.gd-warning` do portal). As variantes `-bg` e `-text`
+   * são derivadas nossas, escolhidas para manter contraste AA (>= 4.5:1) do
+   * texto sobre o fundo do badge.
+   * ------------------------------------------------------------------------ */
+  --color-success: #009e7e;
+  --color-success-bg: #e3f6f0;
+  --color-success-text: #00674f;
+
+  --color-danger: #f45414;
+  --color-danger-bg: #fdeae2;
+  --color-danger-text: #a5330a;
+
+  --color-warning: #f4c414;
+  --color-warning-bg: #fff8e1;
+  --color-warning-text: #7a5a00;
+
+  /* Estado "ainda não avaliado" — cinza, deliberadamente sem carga de erro. */
+  --color-pending: #a1a1a1;
+  --color-pending-bg: #f0f0f0;
+  --color-pending-text: #4e4e4e;
+
+  --color-info: #0f70ae;
+  --color-info-bg: #e6f0f7;
+  --color-info-text: #0b4c76;
+
+  /* ---------------------------------------------------------------------------
+   * Espaçamento
+   * ------------------------------------------------------------------------ */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* ---------------------------------------------------------------------------
+   * Raio de borda e elevação
+   * Cantos discretos e sombra rasa acompanham o look Bootstrap 5 + Kendo do
+   * portal (densidade alta, pouca sombra).
+   * ------------------------------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 38, 60, 0.08);
+  --shadow-md: 0 2px 8px rgba(0, 38, 60, 0.12);
+
+  --transition-fast: 0.15s ease;
+
+  /* ---------------------------------------------------------------------------
+   * Canais RGB dos tokens acima.
+   * Servem para compor transparência sem hardcodar a cor:
+   *   background: rgba(var(--color-accent-rgb), 0.1);
+   * Mantenha SEMPRE em sincronia com o hex correspondente.
+   * ------------------------------------------------------------------------ */
+  --color-primary-rgb: 0, 38, 60;
+  --color-accent-rgb: 15, 112, 174;
+  --color-success-rgb: 0, 158, 126;
+  --color-danger-rgb: 244, 84, 20;
+  --color-warning-rgb: 244, 196, 20;
+  --color-shadow-rgb: 0, 38, 60;
+}

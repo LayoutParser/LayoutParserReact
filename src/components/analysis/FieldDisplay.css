@@ -1,12 +1,12 @@
 .field-display {
-  background: #FFFFFF;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.5rem;
   height: 100%;
   overflow-y: auto;
   overflow-x: auto;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   position: relative;
 }
 
@@ -21,9 +21,9 @@
 .field-display-empty {
   padding: 2rem;
   text-align: center;
-  color: #666;
-  background: #FFFFFF;
-  border: 1px solid #e0e0e0;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -42,7 +42,7 @@
   padding: 2px 0;
   white-space: nowrap;
   margin-left: 0;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   display: flex;
   align-items: center;
   position: relative;
@@ -54,7 +54,7 @@
 
 .field-line-content {
   display: inline-block;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   font-size: 11px;
   line-height: 1.2;
   white-space: pre;
@@ -73,8 +73,8 @@
 .field-space {
   display: inline;
   white-space: pre;
-  color: #000000;
-  font-family: 'Courier New', monospace;
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
   font-size: 11px;
   letter-spacing: 0;
 }
@@ -82,16 +82,16 @@
 .field-static {
   display: inline;
   white-space: pre;
-  color: #000000;
-  font-family: 'Courier New', monospace;
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
   font-size: 11px;
   letter-spacing: 0;
 }
 
 /* Sequencial (6 dígitos) - destacado com cinza */
 .field-sequential-static {
-  background: #808080;
-  color: #FFFFFF;
+  background: var(--color-text-muted);
+  color: var(--color-text-inverse);
   padding: 2px 4px;
   border-radius: 3px;
   font-weight: 700;
@@ -100,8 +100,8 @@
 
 /* Número da linha (3 dígitos) - destacado com rosa */
 .field-line-number-static {
-  background: #ED008C;
-  color: #FFFFFF;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   padding: 2px 4px;
   border-radius: 3px;
   font-weight: 700;
@@ -112,17 +112,17 @@
   display: inline;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--color-shadow-rgb), 0.15);
   border-radius: 1px;
   background: rgba(255, 255, 255, 0.95);
   cursor: pointer;
   transition: all 0.2s;
   white-space: pre;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   font-size: 11px;
   line-height: 1.2;
   vertical-align: baseline;
-  color: #000000;
+  color: var(--color-text-strong);
   position: relative;
   letter-spacing: 0;
   word-spacing: 0;
@@ -132,13 +132,13 @@
 /* Formato: sequencial(6) + espaço + número da linha(3) = "000001 000" */
 .field-sequential {
   display: inline-block;
-  background: #808080; /* Cor cinza */
-  color: #FFFFFF;
+  background: var(--color-text-muted); /* Cor cinza */
+  color: var(--color-text-inverse);
   padding: 3px 8px;
   border-radius: 4px;
   font-weight: 700;
   font-size: 11px;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   letter-spacing: 0.5px;
   width: 10ch; /* 6 dígitos + espaço + 3 dígitos = 10 caracteres */
   min-width: 10ch;
@@ -153,22 +153,22 @@
 
 /* HEADER como sequencial - mantém cor rosa */
 .field-sequential-header {
-  background: #ED008C;
-  color: #FFFFFF;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   width: 6ch; /* "HEADER" tem 6 caracteres */
   min-width: 6ch;
   max-width: 6ch;
-  box-shadow: 0 2px 4px rgba(237, 0, 140, 0.3);
+  box-shadow: 0 2px 4px rgba(var(--color-danger-rgb), 0.3);
 }
 
 .field-record {
   display: inline-block;
-  background: rgba(87, 0, 255, 0.1);
-  color: #5700FF;
+  background: rgba(var(--color-accent-rgb), 0.1);
+  color: var(--color-accent);
   padding: 3px 8px;
   margin: 2px 3px;
   border-radius: 4px;
-  border: 1px solid #5700FF;
+  border: 1px solid var(--color-accent);
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
@@ -176,7 +176,7 @@
 }
 
 .field-record:hover {
-  background: rgba(87, 0, 255, 0.2);
+  background: rgba(var(--color-accent-rgb), 0.2);
   transform: scale(1.05);
 }
 
@@ -184,36 +184,36 @@
   display: inline-block;
   padding: 0;
   margin: 0;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 2px;
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
   transition: all 0.2s;
   white-space: pre;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   font-size: 11px;
   line-height: 1.2;
   vertical-align: top;
 }
 
 .field-inline:hover {
-  background: #fff9c4;
-  border-color: #ffc107;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning);
   transform: scale(1.02);
   z-index: 10;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(var(--color-shadow-rgb), 0.1);
 }
 
 .field-inline.highlighted {
-  background: #1FEBCC !important;
-  border-color: #1FEBCC !important;
+  background: var(--color-success) !important;
+  border-color: var(--color-success) !important;
   font-weight: bold;
-  box-shadow: 0 0 10px rgba(31, 235, 204, 0.8) !important;
+  box-shadow: 0 0 10px rgba(var(--color-success-rgb), 0.8) !important;
   animation: pulse-highlight 0.6s ease-in-out;
 }
 
 .field-inline.in-search {
-  border-left: 3px solid #ED008C;
+  border-left: 3px solid var(--color-danger);
 }
 
 @keyframes pulse-highlight {
@@ -231,74 +231,74 @@
 }
 
 .field-display::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-border-subtle);
   border-radius: 4px;
 }
 
 .field-display::-webkit-scrollbar-thumb {
-  background: #5700FF;
+  background: var(--color-accent);
   border-radius: 4px;
 }
 
 .field-display::-webkit-scrollbar-thumb:hover {
-  background: #ED008C;
+  background: var(--color-danger);
 }
 
 /* Indicador de ocorrência múltipla */
 .line-occurrence-indicator {
   font-size: 10px;
-  color: #666;
+  color: var(--color-text-muted);
   margin-bottom: 4px;
   font-weight: 600;
   padding: 2px 8px;
-  background-color: #f0f0f0;
-  border-left: 3px solid #5700FF;
+  background-color: var(--color-surface-alt);
+  border-left: 3px solid var(--color-accent);
   border-radius: 3px;
   display: inline-block;
 }
 
 /* Linha com erro de validação */
 .field-line-container.line-with-error {
-  border-left: 4px solid #dc3545;
-  background-color: #fff5f5;
+  border-left: 4px solid var(--color-danger);
+  background-color: var(--color-danger-bg);
   padding: 8px;
   border-radius: 4px;
 }
 
 .field-list-inline.line-with-error-content {
-  background-color: #fee;
+  background-color: var(--color-danger-bg);
   padding: 4px;
-  border: 1px solid #dc3545;
+  border: 1px solid var(--color-danger);
   border-radius: 3px;
 }
 
 .field-line-content.line-with-error-content {
-  background-color: #fee;
-  border: 1px solid #dc3545;
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger);
 }
 
 /* Linha desalinhada (após erro) */
 .field-line-container.line-desaligned {
-  border-left: 4px solid #ffc107;
-  background-color: #fffbf0;
+  border-left: 4px solid var(--color-warning);
+  background-color: var(--color-warning-bg);
   padding: 8px;
   border-radius: 4px;
 }
 
 .field-list-inline.line-desaligned-content,
 .field-line-content.line-desaligned-content {
-  background-color: #fffae6;
-  border: 1px solid #ffc107;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
   opacity: 0.8;
 }
 
 /* Campo problemático específico */
 .field-inline.field-problematic {
-  background-color: #f8d7da !important;
-  border: 2px solid #dc3545 !important;
+  background-color: var(--color-danger-bg) !important;
+  border: 2px solid var(--color-danger) !important;
   border-radius: 3px;
   text-decoration: underline;
-  text-decoration-color: #dc3545;
+  text-decoration-color: var(--color-danger);
   text-decoration-style: wavy;
 }
 

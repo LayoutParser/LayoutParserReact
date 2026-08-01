@@ -5,15 +5,15 @@
 .tabs-header {
   display: flex;
   gap: 0;
-  border-bottom: 2px solid #e0e0e0;
-  background: white;
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .tab-button {
   padding: 14px 24px;
   border: none;
   background: transparent;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -24,19 +24,19 @@
 }
 
 .tab-button:hover:not(.active) {
-  color: #5700FF;
-  background: #f8f9fa;
+  color: var(--color-accent);
+  background: var(--color-surface-alt);
 }
 
 .tab-button.active {
-  color: #5700FF;
-  border-bottom-color: #5700FF;
-  background: #FFFFFF;
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+  background: var(--color-surface);
 }
 
 .tabs-content {
   padding: 20px;
-  background: white;
+  background: var(--color-surface);
   min-height: 400px;
 }
 
