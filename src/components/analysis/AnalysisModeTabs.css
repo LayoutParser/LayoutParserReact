@@ -6,7 +6,7 @@
 
 .analysis-mode-tabs-checking {
   padding: 0.5rem 1rem;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
   font-style: italic;
 }
@@ -39,9 +39,9 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--color-surface);
   margin-bottom: 0.75rem;
 }
 
@@ -50,13 +50,13 @@
   flex-direction: column;
   gap: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 2px solid #e0e0e0;
+  border-top: 2px solid var(--color-border);
 }
 
 .file-visualization-header .structure-tree {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--color-surface);
 }

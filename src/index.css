@@ -1,18 +1,15 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* Design tokens (cor, tipografia, espaçamento) — fonte única de verdade.
+   Precisa vir antes de tudo: o restante do CSS consome as variáveis daqui. */
+@import './styles/tokens.css';
 
-  /* Paleta de cores */
-  --color-verde: #1FEBCC;
-  --color-rosa: #ED008C;
-  --color-roxo: #5700FF;
-  --color-branco: #FFFFFF;
-  --color-preto: #000000;
+:root {
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-regular);
 
   color-scheme: light;
-  color: #000000;
-  background-color: #FFFFFF;
+  color: var(--color-text);
+  background-color: var(--color-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -32,10 +29,22 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+/* Controles de formulário não herdam fonte do body por padrão — sem isto,
+   botões e inputs cairiam na fonte do sistema e quebrariam a identidade. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
 }
-

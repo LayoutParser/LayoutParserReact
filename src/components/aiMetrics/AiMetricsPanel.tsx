@@ -6,12 +6,23 @@ import './AiMetricsPanel.css';
 // null = fase do pipeline ainda não implementada -> "Pendente" (cinza), NUNCA vermelho.
 const ValidationBadge: React.FC<{ value: boolean | null }> = ({ value }) => {
   if (value === null) {
-    return <span className="ai-badge ai-badge-pending">Pendente</span>;
+    return (
+      <span
+        className="ai-badge ai-badge-pending"
+        title="Ainda não avaliado — etapa do pipeline não implementada"
+      >
+        Pendente
+      </span>
+    );
   }
   return value ? (
-    <span className="ai-badge ai-badge-ok">OK</span>
+    <span className="ai-badge ai-badge-ok" title="Validado com sucesso">
+      OK
+    </span>
   ) : (
-    <span className="ai-badge ai-badge-fail">Falhou</span>
+    <span className="ai-badge ai-badge-fail" title="Validação executada e reprovada">
+      Falhou
+    </span>
   );
 };
 

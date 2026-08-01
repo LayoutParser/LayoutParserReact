@@ -1,6 +1,6 @@
 .xml-transformation-display {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 1rem;
   height: 100%;
@@ -14,8 +14,8 @@
 }
 
 .xml-transformation-generate-btn {
-  background: linear-gradient(135deg, #5700ff 0%, #ed008c 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-text-inverse);
   border: none;
   padding: 0.75rem 1.25rem;
   border-radius: 6px;
@@ -23,12 +23,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(87, 0, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .xml-transformation-generate-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(87, 0, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(var(--color-accent-rgb), 0.4);
 }
 
 .xml-transformation-generate-btn:disabled {
@@ -38,16 +38,16 @@
 }
 
 .xml-transformation-generate-btn:focus-visible {
-  outline: 3px solid #5700ff;
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .xml-transformation-error {
-  background: rgba(237, 0, 140, 0.1);
-  color: #ed008c;
+  background: rgba(var(--color-danger-rgb), 0.1);
+  color: var(--color-danger);
   padding: 0.75rem;
   border-radius: 6px;
-  border: 1px solid #ed008c;
+  border: 1px solid var(--color-danger);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
@@ -55,16 +55,16 @@
 .xml-transformation-result h3 {
   margin: 0 0 0.5rem 0;
   font-size: 0.95rem;
-  color: #000000;
+  color: var(--color-text-strong);
   font-weight: 600;
 }
 
 .xml-transformation-content {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 1rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   font-size: 12px;
   line-height: 1.4;
   white-space: pre-wrap;
@@ -77,12 +77,12 @@
    precisa de um indicador de foco visível, já que <pre> não tem um nativo tão claro
    quanto um botão. */
 .xml-transformation-content:focus-visible {
-  outline: 3px solid #5700ff;
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .xml-transformation-empty {
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   text-align: center;
   padding: 1.5rem 0;
@@ -101,9 +101,9 @@
 }
 
 .xml-transformation-candidate-btn {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  color: #000000;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-strong);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -113,20 +113,20 @@
 }
 
 .xml-transformation-candidate-btn.active {
-  background: linear-gradient(135deg, #5700ff 0%, #ed008c 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-text-inverse);
   border-color: transparent;
 }
 
 .xml-transformation-candidate-btn:focus-visible {
-  outline: 3px solid #5700ff;
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .xml-transformation-warnings {
-  background: rgba(255, 193, 7, 0.12);
-  color: #7a5900;
-  border: 1px solid #ffc107;
+  background: rgba(var(--color-warning-rgb), 0.12);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning);
   border-radius: 6px;
   padding: 0.75rem;
   font-size: 0.85rem;
@@ -142,9 +142,9 @@
 }
 
 .xml-transformation-diagnose-btn {
-  background: #ffffff;
-  color: #ed008c;
-  border: 1px solid #ed008c;
+  background: var(--color-surface);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.85rem;
@@ -158,7 +158,7 @@
 }
 
 .xml-transformation-diagnose-btn:focus-visible {
-  outline: 3px solid #5700ff;
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -166,9 +166,9 @@
    endpoint foi validado com ~150s de latência em ambiente sem GPU, então a mensagem avisa
    explicitamente que a espera pode ser longa (ver xmlAnalysisService.ts). */
 .xml-transformation-diagnosing {
-  background: rgba(87, 0, 255, 0.08);
-  color: #5700ff;
-  border: 1px solid #5700ff;
+  background: rgba(var(--color-accent-rgb), 0.08);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
   border-radius: 6px;
   padding: 0.75rem;
   font-size: 0.85rem;
@@ -176,8 +176,8 @@
 }
 
 .xml-transformation-diagnostic {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin: 0.75rem 0;
@@ -187,11 +187,11 @@
 .xml-transformation-diagnostic h4 {
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .xml-transformation-diagnostic-low-confidence {
-  color: #7a5900;
+  color: var(--color-warning-text);
   font-weight: 400;
   font-size: 0.8rem;
 }
@@ -201,9 +201,9 @@
 }
 
 .xml-transformation-placeholder {
-  /* #666 (não #999) para manter contraste AA em texto normal — mesmo tom já usado em
+  /* var(--color-text-muted) (não var(--color-text-muted)) para manter contraste AA em texto normal — mesmo tom já usado em
      .structure-placeholder (LayoutParserPage.css) e .analysis-mode-tabs-checking. */
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   font-style: italic;
   text-align: center;

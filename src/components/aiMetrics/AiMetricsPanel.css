@@ -2,8 +2,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #ffffff;
-  padding: 1.5rem;
+  background: var(--color-surface);
+  font-family: var(--font-family-base);
+  color: var(--color-text);
+  padding: var(--spacing-lg);
   overflow: auto;
 }
 
@@ -11,68 +13,77 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: var(--spacing-md);
 }
 
 .ai-metrics-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  color: #000000;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
 }
 
 .ai-refresh-btn {
-  background: linear-gradient(135deg, #5700ff 0%, #ed008c 100%);
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast);
+}
+
+.ai-refresh-btn:hover {
+  background: var(--color-primary-hover);
 }
 
 .ai-metrics-notice {
-  background: #f0f0ff;
-  border: 1px solid #d6d0ff;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  font-size: 0.85rem;
-  color: #333333;
-  margin-bottom: 1.25rem;
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-accent-soft);
+  border-left: 3px solid var(--color-info);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-info-text);
+  margin-bottom: var(--spacing-lg);
 }
 
 .ai-metrics-loading,
 .ai-metrics-empty {
-  padding: 1rem;
-  color: #666666;
-  font-size: 0.9rem;
+  padding: var(--spacing-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
 }
 
 .ai-metrics-warning {
-  background: #fff8e1;
-  border: 1px solid #ffe0a3;
-  border-radius: 6px;
-  padding: 0.75rem 1rem;
-  font-size: 0.85rem;
-  color: #7a5a00;
-  margin-bottom: 1rem;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-warning-text);
+  margin-bottom: var(--spacing-md);
 }
 
 .ai-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
 }
 
 .ai-summary-card {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  background: #fafafa;
-  border: 1px solid #eaeaea;
-  border-radius: 8px;
-  padding: 0.9rem 1rem;
+  gap: var(--spacing-xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 0.9rem var(--spacing-md);
 }
 
 .ai-summary-card-wide {
@@ -80,71 +91,89 @@
 }
 
 .ai-summary-label {
-  font-size: 0.75rem;
-  color: #666666;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  font-weight: var(--font-weight-medium);
 }
 
 .ai-summary-value {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #000000;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-strong);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-sm);
 }
 
 .ai-doctype-breakdown {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--spacing-lg);
 }
 
 .ai-doctype-breakdown h3 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-strong);
+  margin-bottom: var(--spacing-sm);
 }
 
 .ai-doctype-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--spacing-xs);
 }
 
 .ai-doctype-item {
   display: flex;
-  gap: 1.5rem;
-  font-size: 0.85rem;
-  padding: 0.5rem 0.75rem;
-  background: #fafafa;
-  border-radius: 6px;
+  gap: var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) 0.75rem;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
 }
 
 .ai-doctype-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   min-width: 80px;
 }
 
 .ai-generations-filters {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: var(--spacing-md);
 }
 
 .ai-generations-filters input {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #dddddd;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  padding: var(--spacing-sm) 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.ai-generations-filters input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .ai-generations-filters button {
-  background: #5700ff;
-  color: #ffffff;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast);
+}
+
+.ai-generations-filters button:hover {
+  background: var(--color-accent-hover);
 }
 
 .ai-generations-table-wrapper {
@@ -159,16 +188,20 @@
 
 .ai-generations-table th,
 .ai-generations-table td {
-  padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid #eeeeee;
+  padding: var(--spacing-sm) 0.6rem;
+  border-bottom: 1px solid var(--color-border-subtle);
   text-align: left;
   white-space: nowrap;
 }
 
 .ai-generations-table th {
-  background: #fafafa;
-  font-weight: 600;
-  color: #333333;
+  background: var(--color-surface-alt);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.ai-generations-table tbody tr:hover {
+  background: var(--color-surface-alt);
 }
 
 .ai-cell-layout {
@@ -181,17 +214,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  font-size: 0.85rem;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .ai-generations-pagination button {
-  background: #efefef;
-  border: none;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   padding: 0.4rem 0.9rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast);
+}
+
+.ai-generations-pagination button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
 }
 
 .ai-generations-pagination button:disabled {
@@ -199,25 +241,42 @@
   cursor: not-allowed;
 }
 
+/* -----------------------------------------------------------------------------
+ * Badges de validação — 3 estados VISUALMENTE DISTINTOS.
+ *
+ * CONTRATO DE DOMÍNIO: para `xsdValido`, `cypressValidado` e `cStatPollux`,
+ * `null` = "ainda não avaliado" (etapa do pipeline IA→validação não cabeada),
+ * NUNCA "falhou". Por isso `.ai-badge-pending` é CINZA neutro e jamais deve
+ * herdar a cor de `.ai-badge-fail` — vermelho em `null` comunicaria fracasso
+ * onde a verdade é "próxima etapa do roadmap".
+ * -------------------------------------------------------------------------- */
 .ai-badge {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.15rem var(--spacing-sm);
+  border-radius: var(--radius-pill);
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
+/* null — não avaliado (neutro) */
 .ai-badge-pending {
-  background: #e0e0e0;
-  color: #555555;
+  background: var(--color-pending-bg);
+  color: var(--color-pending-text);
+  border: 1px solid var(--color-pending);
 }
 
+/* true — sucesso */
 .ai-badge-ok {
-  background: #dff5e1;
-  color: #1e7b34;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success);
 }
 
+/* false — falha real */
 .ai-badge-fail {
-  background: #fbe0e0;
-  color: #a11414;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger);
 }
