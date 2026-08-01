@@ -6,12 +6,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(var(--color-shadow-rgb), 0.1);
 }
 
 .btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(var(--color-shadow-rgb), 0.15);
 }
 
 .btn:disabled {
@@ -21,27 +21,29 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #5700FF 0%, #5700FF 100%);
-  color: #FFFFFF;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .btn-secondary {
-  background: #666;
-  color: #FFFFFF;
+  background: var(--color-text-muted);
+  color: var(--color-text-inverse);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #1FEBCC, #1FEBCC);
-  color: #000000;
+  background: var(--color-success);
+  color: var(--color-text-strong);
 }
 
 .btn-danger {
-  background: #ED008C;
-  color: #FFFFFF;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
 }
 
+/* Antes usava o rosa da paleta antiga (igual ao de erro), o que tornava
+   "aviso" e "erro" indistinguíveis. Agora usa o token de aviso. */
 .btn-warning {
-  background: #ED008C;
-  color: #FFFFFF;
+  background: var(--color-warning);
+  color: var(--color-warning-text);
 }
 

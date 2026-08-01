@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #FFFFFF;
+  background: var(--color-surface);
   padding: 1.5rem;
   overflow: hidden;
 }
@@ -21,8 +21,8 @@
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #5700FF;
+  border: 4px solid var(--color-border-subtle);
+  border-top: 4px solid var(--color-accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -46,12 +46,12 @@
 .monitoring-title h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .refresh-btn {
-  background: linear-gradient(135deg, #5700FF 0%, #ED008C 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-text-inverse);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -63,7 +63,7 @@
 
 .refresh-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(87, 0, 255, 0.3);
+  box-shadow: 0 4px 8px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .monitoring-summary {
@@ -73,8 +73,8 @@
 }
 
 .summary-card {
-  background: rgba(87, 0, 255, 0.05);
-  border: 1px solid rgba(87, 0, 255, 0.2);
+  background: rgba(var(--color-accent-rgb), 0.05);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.2);
   border-radius: 8px;
   padding: 1rem;
   display: flex;
@@ -85,26 +85,26 @@
 
 .summary-label {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
 .summary-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .summary-value.valid {
-  color: #1FEBCC;
+  color: var(--color-success);
 }
 
 .summary-value.invalid {
-  color: #ED008C;
+  color: var(--color-danger);
 }
 
 .summary-value.error {
-  color: #ED008C;
+  color: var(--color-danger);
 }
 
 .monitoring-content {
@@ -118,16 +118,16 @@
 
 .layouts-list {
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--color-surface-alt);
 }
 
 .layouts-list h3 {
   margin: 0 0 1rem 0;
   font-size: 1.1rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .layouts-grid {
@@ -137,8 +137,8 @@
 }
 
 .layout-card {
-  background: #FFFFFF;
-  border: 2px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   padding: 1rem;
   cursor: pointer;
@@ -146,31 +146,31 @@
 }
 
 .layout-card:hover {
-  border-color: #5700FF;
-  box-shadow: 0 4px 8px rgba(87, 0, 255, 0.2);
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 8px rgba(var(--color-accent-rgb), 0.2);
   transform: translateY(-2px);
 }
 
 .layout-card.selected {
-  border-color: #5700FF;
-  background: rgba(87, 0, 255, 0.05);
-  box-shadow: 0 4px 12px rgba(87, 0, 255, 0.3);
+  border-color: var(--color-accent);
+  background: rgba(var(--color-accent-rgb), 0.05);
+  box-shadow: 0 4px 12px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .layout-card.valid {
-  border-left: 4px solid #1FEBCC;
+  border-left: 4px solid var(--color-success);
 }
 
 .layout-card.invalid {
-  border-left: 4px solid #ED008C;
+  border-left: 4px solid var(--color-danger);
 }
 
 .layout-card.not_configured {
-  border-left: 4px solid #999;
+  border-left: 4px solid var(--color-text-muted);
 }
 
 .layout-card.error {
-  border-left: 4px solid #ED008C;
+  border-left: 4px solid var(--color-danger);
 }
 
 .layout-card-header {
@@ -190,13 +190,13 @@
 .layout-card-title h4 {
   margin: 0;
   font-size: 1rem;
-  color: #000000;
+  color: var(--color-text-strong);
   font-weight: 600;
 }
 
 .layout-line-size {
-  background: rgba(87, 0, 255, 0.1);
-  color: #5700FF;
+  background: rgba(var(--color-accent-rgb), 0.1);
+  color: var(--color-accent);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -222,36 +222,36 @@
 }
 
 .stat-label {
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .stat-value {
   font-weight: 600;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .stat-value.valid {
-  color: #1FEBCC;
+  color: var(--color-success);
 }
 
 .stat-value.invalid {
-  color: #ED008C;
+  color: var(--color-danger);
 }
 
 .layout-error {
-  color: #ED008C;
+  color: var(--color-danger);
   font-size: 0.85rem;
   padding: 0.5rem;
-  background: rgba(237, 0, 140, 0.1);
+  background: rgba(var(--color-danger-rgb), 0.1);
   border-radius: 4px;
 }
 
 .layout-details {
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--color-surface-alt);
 }
 
 .details-header {
@@ -260,20 +260,20 @@
   align-items: center;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-border);
 }
 
 .details-header h3 {
   margin: 0;
   font-size: 1.2rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .close-btn {
   background: transparent;
   border: none;
   font-size: 1.5rem;
-  color: #666;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
@@ -281,8 +281,8 @@
 }
 
 .close-btn:hover {
-  background: rgba(237, 0, 140, 0.1);
-  color: #ED008C;
+  background: rgba(var(--color-danger-rgb), 0.1);
+  color: var(--color-danger);
 }
 
 .details-content {
@@ -304,18 +304,18 @@
 
 .info-label {
   font-weight: 600;
-  color: #666;
+  color: var(--color-text-muted);
   min-width: 150px;
 }
 
 .info-value {
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .line-validations h4 {
   margin: 0 0 1rem 0;
   font-size: 1rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .validations-list {
@@ -325,18 +325,18 @@
 }
 
 .validation-item {
-  background: #FFFFFF;
-  border: 1px solid #e0e0e0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   overflow: hidden;
 }
 
 .validation-item.valid {
-  border-left: 4px solid #1FEBCC;
+  border-left: 4px solid var(--color-success);
 }
 
 .validation-item.invalid {
-  border-left: 4px solid #ED008C;
+  border-left: 4px solid var(--color-danger);
 }
 
 .validation-header {
@@ -349,31 +349,31 @@
 }
 
 .validation-header:hover {
-  background: rgba(87, 0, 255, 0.05);
+  background: rgba(var(--color-accent-rgb), 0.05);
 }
 
 .validation-toggle {
-  color: #5700FF;
+  color: var(--color-accent);
   font-weight: bold;
   min-width: 20px;
 }
 
 .validation-line-name {
   font-weight: 600;
-  color: #000000;
+  color: var(--color-text-strong);
   flex: 1;
 }
 
 .validation-total {
   font-weight: 600;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
 .validation-details {
   padding: 1rem;
-  background: rgba(87, 0, 255, 0.02);
-  border-top: 1px solid #e0e0e0;
+  background: rgba(var(--color-accent-rgb), 0.02);
+  border-top: 1px solid var(--color-border);
 }
 
 .validation-formula {
@@ -396,7 +396,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.75rem;
-  background: rgba(87, 0, 255, 0.1);
+  background: rgba(var(--color-accent-rgb), 0.1);
   border-radius: 4px;
   font-weight: 700;
   font-size: 1rem;
@@ -410,7 +410,7 @@
 .calculated-positions h5 {
   margin: 0 0 0.75rem 0;
   font-size: 0.95rem;
-  color: #000000;
+  color: var(--color-text-strong);
 }
 
 .positions-grid {
@@ -429,12 +429,12 @@
 }
 
 .position-field {
-  color: #666;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
 .position-value {
-  color: #5700FF;
+  color: var(--color-accent);
   font-weight: 600;
 }
 
@@ -442,7 +442,7 @@
   grid-column: 1 / -1;
   text-align: center;
   padding: 0.5rem;
-  color: #666;
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
@@ -455,28 +455,28 @@
 }
 
 .status-badge.status-valid {
-  background: rgba(31, 235, 204, 0.2);
-  color: #1FEBCC;
+  background: rgba(var(--color-success-rgb), 0.2);
+  color: var(--color-success);
 }
 
 .status-badge.status-invalid {
-  background: rgba(237, 0, 140, 0.2);
-  color: #ED008C;
+  background: rgba(var(--color-danger-rgb), 0.2);
+  color: var(--color-danger);
 }
 
 .status-badge.status-not-configured {
   background: rgba(153, 153, 153, 0.2);
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .status-badge.status-error {
-  background: rgba(237, 0, 140, 0.2);
-  color: #ED008C;
+  background: rgba(var(--color-danger-rgb), 0.2);
+  color: var(--color-danger);
 }
 
 .retry-btn {
-  background: linear-gradient(135deg, #5700FF 0%, #ED008C 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  color: var(--color-text-inverse);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
@@ -488,7 +488,7 @@
 
 .retry-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(87, 0, 255, 0.3);
+  box-shadow: 0 4px 8px rgba(var(--color-accent-rgb), 0.3);
 }
 
 @media (max-width: 1200px) {

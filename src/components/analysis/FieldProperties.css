@@ -1,10 +1,10 @@
 .field-properties {
-  background: #FFFFFF;
-  border: 2px solid #5700FF;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
   border-radius: 8px;
   padding: 1.5rem;
   margin-top: 1.5rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(var(--color-shadow-rgb), 0.1);
 }
 
 .properties-header {
@@ -13,12 +13,12 @@
   align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .properties-header h3 {
   margin: 0;
-  color: #000000;
+  color: var(--color-text-strong);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -28,7 +28,7 @@
   height: 32px;
   border: none;
   background: transparent;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 24px;
   cursor: pointer;
   border-radius: 4px;
@@ -39,8 +39,8 @@
 }
 
 .properties-close:hover {
-  background: rgba(237, 0, 140, 0.1);
-  color: #ED008C;
+  background: rgba(var(--color-danger-rgb), 0.1);
+  color: var(--color-danger);
 }
 
 .properties-content {
@@ -54,23 +54,23 @@
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem;
-  background: #f8f9fa;
+  background: var(--color-surface-alt);
   border-radius: 6px;
 }
 
 .property-item.property-error {
-  background: rgba(237, 0, 140, 0.1);
-  border: 1px solid #ED008C;
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border: 1px solid var(--color-danger);
 }
 
 .property-item.property-warning {
-  background: rgba(31, 235, 204, 0.1);
-  border: 1px solid #1FEBCC;
+  background: rgba(var(--color-success-rgb), 0.1);
+  border: 1px solid var(--color-success);
 }
 
 .property-label {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--color-text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -78,30 +78,30 @@
 
 .property-value {
   font-size: 0.95rem;
-  color: #000000;
+  color: var(--color-text-strong);
   font-weight: 500;
 }
 
 .property-value-text {
-  font-family: 'Courier New', monospace;
-  background: #FFFFFF;
+  font-family: var(--font-family-mono);
+  background: var(--color-surface);
   padding: 0.5rem;
   border-radius: 4px;
   word-break: break-all;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--color-border);
 }
 
 .property-status.valid {
-  color: #1FEBCC;
+  color: var(--color-success);
 }
 
 .property-status.invalid {
-  color: #ED008C;
+  color: var(--color-danger);
 }
 
 .property-guid {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-family-mono);
   font-size: 0.8rem;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
