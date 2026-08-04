@@ -8,7 +8,7 @@ import './UploadSection.css';
 
 const UploadSection = () => {
   const [txtFile, setTxtFile] = useState<File | null>(null);
-  
+
   const {
     isUploading,
     uploadError,
@@ -31,7 +31,7 @@ const UploadSection = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedLayout) {
       setUploadError('Por favor, selecione um layout do banco de dados primeiro');
       return;
@@ -50,20 +50,19 @@ const UploadSection = () => {
       // Se não tiver (veio do cache do navegador), buscar da API
       let layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
       let layoutToUse = selectedLayout;
-      
+
       if (!layoutContent) {
         // Layout veio do cache sem conteúdo, buscar da API
         console.log('ℹ️ Layout sem decryptedContent, buscando da API...');
         setUploadError('Buscando layout completo da API...');
-        
+
         try {
           const result = await layoutService.searchLayouts();
           if (result.success && result.layouts) {
-            const fullLayout = result.layouts.find(l => 
-              l.layoutGuid === selectedLayout.layoutGuid || 
-              l.name === selectedLayout.name
+            const fullLayout = result.layouts.find(
+              l => l.layoutGuid === selectedLayout.layoutGuid || l.name === selectedLayout.name
             );
-            
+
             if (fullLayout && (fullLayout.decryptedContent || (fullLayout as any).valueContent)) {
               layoutContent = fullLayout.decryptedContent || (fullLayout as any).valueContent;
               layoutToUse = fullLayout;
@@ -71,22 +70,30 @@ const UploadSection = () => {
               setSelectedLayout(fullLayout);
               console.log('✅ Layout completo carregado da API');
             } else {
-              throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
+              throw new Error(
+                'Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.'
+              );
             }
           } else {
             throw new Error('Erro ao buscar layout da API. Por favor, atualize o cache.');
           }
         } catch (apiError) {
-          throw new Error(`Erro ao buscar layout da API: ${apiError instanceof Error ? apiError.message : 'Erro desconhecido'}`);
+          throw new Error(
+            `Erro ao buscar layout da API: ${apiError instanceof Error ? apiError.message : 'Erro desconhecido'}`
+          );
         }
       }
-      
+
       if (!layoutContent) {
-        throw new Error('Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.');
+        throw new Error(
+          'Layout não encontrado no Redis. Por favor, atualize o cache ou busque layouts do banco.'
+        );
       }
-      
+
       const blob = new Blob([layoutContent], { type: 'application/xml' });
-      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, { type: 'application/xml' });
+      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, {
+        type: 'application/xml',
+      });
 
       const request: ParseRequest = {
         layoutFile,
@@ -95,7 +102,7 @@ const UploadSection = () => {
       };
 
       const result = await parseService.parseFiles(request);
-      
+
       // Log detalhado da resposta
       console.log('✅ Parsing concluído:', result);
       console.log('📊 Detalhes da resposta:', {
@@ -114,7 +121,7 @@ const UploadSection = () => {
         errors: result.errors,
         warnings: result.warnings,
       });
-      
+
       // Atualizar estado
       setParseResult(result);
       if (result.text) {
@@ -127,7 +134,6 @@ const UploadSection = () => {
         console.warn('⚠️ Nenhum campo na resposta ou array vazio');
         setFields([]);
       }
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       setUploadError(errorMessage);
@@ -161,17 +167,11 @@ const UploadSection = () => {
                 disabled={isUploading}
                 className="file-input"
               />
-              {txtFile && (
-                <span className="file-name">✓ {txtFile.name}</span>
-              )}
+              {txtFile && <span className="file-name">✓ {txtFile.name}</span>}
             </label>
           </div>
 
-          {uploadError && (
-            <div className="error-message">
-              ❌ {uploadError}
-            </div>
-          )}
+          {uploadError && <div className="error-message">❌ {uploadError}</div>}
 
           <button
             type="submit"
@@ -187,4 +187,3 @@ const UploadSection = () => {
 };
 
 export default UploadSection;
-

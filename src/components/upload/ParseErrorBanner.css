@@ -1,10 +1,14 @@
-/* Banner de falha de parse — três tratamentos visualmente distintos (422 / 5xx / rede).
+/* Banner de falha de parse — três tratamentos visualmente distintos.
  *
+ * O agrupamento é por CULPA, não por status HTTP: as causas da spec ("Taxonomia de falha do
+ * parse") mapeiam nestes três modificadores, então causas novas não exigem cor nova.
  * Só consome tokens de `src/styles/tokens.css`. Nenhum hexadecimal solto aqui: a distinção
- * entre os três casos é feita por token semântico, não por cor inventada.
- *   - documento (422)  → warning  (amarelo): o documento/layout é que tem problema.
- *   - servidor  (5xx)  → danger   (vermelho): falha da aplicação.
- *   - rede             → info     (azul): conectividade, nada quebrado no documento.
+ * entre os casos é feita por token semântico, não por cor inventada.
+ *   - documento → warning  (amarelo): o arquivo/layout é que tem problema
+ *                 (`document_malformed`, `layout_mismatch`, 422 sem causa declarada).
+ *   - servidor  → danger   (vermelho): falha da aplicação
+ *                 (`parser_defect`, requisição recusada).
+ *   - rede      → info     (azul): conectividade, nada quebrado no documento.
  */
 
 .parse-error-banner {

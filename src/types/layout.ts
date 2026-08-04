@@ -20,4 +20,3 @@ export interface SelectedLayout {
   layout: Layout;
   index: number;
 }
-

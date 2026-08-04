@@ -321,11 +321,11 @@
   .l-layout-container {
     grid-template-columns: 250px 1fr;
   }
-  
+
   .l-bottom-left {
     padding: 1rem;
   }
-  
+
   .combobox-label {
     font-size: 13px;
   }
@@ -335,11 +335,11 @@
   .l-layout-container {
     grid-template-columns: 220px 1fr;
   }
-  
+
   .l-bottom-left {
     padding: 0.75rem;
   }
-  
+
   .combobox-label {
     font-size: 12px;
   }
@@ -349,15 +349,15 @@
   .l-layout-container {
     grid-template-columns: 200px 1fr;
   }
-  
+
   .l-bottom-left {
     padding: 0.5rem;
   }
-  
+
   .combobox-label {
     font-size: 11px;
   }
-  
+
   .combobox-trigger {
     padding: 10px 12px;
     min-height: 44px;
@@ -401,9 +401,8 @@
   .l-bottom-right {
     grid-row: 4;
   }
-  
+
   .combobox-label {
     font-size: 14px;
   }
 }
-

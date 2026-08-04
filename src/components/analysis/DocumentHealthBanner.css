@@ -1,0 +1,103 @@
+/* Banner do parse "200 com defeito" — o documento É exibido logo abaixo, e este bloco diz
+ * onde estão os defeitos.
+ *
+ * Tom WARNING (amarelo), nunca danger: o parse funcionou e há documento na tela. Vermelho
+ * fica reservado ao que impede o usuário de ver o arquivo. Só consome tokens de
+ * `src/styles/tokens.css` — sem hexadecimal solto.
+ */
+
+.document-health-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.document-health-banner-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.document-health-banner-icon {
+  flex-shrink: 0;
+}
+
+.document-health-banner-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.document-health-banner-summary {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.document-health-banner-scope {
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.document-health-banner-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada item é um "onde + o quê": o alvo (campo ou linha/posição) e o detalhe do defeito. */
+.document-health-banner-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(var(--color-warning-rgb), 0.14);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.document-health-banner-target {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Alvo com identidade resolvida (campo ou registro informado pelo back-end) tem peso visual
+   maior que o fallback por linha/posição — a diferença de precisão precisa ser legível. */
+.document-health-banner-target--identified {
+  padding: 0 var(--spacing-xs);
+  background: var(--color-surface);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}
+
+.document-health-banner-detail {
+  word-break: break-word;
+}
+
+/* XPath e GUID são identificadores para copiar/reportar: monoespaçado e quebra livre. */
+.document-health-banner-xpath,
+.document-health-banner-guid {
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+  opacity: 0.9;
+}
+
+.document-health-banner-guid {
+  opacity: 0.75;
+}
+
+.document-health-banner-note {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--font-size-xs);
+  opacity: 0.85;
+}

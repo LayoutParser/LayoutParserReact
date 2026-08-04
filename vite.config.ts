@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -27,13 +27,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'router': ['react-router-dom'],
-          'ui': ['zustand', 'axios'],
+          router: ['react-router-dom'],
+          ui: ['zustand', 'axios'],
         },
       },
     },
     // Copiar web.config para dist durante o build
     copyPublicDir: true,
   },
-})
-
+});

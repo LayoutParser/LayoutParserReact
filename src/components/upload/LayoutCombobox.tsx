@@ -57,7 +57,7 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
 
   return (
     <div className="layout-combobox" ref={comboboxRef}>
-      <div 
+      <div
         className={`combobox-trigger ${selectedLayout ? 'has-selection' : ''}`}
         onClick={handleToggle}
       >
@@ -74,17 +74,17 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
               type="text"
               placeholder="Buscar por nome ou layoutGuid..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="combobox-search-input"
               autoFocus
             />
           </div>
-          
+
           <div className="combobox-options">
             {filteredLayouts.length === 0 ? (
               <div className="combobox-no-results">Nenhum layout encontrado</div>
             ) : (
-              filteredLayouts.map((layout) => {
+              filteredLayouts.map(layout => {
                 const isSelected = selectedLayout?.layoutGuid === layout.layoutGuid;
                 return (
                   <div
@@ -94,7 +94,9 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
                   >
                     <div className="option-name">{layout.name || 'Sem nome'}</div>
                     {layout.layoutGuid && (
-                      <div className="option-guid">GUID: {layout.layoutGuid.substring(0, 8)}...</div>
+                      <div className="option-guid">
+                        GUID: {layout.layoutGuid.substring(0, 8)}...
+                      </div>
                     )}
                   </div>
                 );
@@ -108,4 +110,3 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
 };
 
 export default LayoutCombobox;
-

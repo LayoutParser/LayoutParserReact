@@ -1,0 +1,37 @@
+# Normalização de fim de linha — AUTORIDADE ÚNICA do repositório.
+#
+# Por que este arquivo existe: os blobs versionados tinham CRLF gravado e as máquinas
+# rodavam com core.autocrlf=true. A briga entre as duas coisas fazia `npm run lint` e
+# `npm run format:check` acusarem ~5395 warnings em 73 arquivos que ninguém havia tocado —
+# ruído que escondia problema real de estilo e tornava os quality gates inúteis.
+#
+# Com este arquivo, o Git passa a decidir o fim de linha, não a configuração de cada
+# máquina: tudo é gravado como LF no repositório. Recomendação para as estações:
+# `git config --global core.autocrlf false` (o .gitattributes já garante o comportamento
+# correto; manter autocrlf=true não quebra, mas é redundante e confunde o diagnóstico).
+#
+# Depois de aplicar a renormalização, quem tiver clone antigo precisa de
+# `git rm --cached -r . && git reset --hard` (ou reclonar) para não ver diff fantasma.
+
+# Padrão: Git decide o que é texto e grava sempre LF no repositório.
+* text=auto eol=lf
+
+# ── Scripts que EXIGEM CRLF ──────────────────────────────────────────────────
+# cmd.exe pode falhar ao interpretar .bat/.cmd com LF — estes ficam de fora da regra geral.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ── Binários: nunca normalizar (corromperia o arquivo) ───────────────────────
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.otf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.zip   binary

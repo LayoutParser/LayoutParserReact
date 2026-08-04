@@ -15,15 +15,11 @@ export const layoutService = {
       const response = await apiClient.get<LayoutSearchResponse>(
         '/api/layoutdatabase/mqseries-nfe'
       );
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(
-          error.response?.data?.message || 
-          error.message || 
-          'Erro ao buscar layouts'
-        );
+        throw new Error(error.response?.data?.message || error.message || 'Erro ao buscar layouts');
       }
       throw error;
     }
@@ -37,28 +33,34 @@ export const layoutService = {
     if (!layouts || layouts.length === 0) {
       return false;
     }
-    
-    return layouts.some(layout => 
-      layout.decryptedContent && layout.decryptedContent.length > 0
-    );
+
+    return layouts.some(layout => layout.decryptedContent && layout.decryptedContent.length > 0);
   },
 
   /**
    * Atualiza o cache Redis no backend
    */
-  async refreshCache(): Promise<{ success: boolean; message?: string; error?: string; timestamp?: string }> {
+  async refreshCache(): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    timestamp?: string;
+  }> {
     try {
-      const response = await apiClient.post<{ success: boolean; message?: string; error?: string; timestamp?: string }>(
-        '/api/layoutdatabase/refresh-cache'
-      );
+      const response = await apiClient.post<{
+        success: boolean;
+        message?: string;
+        error?: string;
+        timestamp?: string;
+      }>('/api/layoutdatabase/refresh-cache');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.error || error.message || 'Erro ao atualizar cache';
+        const errorMessage =
+          error.response?.data?.error || error.message || 'Erro ao atualizar cache';
         throw new Error(errorMessage);
       }
       throw error;
     }
   },
 };
-

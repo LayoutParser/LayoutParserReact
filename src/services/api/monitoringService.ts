@@ -94,11 +94,16 @@ export const monitoringService = {
   /**
    * Busca resultados de validação de layouts
    */
-  async getLayoutValidations(forceRevalidation: boolean = false): Promise<LayoutValidationsResponse> {
+  async getLayoutValidations(
+    forceRevalidation: boolean = false
+  ): Promise<LayoutValidationsResponse> {
     try {
-      const response = await apiClient.get<LayoutValidationsResponse>('/api/monitoring/layout-validations', {
-        params: { forceRevalidation }
-      });
+      const response = await apiClient.get<LayoutValidationsResponse>(
+        '/api/monitoring/layout-validations',
+        {
+          params: { forceRevalidation },
+        }
+      );
       return response.data;
     } catch (error) {
       if ((import.meta as any).env?.DEV) {
@@ -108,4 +113,3 @@ export const monitoringService = {
     }
   },
 };
-

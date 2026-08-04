@@ -6,7 +6,9 @@ import AiMetricsPanel from '../aiMetrics/AiMetricsPanel';
 import './AdminPage.css';
 
 const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'processing' | 'monitoring' | 'validation' | 'aiMetrics'>('processing');
+  const [activeTab, setActiveTab] = useState<
+    'processing' | 'monitoring' | 'validation' | 'aiMetrics'
+  >('processing');
 
   return (
     <div className="admin-page">
@@ -74,4 +76,3 @@ const AdminPage: React.FC = () => {
 };
 
 export default AdminPage;
-
