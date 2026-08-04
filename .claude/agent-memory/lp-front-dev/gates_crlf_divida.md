@@ -1,40 +1,44 @@
 ---
 name: gates-crlf-divida
-description: Por que `npm run lint` e `format:check` NUNCA passam neste repo (CRLF commitado) e como provar que a falha restante é pré-existente e não regressão sua
+description: A dívida de CRLF que fazia `lint`/`format:check` sempre falharem foi RESOLVIDA em 2026-08-03; o que sobrou é um piso de 30 warnings de tipagem, e a regra passou a ser delta zero
 metadata:
   type: project
 ---
 
-# Gates: `lint` e `format:check` são vermelhos por dívida, não por você
+# Gates: a dívida de CRLF acabou; sobrou um piso de 30 warnings
 
-`.prettierrc` declara `endOfLine: "lf"`, mas **os blobs commitados contêm CRLF** (verificado:
-`git show HEAD:<arquivo> | od -c` mostra `\r`). Some-se a isso `core.autocrlf=true`, que
-converte na ida e na volta — inclusive um `git stash`/`pop` reconverte arquivos que você
-escreveu em LF de volta para CRLF.
+**Situação anterior (até 2026-08-03):** os blobs commitados tinham CRLF e `core.autocrlf=true`,
+então cada linha virava um warning `prettier/prettier "Delete ␍"` — 5395 warnings em 73 arquivos.
+Com `--max-warnings 0`, `npm run lint` e `npm run format:check` falhavam antes de qualquer
+alteração, e não valiam como sinal de regressão.
 
-**Why:** cada linha CRLF vira um warning `prettier/prettier "Delete ␍"`, e `npm run lint` roda
-com `--max-warnings 0`. Logo os dois gates falham **antes de você tocar em qualquer coisa**, e
-seguirão falhando até alguém normalizar o repo inteiro (tarefa própria, ~75 arquivos — não
-misture com uma feature, o diff fica ilegível).
+**Resolvido pela `@lp-architect` (Aria)** nos commits `a2a8e32` (normalização para LF +
+`.gitattributes`) e `3d9ed0c` (Prettier no código-fonte), na branch `chore/normaliza-crlf`.
+`core.autocrlf` agora é `false` e o `.gitattributes` impõe LF. **Não mexer nisso.**
 
-**How to apply:** não tente deixar esses dois gates verdes, e **não normalize só os arquivos que
-você tocou** (vira inconsistência e o stash/checkout desfaz). Em vez disso:
+## Estado atual dos gates (medido em 2026-08-04)
 
-1. Meça o baseline **na mesma base** antes de concluir:
-   `git stash push -u` → `npm run lint | grep problems` → `git stash pop`.
-   Referência medida em 2026-08-03 sobre `feat/design-tokens-padronizacao-visual` (6c7ee93):
-   **5395 warnings / 73 arquivos** no `format:check`. O delta depois das suas mudanças deve ser
-   ~proporcional às linhas que você acrescentou (são todas CRLF, como o resto do repo).
-2. Prove que **nenhum warning seu é de estilo real**, normalizando cópias e rodando o prettier:
-   ```bash
-   tr -d '\r' < arquivo > /tmp/copia && npx prettier --check --config .prettierrc /tmp/copia
-   ```
-   Se sair "All matched files use Prettier code style!", o único problema do seu código é line
-   ending — ou seja, dívida do repo, não sua.
-3. `npx tsc --noEmit` e `npm run build` **passam limpos** e são os gates que realmente valem
-   como sinal de regressão. Trate-os como bloqueantes.
+| Gate | Status |
+|---|---|
+| `npx tsc --noEmit` | passa limpo |
+| `npm run build` | passa limpo |
+| `npm run format:check` | **passa limpo** (era vermelho) |
+| `npm run lint` | **30 warnings, 0 erros** — falha só por `--max-warnings 0` |
 
-Cuidado com o `--fix` do eslint: ele "conserta" os 5000+ CRLF do repo todo e transforma seu PR
-num diff de milhares de linhas.
+Os 30 são **29 `no-explicit-any` + 1 `react-hooks/exhaustive-deps`**, todos pré-existentes e
+deliberadamente mantidos (dívida de tipagem; mexer neles é mudança de tipo com risco e merece
+commit próprio).
+
+**Why:** com o ruído de CRLF fora do caminho, o lint voltou a ser sinal. Um warning novo agora é
+visível — antes ficava escondido no meio de milhares.
+
+**How to apply:** a regra passou a ser **delta zero**: seu trabalho não pode acrescentar nenhum
+warning ao piso de 30. Confira com `npm run lint | tail -3` e compare o total; se subiu, o
+warning é seu. Cuidado com dois casos que já morderam:
+
+- `prettier/prettier` — rode `npx prettier --write` **só nos arquivos que você tocou**
+  (`--write` global reformata o repo e polui o diff).
+- `no-misleading-character-class` — vira **erro**, não warning. Emoji com variation selector
+  (`⚠️` = U+26A0 + U+FE0F) dentro de `[...]` dispara; use grupo `(?:⚠️)?` em vez de classe.
 
 Ver também [[reference-ambiente-local-dev]].
