@@ -1,0 +1,97 @@
+/* Banner de falha de parse — três tratamentos visualmente distintos (422 / 5xx / rede).
+ *
+ * Só consome tokens de `src/styles/tokens.css`. Nenhum hexadecimal solto aqui: a distinção
+ * entre os três casos é feita por token semântico, não por cor inventada.
+ *   - documento (422)  → warning  (amarelo): o documento/layout é que tem problema.
+ *   - servidor  (5xx)  → danger   (vermelho): falha da aplicação.
+ *   - rede             → info     (azul): conectividade, nada quebrado no documento.
+ */
+
+.parse-error-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid;
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.parse-error-banner-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.parse-error-banner-icon {
+  flex-shrink: 0;
+}
+
+.parse-error-banner-title {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Mensagem vinda do back-end: é o texto que explica a causa, então tem o maior peso visual
+   do bloco depois do título. `pre-wrap` porque a mensagem de parse pode vir com quebras. */
+.parse-error-banner-message {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.parse-error-banner-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  opacity: 0.85;
+}
+
+.parse-error-banner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--font-size-xs);
+}
+
+.parse-error-banner-meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-xs);
+}
+
+.parse-error-banner-meta dt {
+  font-weight: var(--font-weight-medium);
+  opacity: 0.8;
+}
+
+.parse-error-banner-meta dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.parse-error-banner-correlation {
+  font-family: var(--font-family-mono);
+  word-break: break-all;
+}
+
+/* --- Variantes por tipo de falha ---------------------------------------------------------- */
+
+.parse-error-banner--document {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+}
+
+.parse-error-banner--server {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+}
+
+.parse-error-banner--network {
+  background: var(--color-info-bg);
+  border-color: var(--color-info);
+  color: var(--color-info-text);
+}
