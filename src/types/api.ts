@@ -52,9 +52,23 @@ export interface LineValidationInfo {
   calculatedPositions?: Record<string, number>;
 }
 
+/**
+ * Saúde do documento num parse BEM-SUCEDIDO (HTTP 200).
+ *
+ * Spec "Taxonomia de falha do parse" §2.1: defeito localizável NÃO é 422 — é 200 com o
+ * documento renderizável e o erro anotado por cima. `clean` x `has_defects` é o terceiro
+ * estado que faltava (antes só existiam "200 limpo" e "erro").
+ *
+ * ADITIVO E OPCIONAL: enquanto o back-end não emitir o campo, a UI deriva de
+ * `validationErrors` (ver `resolveDocumentHealth` em utils/documentHealth.ts).
+ */
+export type DocumentHealth = 'clean' | 'has_defects';
+
 export interface ParseResponse {
   success: boolean;
   detectedType?: string;
+  // Ver DocumentHealth. Opcional: derivável de `validationErrors` enquanto não for emitido.
+  documentHealth?: DocumentHealth;
   layout?: Layout;
   fields?: Field[];
   text?: string;
@@ -100,12 +114,31 @@ export interface ParseResponse {
  */
 export type ParseErrorKind = 'parse_error' | 'server_error' | 'network_error';
 
+/**
+ * Causa da falha DECLARADA PELO BACK-END (spec "Taxonomia de falha do parse" §2.2/§2.3).
+ *
+ * É a taxonomia autoritativa; `ParseErrorKind` acima descreve apenas o que aconteceu no
+ * transporte HTTP (houve resposta? qual status?) e só é usado como fallback enquanto este
+ * campo não vier no corpo. Quem reconcilia os dois é `assessParseFailure`
+ * (utils/parseFailure.ts) — NÃO classifique falha lendo `kind` direto na UI.
+ *
+ * Regra de produto por trás disso:
+ *  - `parser_defect`      → a culpa é NOSSA (vem como 500). Não apresentar o documento nem
+ *                           mandar o usuário caçar problema no arquivo dele.
+ *  - `document_malformed` → o arquivo enviado está corrompido/ilegível (422).
+ *  - `layout_mismatch`    → o arquivo é legível, mas não casa com o layout escolhido (422).
+ */
+export type ParseFailureCause = 'parser_defect' | 'document_malformed' | 'layout_mismatch';
+
 export interface ParseErrorInfo {
   kind: ParseErrorKind;
   message: string; // mensagem já pronta para exibir (no 422 vem do corpo da resposta)
   httpStatus?: number; // 422 | 5xx | undefined (rede/timeout/CORS)
   detectedType?: string; // só no 422 — tipo que o back-end detectou (ex.: "idoc")
   correlationId?: string; // header X-Correlation-ID da resposta, para o usuário reportar
+  // Causa declarada no corpo do 422/500. ADITIVO E OPCIONAL: ausente enquanto o back-end
+  // não emitir (e sempre ausente em falha de rede, onde não houve corpo nenhum).
+  failureCause?: ParseFailureCause;
 }
 
 export interface DocumentValidationError {
@@ -116,6 +149,16 @@ export interface DocumentValidationError {
   errorMessage: string;
   startPosition: number;
   endPosition: number;
+  // ── Identidade de campo (spec §3) ────────────────────────────────────────────────────────
+  // Os três são OPCIONAIS e explicitamente anuláveis: o back-end emite `null` quando não
+  // consegue resolver a identidade, e `targetXPath` fica `null` até a linhagem campo→XPath
+  // existir (lacuna conhecida do projeto, spec §5).
+  //
+  // `null` significa "não sei qual campo", e nesse caso a UI CAI para a anotação por
+  // linha/posição que já existia. Não inferir campo que o payload não sustenta.
+  fieldName?: string | null; // nome do elemento no layout (ex.: "vNF")
+  fieldGuid?: string | null; // identidade estável do campo — é o que rotula o dataset da IA
+  targetXPath?: string | null; // destino no XML de saída (ex.: "/NFe/infNFe/total/ICMSTot/vNF")
 }
 
 export interface Layout {

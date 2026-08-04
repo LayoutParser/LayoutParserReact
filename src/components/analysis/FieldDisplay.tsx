@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
 import type { Field } from '../../types/field';
+import DocumentHealthBanner from './DocumentHealthBanner';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
@@ -199,6 +200,9 @@ const FieldDisplay: React.FC = () => {
   if (!actualFields || actualFields.length === 0) {
     return (
       <div className="field-display-empty">
+        {/* Também aqui: um 200 com defeito e sem campos renderizáveis não pode terminar em
+            "nenhum campo disponível" sem dizer que o documento tem defeito. */}
+        <DocumentHealthBanner />
         <p>Nenhum campo disponível. Processe um documento primeiro.</p>
         {parseResult && parseResult.success && (
           <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
@@ -235,14 +239,6 @@ const FieldDisplay: React.FC = () => {
       ? displayGroups.filter((g, idx) => getPhysicalLineIndex(g, idx) <= firstErrorLineIndex)
       : displayGroups;
 
-  // ✅ Identificar o primeiro erro para mostrar detalhes específicos
-  const firstError = validationErrors.length > 0 ? validationErrors[0] : null;
-  const firstErrorLineLabel = firstError
-    ? firstError.lineIndex === 0
-      ? 'HEADER'
-      : String(firstError.lineIndex - 1).padStart(3, '0')
-    : null;
-
   // ✅ Função para verificar se uma linha tem erro específico
   const isLineWithError = (lineIndex: number): boolean => {
     if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
@@ -258,6 +254,20 @@ const FieldDisplay: React.FC = () => {
   ): { fieldName: string; issue: string; expectedSize?: number; actualSize?: number } | null => {
     const lineError = validationErrors.find(error => error.lineIndex === groupIndex);
     if (!lineError) return null;
+
+    // ✅ IDENTIDADE DE CAMPO VINDA DO BACK-END tem precedência absoluta sobre a heurística
+    // abaixo (spec "Taxonomia de falha do parse" §3). A heurística deduz o campo por
+    // aritmética de posição acumulada — é chute educado, e chute não deve competir com quem
+    // validou o documento. Enquanto `fieldName` vier null/ausente, seguimos na heurística.
+    const reportedField = lineError.fieldName?.trim();
+    if (reportedField) {
+      return {
+        fieldName: reportedField,
+        issue: lineError.errorMessage || 'Campo apontado como defeituoso pela validação',
+        expectedSize: lineError.expectedLength,
+        actualSize: lineError.actualLength,
+      };
+    }
 
     // Para linhas com erro de tamanho, identificar qual campo está causando o problema
     const displayFields = group.fields
@@ -319,41 +329,18 @@ const FieldDisplay: React.FC = () => {
 
   return (
     <div className="field-display">
-      {/* ✅ Aviso de validação */}
-      {hasValidationErrors && parseResult?.validationWarning && (
-        <div
-          className="validation-error-alert"
-          style={{
-            backgroundColor: '#fff3cd',
-            border: '2px solid #ffc107',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            marginBottom: '16px',
-            color: '#856404',
-            fontSize: '14px',
-            fontWeight: 600,
-          }}
-        >
-          ⚠️ <strong>Erro no Documento:</strong>{' '}
-          {parseResult.validationWarning.replace('⚠️ Erro no Documento: ', '')}
-          <div style={{ fontSize: '12px', marginTop: '8px', fontWeight: 400 }}>
-            <strong>Onde está o erro:</strong> No documento TXT processado (não no layout).
-            <br />
-            {firstError && (
-              <>
-                <strong>Primeiro erro na linha {firstErrorLineLabel}:</strong>{' '}
-                {firstError.errorMessage}
-                <br />
-                <strong>Campo problemático:</strong> O campo específico com problema será destacado
-                em vermelho com sublinhado ondulado no documento.
-                <br />
-              </>
-            )}
-            <strong>Visualização:</strong> Linha com erro em{' '}
-            <span style={{ color: '#dc3545' }}>vermelho</span>. As linhas seguintes não serão
-            exibidas.
-          </div>
-        </div>
+      {/* Estado "200 com defeito": o documento continua abaixo, com os defeitos anotados.
+          Substitui o alerta inline que só aparecia quando `validationWarning` vinha
+          preenchido — a decisão agora é do `documentHealth`/`validationErrors`. */}
+      <DocumentHealthBanner />
+
+      {/* Nota de leitura específica desta aba: o corte das linhas seguintes é comportamento
+          do FieldDisplay, não do payload, então não pertence ao banner de saúde. */}
+      {hasValidationErrors && (
+        <p className="field-display-truncation-note">
+          O documento é posicional: um tamanho de linha errado desalinha tudo o que vem depois,
+          então a exibição vai até a primeira linha com defeito (destacada em vermelho) e para.
+        </p>
       )}
 
       {groupsToRender.map((group, groupIndex) => {

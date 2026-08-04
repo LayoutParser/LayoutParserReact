@@ -199,6 +199,16 @@ const LayoutParserPage: React.FC = () => {
       // `parseError` e ganha apresentação própria. Qualquer outra falha (ex.: as validações
       // locais lançadas acima, "Layout não encontrado...") continua no `uploadError` de texto.
       if (error instanceof ParseRequestError) {
+        // O resultado do documento ANTERIOR precisa sair da tela junto.
+        //
+        // Sem isto, quem processava um arquivo com sucesso e depois falhava no seguinte ficava
+        // com a árvore/estrutura do primeiro arquivo na tela ao lado do banner de erro do
+        // segundo — o nome do arquivo no seletor já era o novo. Isso viola direto a regra de
+        // produto da spec: quando a falha é nossa (`parser_defect`), não se apresenta arquivo
+        // nenhum. E mesmo nos 422 o documento exibido não é o que o usuário acabou de enviar.
+        setParseResult(null);
+        setFields([]);
+        setTxtContent('');
         setParseError(error.toInfo());
       } else {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
