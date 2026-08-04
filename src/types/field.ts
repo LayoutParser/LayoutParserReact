@@ -32,4 +32,3 @@ export interface FieldSearchResult {
   matchType: 'name' | 'value' | 'guid';
   matchIndex: number;
 }
-

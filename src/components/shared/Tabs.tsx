@@ -14,12 +14,7 @@ interface TabsProps {
   className?: string;
 }
 
-export const Tabs: React.FC<TabsProps> = ({
-  tabs,
-  activeTab,
-  onTabChange,
-  className = '',
-}) => {
+export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onTabChange, className = '' }) => {
   const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
 
   // Filtrar tabs vazias (caso alguma seja condicionalmente removida)
@@ -38,12 +33,9 @@ export const Tabs: React.FC<TabsProps> = ({
           </button>
         ))}
       </div>
-      <div className="tabs-content">
-        {activeTabContent}
-      </div>
+      <div className="tabs-content">{activeTabContent}</div>
     </div>
   );
 };
 
 export default Tabs;
-

@@ -4,7 +4,17 @@ import { useFieldStore } from '../../store/useFieldStore';
 import './FieldSearch.css';
 
 const FieldSearch: React.FC = () => {
-  const { searchTerm, searchResults, currentResultIndex, isSearching, setSearchTerm, performSearch, clearSearch, nextResult, previousResult } = useSearchStore();
+  const {
+    searchTerm,
+    searchResults,
+    currentResultIndex,
+    isSearching,
+    setSearchTerm,
+    performSearch,
+    clearSearch,
+    nextResult,
+    previousResult,
+  } = useSearchStore();
   const { fields } = useFieldStore();
 
   useEffect(() => {
@@ -34,7 +44,7 @@ const FieldSearch: React.FC = () => {
           type="text"
           placeholder="Buscar campos (nome, valor ou GUID)..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           className="search-input"
         />
@@ -44,7 +54,7 @@ const FieldSearch: React.FC = () => {
           </div>
         )}
       </div>
-      
+
       {isSearching && searchResults.length > 0 && (
         <div className="search-controls">
           <button
@@ -65,15 +75,12 @@ const FieldSearch: React.FC = () => {
           </button>
         </div>
       )}
-      
+
       {isSearching && searchResults.length === 0 && searchTerm.trim() && (
-        <div className="search-no-results">
-          Nenhum campo encontrado
-        </div>
+        <div className="search-no-results">Nenhum campo encontrado</div>
       )}
     </div>
   );
 };
 
 export default FieldSearch;
-

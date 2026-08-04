@@ -6,7 +6,7 @@ interface FieldState {
   fieldGroups: FieldGroup[];
   selectedField: Field | null;
   highlightedFields: Set<string>;
-  
+
   setFields: (fields: Field[]) => void;
   selectField: (field: Field | null) => void;
   highlightField: (fieldId: string | null) => void;
@@ -25,10 +25,10 @@ export const useFieldStore = create<FieldState>((set, get) => ({
   selectedField: null,
   highlightedFields: new Set<string>(),
 
-  setFields: (fields) => {
+  setFields: fields => {
     // Agrupar campos por linha
     const groupsMap = new Map<string, Field[]>();
-    
+
     fields.forEach(field => {
       if (!groupsMap.has(field.lineName)) {
         groupsMap.set(field.lineName, []);
@@ -36,23 +36,25 @@ export const useFieldStore = create<FieldState>((set, get) => ({
       groupsMap.get(field.lineName)!.push(field);
     });
 
-    const fieldGroups: FieldGroup[] = Array.from(groupsMap.entries()).map(([lineName, fields]) => ({
-      lineName,
-      fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
-      sequence: fields[0]?.sequence || 0,
-    })).sort((a, b) => a.sequence - b.sequence);
+    const fieldGroups: FieldGroup[] = Array.from(groupsMap.entries())
+      .map(([lineName, fields]) => ({
+        lineName,
+        fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
+        sequence: fields[0]?.sequence || 0,
+      }))
+      .sort((a, b) => a.sequence - b.sequence);
 
     set({ fields, fieldGroups });
   },
 
-  selectField: (field) => {
+  selectField: field => {
     set({ selectedField: field });
     if (field) {
       get().highlightField(generateFieldId(field));
     }
   },
 
-  highlightField: (fieldId) => {
+  highlightField: fieldId => {
     // Limpar highlights anteriores e destacar apenas o campo selecionado
     if (fieldId) {
       set({ highlightedFields: new Set([fieldId]) });
@@ -65,11 +67,11 @@ export const useFieldStore = create<FieldState>((set, get) => ({
     set({ highlightedFields: new Set<string>() });
   },
 
-  getFieldsByLine: (lineName) => {
+  getFieldsByLine: lineName => {
     return get().fields.filter(field => field.lineName === lineName);
   },
 
-  getFieldById: (fieldId) => {
+  getFieldById: fieldId => {
     const parts = fieldId.split('_');
     if (parts.length < 2) return null;
     const lineName = parts[0];
@@ -77,4 +79,3 @@ export const useFieldStore = create<FieldState>((set, get) => ({
     return get().fields.find(f => f.lineName === lineName && f.fieldName === fieldName) || null;
   },
 }));
-

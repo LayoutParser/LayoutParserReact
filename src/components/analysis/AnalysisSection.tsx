@@ -45,7 +45,7 @@ const AnalysisSection: React.FC = () => {
             <FieldSearch />
             <StructureTree />
           </div>
-          
+
           <div className="analysis-right">
             <FieldDisplay />
           </div>
@@ -58,4 +58,3 @@ const AnalysisSection: React.FC = () => {
 };
 
 export default AnalysisSection;
-

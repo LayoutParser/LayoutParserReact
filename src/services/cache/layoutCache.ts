@@ -29,24 +29,28 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
       layouts: lightweightLayouts as Layout[],
       timestamp: Date.now(),
     };
-    
+
     const cacheString = JSON.stringify(cacheData);
-    
+
     // Verificar tamanho antes de salvar (localStorage geralmente tem limite de 5-10MB)
-    if (cacheString.length > 4 * 1024 * 1024) { // 4MB
+    if (cacheString.length > 4 * 1024 * 1024) {
+      // 4MB
       console.warn('⚠️ Cache muito grande, salvando apenas metadados');
     }
-    
+
     localStorage.setItem(CACHE_KEY, cacheString);
     console.log('✅ Layouts salvos no cache do navegador (metadados apenas):', layouts.length);
   } catch (error) {
     console.warn('⚠️ Erro ao salvar layouts no cache:', error);
     // Se o localStorage estiver cheio, limpar cache antigo e tentar novamente
-    if (error instanceof DOMException && (error.code === 22 || error.name === 'QuotaExceededError')) {
+    if (
+      error instanceof DOMException &&
+      (error.code === 22 || error.name === 'QuotaExceededError')
+    ) {
       try {
         // Limpar todo o cache relacionado
         clearLayoutsCache();
-        
+
         // Tentar salvar apenas os primeiros 50 layouts para não exceder o limite
         const limitedLayouts = layouts.slice(0, 50).map(layout => ({
           layoutGuid: layout.layoutGuid,
@@ -55,12 +59,12 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
           version: layout.version,
           layoutType: layout.layoutType,
         }));
-        
+
         const limitedCache = {
           layouts: limitedLayouts as Layout[],
           timestamp: Date.now(),
         };
-        
+
         localStorage.setItem(CACHE_KEY, JSON.stringify(limitedCache));
         console.log('✅ Cache limpo e salvos apenas 50 primeiros layouts (metadados)');
       } catch (retryError) {
@@ -94,7 +98,10 @@ export const loadLayoutsFromCache = (): Layout[] | null => {
       return null;
     }
 
-    console.log(`✅ Layouts carregados do cache do navegador (${Math.round(age / 1000)}s atrás):`, parsed.layouts.length);
+    console.log(
+      `✅ Layouts carregados do cache do navegador (${Math.round(age / 1000)}s atrás):`,
+      parsed.layouts.length
+    );
     return parsed.layouts;
   } catch (error) {
     console.warn('⚠️ Erro ao carregar layouts do cache:', error);
@@ -122,4 +129,3 @@ export const clearLayoutsCache = (): void => {
 export const hasValidCache = (): boolean => {
   return loadLayoutsFromCache() !== null;
 };
-

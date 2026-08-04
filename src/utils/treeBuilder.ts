@@ -23,15 +23,15 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
   });
 
   // Depois, processar os elementos filhos (campos dentro de cada linha)
-  elements.forEach((element) => {
+  elements.forEach(element => {
     const nodeId = element.elementGuid || `node-${elements.indexOf(element)}`;
     const node = nodeMap.get(nodeId);
-    
+
     if (!node) return;
 
     // Se o elemento tem elementos filhos (array de strings JSON representando FieldElementVO)
     if (element.elements && element.elements.length > 0) {
-      element.elements.forEach((childElementStr) => {
+      element.elements.forEach(childElementStr => {
         try {
           // Parsear a string JSON para obter o FieldElementVO
           let childElement: any;
@@ -39,7 +39,11 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
             try {
               childElement = JSON.parse(childElementStr);
             } catch (parseError) {
-              console.warn('Erro ao parsear elemento filho como JSON:', parseError, childElementStr);
+              console.warn(
+                'Erro ao parsear elemento filho como JSON:',
+                parseError,
+                childElementStr
+              );
               return;
             }
           } else {
@@ -55,7 +59,7 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
           if (childGuid) {
             // Verificar se o nó já existe (caso o campo apareça em múltiplas linhas)
             let childNode = nodeMap.get(childGuid);
-            
+
             if (!childNode) {
               // Criar novo nó para o campo
               childNode = {
@@ -160,4 +164,3 @@ export const buildTreeFromFields = (fields: any[]): TreeNode[] => {
       level: 0,
     }));
 };
-

@@ -6,7 +6,7 @@ interface SearchState {
   searchResults: FieldSearchResult[];
   currentResultIndex: number;
   isSearching: boolean;
-  
+
   setSearchTerm: (term: string) => void;
   performSearch: (fields: Field[], term: string) => void;
   clearSearch: () => void;
@@ -21,7 +21,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   currentResultIndex: -1,
   isSearching: false,
 
-  setSearchTerm: (term) => {
+  setSearchTerm: term => {
     set({ searchTerm: term });
     if (!term.trim()) {
       get().clearSearch();
@@ -75,7 +75,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   nextResult: () => {
     const { searchResults, currentResultIndex } = get();
     if (searchResults.length === 0) return;
-    
+
     const nextIndex = (currentResultIndex + 1) % searchResults.length;
     set({ currentResultIndex: nextIndex });
   },
@@ -83,18 +83,15 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   previousResult: () => {
     const { searchResults, currentResultIndex } = get();
     if (searchResults.length === 0) return;
-    
-    const prevIndex = currentResultIndex <= 0 
-      ? searchResults.length - 1 
-      : currentResultIndex - 1;
+
+    const prevIndex = currentResultIndex <= 0 ? searchResults.length - 1 : currentResultIndex - 1;
     set({ currentResultIndex: prevIndex });
   },
 
-  goToResult: (index) => {
+  goToResult: index => {
     const { searchResults } = get();
     if (index >= 0 && index < searchResults.length) {
       set({ currentResultIndex: index });
     }
   },
 }));
-

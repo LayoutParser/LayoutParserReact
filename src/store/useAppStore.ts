@@ -16,10 +16,10 @@ interface AppState {
   parseResult: ParseResponse | null;
   txtContent: string;
   fields: Field[];
-  
+
   // Layout selecionado
   selectedLayout: Layout | null;
-  
+
   // Ações
   setUploading: (uploading: boolean) => void;
   setUploadProgress: (progress: number) => void;
@@ -43,18 +43,17 @@ const initialState = {
   selectedLayout: null,
 };
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>(set => ({
   ...initialState,
-  
-  setUploading: (uploading) => set({ isUploading: uploading }),
-  setUploadProgress: (progress) => set({ uploadProgress: progress }),
-  setUploadError: (error) => set({ uploadError: error }),
+
+  setUploading: uploading => set({ isUploading: uploading }),
+  setUploadProgress: progress => set({ uploadProgress: progress }),
+  setUploadError: error => set({ uploadError: error }),
   setParseError: error => set({ parseError: error }),
-  setParseResult: (result) => set({ parseResult: result }),
-  setTxtContent: (content) => set({ txtContent: content }),
-  setFields: (fields) => set({ fields }),
-  setSelectedLayout: (layout) => set({ selectedLayout: layout }),
-  
+  setParseResult: result => set({ parseResult: result }),
+  setTxtContent: content => set({ txtContent: content }),
+  setFields: fields => set({ fields }),
+  setSelectedLayout: layout => set({ selectedLayout: layout }),
+
   reset: () => set(initialState),
 }));
-

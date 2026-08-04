@@ -7,19 +7,19 @@ interface PropertiesState {
   selectedLine: LayoutElement | null;
   showProperties: boolean;
   propertiesType: 'field' | 'line' | null;
-  
+
   showFieldProperties: (field: Field) => void;
   showLineProperties: (line: LayoutElement) => void;
   hideProperties: () => void;
 }
 
-export const usePropertiesStore = create<PropertiesState>((set) => ({
+export const usePropertiesStore = create<PropertiesState>(set => ({
   selectedField: null,
   selectedLine: null,
   showProperties: false,
   propertiesType: null,
 
-  showFieldProperties: (field) => {
+  showFieldProperties: field => {
     set({
       selectedField: field,
       selectedLine: null,
@@ -28,7 +28,7 @@ export const usePropertiesStore = create<PropertiesState>((set) => ({
     });
   },
 
-  showLineProperties: (line) => {
+  showLineProperties: line => {
     set({
       selectedField: null,
       selectedLine: line,
@@ -44,4 +44,3 @@ export const usePropertiesStore = create<PropertiesState>((set) => ({
     });
   },
 }));
-

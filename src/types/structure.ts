@@ -40,4 +40,3 @@ export interface TreeNode {
   element: LayoutElement;
   level: number;
 }
-
