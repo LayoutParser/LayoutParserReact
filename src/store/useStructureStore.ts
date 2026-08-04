@@ -5,7 +5,7 @@ interface StructureState {
   treeData: TreeNode[];
   expandedNodes: Set<string>;
   selectedNodeId: string | null;
-  
+
   setTreeData: (data: TreeNode[]) => void;
   toggleNode: (nodeId: string) => void;
   expandAll: () => void;
@@ -19,25 +19,25 @@ export const useStructureStore = create<StructureState>((set, get) => ({
   expandedNodes: new Set<string>(),
   selectedNodeId: null,
 
-  setTreeData: (data) => set({ treeData: data }),
+  setTreeData: data => set({ treeData: data }),
 
-  toggleNode: (nodeId) => {
+  toggleNode: nodeId => {
     const { expandedNodes } = get();
     const newExpanded = new Set(expandedNodes);
-    
+
     if (newExpanded.has(nodeId)) {
       newExpanded.delete(nodeId);
     } else {
       newExpanded.add(nodeId);
     }
-    
+
     set({ expandedNodes: newExpanded });
   },
 
   expandAll: () => {
     const { treeData } = get();
     const allNodeIds = new Set<string>();
-    
+
     const collectIds = (nodes: TreeNode[]) => {
       nodes.forEach(node => {
         allNodeIds.add(node.id);
@@ -46,7 +46,7 @@ export const useStructureStore = create<StructureState>((set, get) => ({
         }
       });
     };
-    
+
     collectIds(treeData);
     set({ expandedNodes: allNodeIds });
   },
@@ -55,12 +55,11 @@ export const useStructureStore = create<StructureState>((set, get) => ({
     set({ expandedNodes: new Set<string>() });
   },
 
-  selectNode: (nodeId) => {
+  selectNode: nodeId => {
     set({ selectedNodeId: nodeId });
   },
 
-  isExpanded: (nodeId) => {
+  isExpanded: nodeId => {
     return get().expandedNodes.has(nodeId);
   },
 }));
-

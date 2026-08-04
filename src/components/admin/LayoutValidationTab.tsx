@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { monitoringService, type LayoutValidationsResponse, type LayoutValidation } from '../../services/api/monitoringService';
+import {
+  monitoringService,
+  type LayoutValidationsResponse,
+  type LayoutValidation,
+} from '../../services/api/monitoringService';
 import './LayoutValidationTab.css';
 
 const LayoutValidationTab: React.FC = () => {
@@ -141,7 +145,7 @@ const LayoutValidationTab: React.FC = () => {
               ⚠️ Layouts com Erros ({layoutsWithErrors.length})
             </h3>
             <div className="layouts-grid">
-              {layoutsWithErrors.map((layout) => (
+              {layoutsWithErrors.map(layout => (
                 <div
                   key={layout.layoutGuid}
                   className={`layout-card invalid ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
@@ -191,7 +195,7 @@ const LayoutValidationTab: React.FC = () => {
                 ✅ Layouts Válidos ({validLayouts.length})
               </summary>
               <div className="layouts-grid">
-                {validLayouts.map((layout) => (
+                {validLayouts.map(layout => (
                   <div
                     key={layout.layoutGuid}
                     className={`layout-card valid ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
@@ -281,7 +285,9 @@ const LayoutValidationTab: React.FC = () => {
                         <div key={index} className={`error-item ${isExpanded ? 'expanded' : ''}`}>
                           <div
                             className="error-header"
-                            onClick={() => toggleErrorExpansion(selectedLayout.layoutGuid, error.lineName)}
+                            onClick={() =>
+                              toggleErrorExpansion(selectedLayout.layoutGuid, error.lineName)
+                            }
                           >
                             <span className="error-toggle">{isExpanded ? '▼' : '▶'}</span>
                             <span className="error-line-name">{error.lineName}</span>
@@ -294,16 +300,23 @@ const LayoutValidationTab: React.FC = () => {
                             <div className="error-details">
                               <div className="error-detail-row">
                                 <span className="error-detail-label">Tamanho Esperado:</span>
-                                <span className="error-detail-value">{error.expectedLength} caracteres</span>
+                                <span className="error-detail-value">
+                                  {error.expectedLength} caracteres
+                                </span>
                               </div>
                               <div className="error-detail-row">
                                 <span className="error-detail-label">Tamanho Atual:</span>
-                                <span className="error-detail-value">{error.actualLength} caracteres</span>
+                                <span className="error-detail-value">
+                                  {error.actualLength} caracteres
+                                </span>
                               </div>
                               <div className="error-detail-row">
                                 <span className="error-detail-label">Diferença:</span>
-                                <span className={`error-detail-value ${error.difference > 0 ? 'missing' : 'excess'}`}>
-                                  {error.difference > 0 ? '+' : ''}{error.difference} caracteres
+                                <span
+                                  className={`error-detail-value ${error.difference > 0 ? 'missing' : 'excess'}`}
+                                >
+                                  {error.difference > 0 ? '+' : ''}
+                                  {error.difference} caracteres
                                   {error.difference > 0 ? ' (faltam)' : ' (sobram)'}
                                 </span>
                               </div>
@@ -319,7 +332,9 @@ const LayoutValidationTab: React.FC = () => {
                               </div>
                               <div className="error-detail-row">
                                 <span className="error-detail-label">Tem Linhas Filhas:</span>
-                                <span className="error-detail-value">{error.hasChildren ? 'Sim' : 'Não'}</span>
+                                <span className="error-detail-value">
+                                  {error.hasChildren ? 'Sim' : 'Não'}
+                                </span>
                               </div>
                               <div className="error-message">
                                 <strong>Mensagem de Erro:</strong>
@@ -348,4 +363,3 @@ const LayoutValidationTab: React.FC = () => {
 };
 
 export default LayoutValidationTab;
-

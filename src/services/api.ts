@@ -15,19 +15,19 @@ const getApiBaseUrl = (): string => {
   if (envUrl) {
     return envUrl;
   }
-  
+
   const hostname = window.location.hostname;
-  
+
   // Servidor de produção
   if (hostname === '172.25.32.42') {
     return 'http://172.25.32.42:5000';
   }
-  
+
   // Localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'http://localhost:5000';
   }
-  
+
   // Fallback: mesma origem
   return window.location.origin;
 };
@@ -64,7 +64,7 @@ const apiClient = axios.create({
 });
 
 // ✅ CorrelationId nasce no front-end e é enviado em TODAS as chamadas
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use(config => {
   const headers = (config.headers ?? {}) as any;
   if (!headers['X-Correlation-ID']) {
     headers['X-Correlation-ID'] = createCorrelationId();
@@ -149,25 +149,22 @@ export const parseService = {
     const formData = new FormData();
     formData.append('layoutFile', request.layoutFile);
     formData.append('txtFile', request.txtFile);
-    
+
     if (request.layoutName) {
       formData.append('layoutName', request.layoutName);
     }
-    
+
     if (request.layoutType) {
       formData.append('layoutType', request.layoutType);
     }
-    
+
     if (request.layoutConfig) {
       formData.append('layoutConfig', JSON.stringify(request.layoutConfig));
     }
 
     try {
-      const response = await apiClient.post<ParseResponse>(
-        API_CONFIG.endpoints.parse,
-        formData
-      );
-      
+      const response = await apiClient.post<ParseResponse>(API_CONFIG.endpoints.parse, formData);
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -233,4 +230,3 @@ console.log('📍 API URL:', API_CONFIG.baseUrl);
 
 export default apiClient;
 export { apiClient };
-

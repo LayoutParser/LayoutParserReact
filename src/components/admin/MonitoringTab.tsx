@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { monitoringService, type MonitoringResponse, type LayoutAnalysis } from '../../services/api/monitoringService';
+import {
+  monitoringService,
+  type MonitoringResponse,
+  type LayoutAnalysis,
+} from '../../services/api/monitoringService';
 import './MonitoringTab.css';
 
 const MonitoringTab: React.FC = () => {
@@ -88,7 +92,12 @@ const MonitoringTab: React.FC = () => {
       <div className="monitoring-header">
         <div className="monitoring-title">
           <h2>Monitoramento de Layouts</h2>
-          <button type="button" onClick={loadAnalysis} className="refresh-btn" title="Atualizar análise">
+          <button
+            type="button"
+            onClick={loadAnalysis}
+            className="refresh-btn"
+            title="Atualizar análise"
+          >
             🔄 Atualizar
           </button>
         </div>
@@ -122,7 +131,7 @@ const MonitoringTab: React.FC = () => {
         <div className="layouts-list">
           <h3>Layouts Analisados ({data.layouts.length})</h3>
           <div className="layouts-grid">
-            {data.layouts.map((layout) => (
+            {data.layouts.map(layout => (
               <div
                 key={layout.layoutGuid}
                 className={`layout-card ${layout.status} ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
@@ -197,7 +206,9 @@ const MonitoringTab: React.FC = () => {
                 {selectedLayout.expectedLineLength && (
                   <div className="info-row">
                     <span className="info-label">Tamanho Esperado:</span>
-                    <span className="info-value">{selectedLayout.expectedLineLength} caracteres</span>
+                    <span className="info-value">
+                      {selectedLayout.expectedLineLength} caracteres
+                    </span>
                   </div>
                 )}
               </div>
@@ -205,7 +216,7 @@ const MonitoringTab: React.FC = () => {
               <div className="line-validations">
                 <h4>Validações de Linhas ({selectedLayout.lineValidations.length})</h4>
                 <div className="validations-list">
-                  {selectedLayout.lineValidations.map((line) => (
+                  {selectedLayout.lineValidations.map(line => (
                     <div
                       key={line.lineName}
                       className={`validation-item ${line.isValid ? 'valid' : 'invalid'}`}
@@ -226,7 +237,9 @@ const MonitoringTab: React.FC = () => {
                           <div className="validation-formula">
                             <div className="formula-item">
                               <span>InitialValue:</span>
-                              <span>{line.initialValue} ({line.initialValueLength} chars)</span>
+                              <span>
+                                {line.initialValue} ({line.initialValueLength} chars)
+                              </span>
                             </div>
                             <div className="formula-item">
                               <span>Sequencia Anterior:</span>
@@ -234,7 +247,9 @@ const MonitoringTab: React.FC = () => {
                             </div>
                             <div className="formula-item">
                               <span>Campos:</span>
-                              <span>{line.fieldsLength} chars ({line.fieldCount} campos)</span>
+                              <span>
+                                {line.fieldsLength} chars ({line.fieldCount} campos)
+                              </span>
                             </div>
                             <div className="formula-item">
                               <span>Sequencia Própria:</span>
@@ -245,26 +260,30 @@ const MonitoringTab: React.FC = () => {
                               <span>{line.totalLength} chars</span>
                             </div>
                           </div>
-                          {line.calculatedPositions && Object.keys(line.calculatedPositions).length > 0 && (
-                            <div className="calculated-positions">
-                              <h5>Posições Calculadas ({Object.keys(line.calculatedPositions).length} campos)</h5>
-                              <div className="positions-grid">
-                                {Object.entries(line.calculatedPositions)
-                                  .slice(0, 20)
-                                  .map(([fieldName, position]) => (
-                                    <div key={fieldName} className="position-item">
-                                      <span className="position-field">{fieldName}:</span>
-                                      <span className="position-value">Pos {position}</span>
+                          {line.calculatedPositions &&
+                            Object.keys(line.calculatedPositions).length > 0 && (
+                              <div className="calculated-positions">
+                                <h5>
+                                  Posições Calculadas (
+                                  {Object.keys(line.calculatedPositions).length} campos)
+                                </h5>
+                                <div className="positions-grid">
+                                  {Object.entries(line.calculatedPositions)
+                                    .slice(0, 20)
+                                    .map(([fieldName, position]) => (
+                                      <div key={fieldName} className="position-item">
+                                        <span className="position-field">{fieldName}:</span>
+                                        <span className="position-value">Pos {position}</span>
+                                      </div>
+                                    ))}
+                                  {Object.keys(line.calculatedPositions).length > 20 && (
+                                    <div className="position-more">
+                                      +{Object.keys(line.calculatedPositions).length - 20} campos
                                     </div>
-                                  ))}
-                                {Object.keys(line.calculatedPositions).length > 20 && (
-                                  <div className="position-more">
-                                    +{Object.keys(line.calculatedPositions).length - 20} campos
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                         </div>
                       )}
                     </div>
@@ -280,4 +299,3 @@ const MonitoringTab: React.FC = () => {
 };
 
 export default MonitoringTab;
-

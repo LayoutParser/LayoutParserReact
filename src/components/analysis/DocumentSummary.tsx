@@ -10,8 +10,8 @@ const DocumentSummary: React.FC = () => {
   }
 
   // Usar campos do parseResult se fields estiver vazio
-  const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
-  
+  const actualFields = fields.length > 0 ? fields : parseResult.fields || [];
+
   const totalFields = actualFields.length;
   const totalLines = actualFields.length > 0 ? new Set(actualFields.map(f => f.lineName)).size : 0;
   const totalChars = txtContent.length;
@@ -39,4 +39,3 @@ const DocumentSummary: React.FC = () => {
 };
 
 export default DocumentSummary;
-

@@ -32,7 +32,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .validation-error {
@@ -527,4 +529,3 @@
   font-size: 1.1rem;
   font-weight: 500;
 }
-

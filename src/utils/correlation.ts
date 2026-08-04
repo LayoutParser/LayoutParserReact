@@ -6,8 +6,9 @@ export function createCorrelationId(): string {
   }
 
   // Fallback: UUID v4 simples (não criptográfico, mas suficiente para correlação)
-  const rnd = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  const rnd = () =>
+    Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
   return `${rnd()}${rnd()}-${rnd()}-${rnd()}-${rnd()}-${rnd()}${rnd()}${rnd()}`;
 }
-
-

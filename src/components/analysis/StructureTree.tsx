@@ -8,15 +8,15 @@ import './StructureTree.css';
 
 const StructureTree: React.FC = () => {
   const { parseResult, fields } = useAppStore();
-  const { 
-    treeData, 
-    selectedNodeId, 
-    setTreeData, 
-    toggleNode, 
-    expandAll, 
-    collapseAll, 
+  const {
+    treeData,
+    selectedNodeId,
+    setTreeData,
+    toggleNode,
+    expandAll,
+    collapseAll,
     selectNode,
-    isExpanded 
+    isExpanded,
   } = useStructureStore();
   const { setFields } = useFieldStore();
   const fieldStoreFields = useFieldStore(s => s.fields);
@@ -30,7 +30,7 @@ const StructureTree: React.FC = () => {
     }
 
     // Usar campos do parseResult se fields estiver vazio
-    const actualFields = fields.length > 0 ? fields : (parseResult.fields || []);
+    const actualFields = fields.length > 0 ? fields : parseResult.fields || [];
 
     // ✅ Se houver erro de validação (linha > 600), o documento fica desalinhado.
     // Portanto, o StructureTree deve mostrar apenas até a primeira linha com erro (inclusive).
@@ -58,13 +58,12 @@ const StructureTree: React.FC = () => {
             return allowedLineSequences.has(seq);
           })
         : actualFields;
-    
+
     // Verificar se elements é um array de strings JSON ou objetos
     const layoutElements = parseResult.layout?.elements;
-    const hasLayoutElements = layoutElements && (
-      Array.isArray(layoutElements) && layoutElements.length > 0
-    );
-    
+    const hasLayoutElements =
+      layoutElements && Array.isArray(layoutElements) && layoutElements.length > 0;
+
     console.log('🌳 StructureTree: Construindo árvore', {
       hasLayout: !!parseResult.layout,
       layoutElements: layoutElements?.length || 0,
@@ -83,11 +82,13 @@ const StructureTree: React.FC = () => {
     // Se tiver layout com elementos, usar buildTreeFromLayout
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
-    
+
     if (hasValidationErrors) {
       // ✅ Em caso de erro de tamanho, NÃO exibir estrutura completa do layout,
       // pois ela induz o usuário ao erro (linhas seguintes não são confiáveis).
-      console.log('🌳 Documento com erro de validação: usando buildTreeFromFields (cortado no erro)');
+      console.log(
+        '🌳 Documento com erro de validação: usando buildTreeFromFields (cortado no erro)'
+      );
       tree = buildTreeFromFields(fieldsForTree);
     } else if (hasLayoutElements) {
       console.log('🌳 Usando buildTreeFromLayout com', layoutElements.length, 'elementos');
@@ -100,7 +101,9 @@ const StructureTree: React.FC = () => {
     } else {
       console.warn('⚠️ StructureTree: Nenhum dado disponível para construir árvore');
       console.warn('⚠️ Layout completo:', parseResult.layout);
-      console.warn('⚠️ Tentando construir árvore vazia para exibir estrutura do layout mesmo sem campos');
+      console.warn(
+        '⚠️ Tentando construir árvore vazia para exibir estrutura do layout mesmo sem campos'
+      );
       // Mesmo sem campos, podemos tentar construir uma árvore básica se houver documentStructure
       tree = [];
     }
@@ -116,9 +119,13 @@ const StructureTree: React.FC = () => {
     if (node.type === 'LineElementVO' || node.type.includes('Line')) {
       return node;
     }
-    
+
     // Buscar recursivamente na árvore
-    const searchInTree = (treeNodes: TreeNode[], targetId: string, currentParent: TreeNode | null): TreeNode | null => {
+    const searchInTree = (
+      treeNodes: TreeNode[],
+      targetId: string,
+      currentParent: TreeNode | null
+    ): TreeNode | null => {
       for (const n of treeNodes) {
         if (n.id === targetId) {
           return currentParent;
@@ -130,25 +137,25 @@ const StructureTree: React.FC = () => {
       }
       return null;
     };
-    
+
     return searchInTree(nodes, node.id, null);
   };
 
   const handleNodeClick = (node: TreeNode) => {
     selectNode(node.id);
-    
+
     if (node.type === 'LineElementVO' || node.type.includes('Line')) {
       // Quando clica em uma linha, destacar o primeiro campo da linha
       const lineName = node.name;
       const lineFields = fieldStoreFields.filter(f => f.lineName === lineName);
-      
+
       if (lineFields.length > 0) {
         const { highlightField } = useFieldStore.getState();
         // Destacar o primeiro campo da linha
         const firstField = lineFields[0];
         const fieldId = `${firstField.lineName}_${firstField.fieldName}`;
         highlightField(fieldId);
-        
+
         // Scroll para o primeiro campo
         setTimeout(() => {
           const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
@@ -160,41 +167,41 @@ const StructureTree: React.FC = () => {
     } else if (node.type === 'FieldElementVO' || node.type.includes('Field')) {
       // Encontrar a linha pai do campo
       const parentLine = findParentLine(node, treeData);
-      
+
       if (!parentLine) {
         console.warn('⚠️ Não foi possível encontrar a linha pai do campo:', node.name);
         return;
       }
-      
+
       const lineName = parentLine.name;
       const fieldName = node.name || node.element?.name;
-      
+
       if (!fieldName) {
         console.warn('⚠️ Nome do campo não encontrado no nó:', node);
         return;
       }
-      
+
       // Buscar o campo correspondente usando tanto lineName quanto fieldName
       const field = fields.find(f => {
         const lineMatch = f.lineName === lineName;
         const nameMatch = f.fieldName === fieldName;
         return lineMatch && nameMatch;
       });
-      
+
       if (field) {
         // Destacar o campo no FieldDisplay
         const { highlightField } = useFieldStore.getState();
         const fieldId = `${field.lineName}_${field.fieldName}`;
         highlightField(fieldId);
-        
+
         console.log('✅ Campo destacado:', {
           lineName: field.lineName,
           fieldName: field.fieldName,
           fieldId,
           nodeName: node.name,
-          parentLineName: lineName
+          parentLineName: lineName,
         });
-        
+
         // Scroll para o campo destacado
         setTimeout(() => {
           const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
@@ -207,7 +214,7 @@ const StructureTree: React.FC = () => {
           lineName,
           fieldName,
           nodeName: node.name,
-          availableFields: fields.filter(f => f.lineName === lineName).map(f => f.fieldName)
+          availableFields: fields.filter(f => f.lineName === lineName).map(f => f.fieldName),
         });
       }
     }
@@ -220,14 +227,11 @@ const StructureTree: React.FC = () => {
 
     return (
       <li key={node.id} className={`tree-node ${selected ? 'selected' : ''}`}>
-        <div 
-          className="tree-node-header"
-          onClick={() => handleNodeClick(node)}
-        >
+        <div className="tree-node-header" onClick={() => handleNodeClick(node)}>
           {hasChildren && (
             <button
               className="tree-toggle"
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 toggleNode(node.id);
               }}
@@ -240,9 +244,7 @@ const StructureTree: React.FC = () => {
           <span className="tree-node-type">{node.type.replace('VO', '')}</span>
         </div>
         {hasChildren && expanded && (
-          <ul className="tree-children">
-            {node.children.map(child => renderTreeNode(child))}
-          </ul>
+          <ul className="tree-children">{node.children.map(child => renderTreeNode(child))}</ul>
         )}
       </li>
     );
@@ -266,13 +268,10 @@ const StructureTree: React.FC = () => {
           Recolher Tudo
         </button>
       </div>
-      
-      <ul className="tree-root">
-        {treeData.map(node => renderTreeNode(node))}
-      </ul>
+
+      <ul className="tree-root">{treeData.map(node => renderTreeNode(node))}</ul>
     </div>
   );
 };
 
 export default StructureTree;
-

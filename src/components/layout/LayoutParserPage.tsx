@@ -134,12 +134,12 @@ const LayoutParserPage: React.FC = () => {
       // Se não tiver layoutContent, buscar da API
       if (!layoutContent) {
         console.log('ℹ️ Layout sem decryptedContent, buscando da API...');
-        
+
         try {
           const result = await layoutService.searchLayouts();
           if (result.success && result.layouts) {
             const fullLayout = result.layouts.find(
-              (l) => l.layoutGuid === selectedLayout.layoutGuid || l.name === selectedLayout.name
+              l => l.layoutGuid === selectedLayout.layoutGuid || l.name === selectedLayout.name
             );
 
             if (fullLayout && (fullLayout.decryptedContent || (fullLayout as any).valueContent)) {
@@ -163,11 +163,15 @@ const LayoutParserPage: React.FC = () => {
       }
 
       if (!layoutContent) {
-        throw new Error('Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.');
+        throw new Error(
+          'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
+        );
       }
 
       const blob = new Blob([layoutContent], { type: 'application/xml' });
-      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, { type: 'application/xml' });
+      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, {
+        type: 'application/xml',
+      });
 
       const request: ParseRequest = {
         layoutFile,
@@ -245,7 +249,6 @@ const LayoutParserPage: React.FC = () => {
         {/* Bottom-Left: Controles */}
         <div className={`l-bottom-left ${isControlsVisible ? '' : 'hidden'}`}>
           <div className="controls-panel">
-
             {/* Atualizar Layout */}
             <button
               type="button"
@@ -271,7 +274,11 @@ const LayoutParserPage: React.FC = () => {
             {/* Seleção de Layout */}
             {allLayouts.length > 0 && (
               <div className="layout-select-wrapper">
-                <LayoutCombobox layouts={allLayouts} onSelect={handleLayoutSelect} selectedLayout={selectedLayout} />
+                <LayoutCombobox
+                  layouts={allLayouts}
+                  onSelect={handleLayoutSelect}
+                  selectedLayout={selectedLayout}
+                />
               </div>
             )}
 
@@ -318,10 +325,8 @@ const LayoutParserPage: React.FC = () => {
           )}
         </div>
       </div>
-
     </div>
   );
 };
 
 export default LayoutParserPage;
-
