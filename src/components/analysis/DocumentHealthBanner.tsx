@@ -12,9 +12,10 @@ import './DocumentHealthBanner.css';
  *  1. antes o aviso só aparecia se `validationWarning` viesse preenchido; com `validationErrors`
  *     e sem `validationWarning` o usuário via linha vermelha sem nenhuma explicação. Agora quem
  *     decide é `resolveDocumentHealth`, e o texto do back-end é complemento, não pré-requisito.
- *  2. a precisão do apontamento acompanha o payload: campo quando o back-end identifica
- *     (`fieldName`/`fieldGuid`/`targetXPath`), linha/posição quando não — sem inventar
- *     atribuição de campo.
+ *  2. a precisão do apontamento acompanha o payload, na hierarquia campo → registro →
+ *     linha/posição (ver `describeValidationErrorTarget`). Hoje o nível que roda é o do
+ *     REGISTRO: o validador nunca vê o layout, então `fieldName`/`fieldGuid` vêm sempre
+ *     nulos. Nenhum texto daqui pode prometer precisão de campo com dado de segmento.
  */
 
 /** Acima disto a lista vira ruído; o documento anotado abaixo continua sendo a fonte completa. */
@@ -52,8 +53,10 @@ const DocumentHealthBanner: React.FC = () => {
       ? 'O documento foi processado, mas apresenta 1 ponto com defeito.'
       : `O documento foi processado, mas apresenta ${errors.length} pontos com defeito.`);
 
-  const anyFieldIdentified = listed.some(
-    error => describeValidationErrorTarget(error).identifiedField
+  // Só vale avisar "não sabemos de onde vem" quando NENHUM erro listado tem identidade — nem
+  // de campo, nem de registro.
+  const anyIdentified = listed.some(
+    error => describeValidationErrorTarget(error).identity !== 'line'
   );
 
   return (
@@ -80,7 +83,7 @@ const DocumentHealthBanner: React.FC = () => {
               <li className="document-health-banner-item" key={`${error.lineIndex}-${index}`}>
                 <span
                   className={`document-health-banner-target ${
-                    target.identifiedField ? 'document-health-banner-target--field' : ''
+                    target.identity !== 'line' ? 'document-health-banner-target--identified' : ''
                   }`}
                 >
                   {target.label}
@@ -96,9 +99,17 @@ const DocumentHealthBanner: React.FC = () => {
                   </span>
                 )}
 
+                {/* Identificador estável para reportar/rastrear. O `title` diz de qual
+                    granularidade ele é — registro e campo não podem se confundir. */}
                 {target.fieldGuid && (
                   <span className="document-health-banner-guid" title="Identificador do campo">
                     {target.fieldGuid}
+                  </span>
+                )}
+
+                {!target.fieldGuid && target.recordGuid && (
+                  <span className="document-health-banner-guid" title="Identificador do registro">
+                    {target.recordGuid}
                   </span>
                 )}
               </li>
@@ -113,9 +124,9 @@ const DocumentHealthBanner: React.FC = () => {
         </p>
       )}
 
-      {!anyFieldIdentified && listed.length > 0 && (
+      {!anyIdentified && listed.length > 0 && (
         <p className="document-health-banner-note">
-          Indicação por linha e posição — a identificação do campo não está disponível para este
+          Indicação por linha e posição — o registro de origem não foi informado para este
           documento.
         </p>
       )}

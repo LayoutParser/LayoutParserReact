@@ -10,9 +10,11 @@ import './ParseErrorBanner.css';
  * back-end e só cai no status HTTP enquanto o campo não for emitido. O ponto do componente é
  * que os casos NÃO são a mesma coisa e não podem ter a mesma cara na tela:
  *  - defeito nosso (`parser_defect`, 500) → o usuário não tem o que corrigir e NÃO se pede que
- *    ele investigue o próprio arquivo; o que ajuda é o correlationId para reportar.
- *  - defeito do arquivo (`document_malformed`/`layout_mismatch`, 422) → é diagnóstico do
- *    documento, e a ação corretiva é diferente em cada um (arquivo x layout escolhido).
+ *    ele investigue os próprios arquivos; o que ajuda é o correlationId para reportar.
+ *  - defeito de um arquivo enviado (422) → os dois rótulos se distinguem POR ARTEFATO, isto é,
+ *    por QUAL ARQUIVO o usuário deve abrir: `document_malformed` manda conferir o documento
+ *    (TXT), `layout_invalid` manda conferir o XML do layout. Trocar esses textos manda o
+ *    usuário procurar defeito no arquivo errado, que é pior que uma mensagem genérica.
  *  - rede → conectividade. Ação útil é tentar de novo.
  */
 interface ParseErrorBannerProps {
@@ -35,14 +37,14 @@ const PRESENTATION: Record<ParseFailureView, ViewPresentation> = {
   },
   document_malformed: {
     icon: '📄',
-    title: 'O arquivo enviado não pôde ser lido',
-    hint: 'O conteúdo está corrompido ou fora do formato esperado. Confira o arquivo e envie novamente.',
+    title: 'O documento enviado não pôde ser lido',
+    hint: 'Confira o arquivo de dados: ele pode estar vazio, com encoding inesperado ou fora do formato do layout.',
     modifier: 'parse-error-banner--document',
   },
-  layout_mismatch: {
+  layout_invalid: {
     icon: '🧩',
-    title: 'O layout selecionado não corresponde ao arquivo',
-    hint: 'Selecione o layout correspondente ao documento enviado e processe novamente.',
+    title: 'O XML do layout não pôde ser lido',
+    hint: 'O problema está no layout, não no documento. Confira o layout selecionado — o XML dele está ilegível ou corrompido.',
     modifier: 'parse-error-banner--document',
   },
   document_unclassified: {
@@ -66,13 +68,13 @@ const PRESENTATION: Record<ParseFailureView, ViewPresentation> = {
 };
 
 const ParseErrorBanner: React.FC<ParseErrorBannerProps> = ({ error }) => {
-  const { view, blamesDocument } = assessParseFailure(error);
+  const { view, blamesUserArtifact } = assessParseFailure(error);
   const presentation = PRESENTATION[view];
 
-  // `detectedType` é metadado SOBRE O ARQUIVO do usuário. Quando a falha é nossa, exibi-lo
-  // convida exatamente o que a regra de produto quer evitar: o usuário sair investigando um
-  // documento que provavelmente está bom.
-  const showDetectedType = blamesDocument && Boolean(error.detectedType);
+  // `detectedType` é metadado SOBRE OS ARQUIVOS do usuário. Quando a falha é nossa, exibi-lo
+  // convida exatamente o que a regra de produto quer evitar: o usuário sair investigando
+  // arquivo que provavelmente está bom.
+  const showDetectedType = blamesUserArtifact && Boolean(error.detectedType);
 
   return (
     <div className={`parse-error-banner ${presentation.modifier}`} role="alert">

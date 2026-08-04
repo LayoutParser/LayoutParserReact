@@ -18,6 +18,35 @@ export const resolveDocumentHealth = (result: ParseResponse | null | undefined):
   return result.documentHealth === 'has_defects' || hasErrors ? 'has_defects' : 'clean';
 };
 
+/**
+ * O erro DESSINCRONIZA a leitura posicional do documento a partir dali?
+ *
+ * Critério: `expectedLength !== actualLength`. Vai parecer arbitrário para quem chegar depois,
+ * então: o documento é posicional e lido por offset fixo (linha N começa em N × 600). Só um
+ * erro de TAMANHO de linha desloca todo o resto — daí em diante os campos são recortados na
+ * posição errada e exibi-los seria mostrar lixo como se fosse dado.
+ *
+ * Os demais erros do validador (sequência inválida, HEADER fora de posição) chegam com
+ * `expectedLength == actualLength`: o comprimento estava certo, o CONTEÚDO é que não. Esses
+ * não movem offset nenhum, então as linhas seguintes continuam confiáveis e devem seguir
+ * sendo exibidas — cortar por causa deles esconderia dezenas de registros alinhados por conta
+ * de um defeito que não afeta alinhamento (caso real observado: 47 erros de sequência num
+ * documento, todos com expected == actual).
+ *
+ * Em dúvida sobre a classe de um erro novo, o conservador é tratar como dessincronizante.
+ */
+export const isDesyncingValidationError = (error: DocumentValidationError): boolean =>
+  error.expectedLength !== error.actualLength;
+
+/**
+ * Índice da primeira linha a partir da qual a leitura posicional deixa de ser confiável.
+ * `-1` quando nenhum erro dessincroniza — aí não há motivo para cortar exibição alguma.
+ */
+export const findFirstDesyncLineIndex = (errors: DocumentValidationError[] | undefined): number => {
+  const desyncing = (errors ?? []).filter(isDesyncingValidationError);
+  return desyncing.length > 0 ? Math.min(...desyncing.map(error => error.lineIndex)) : -1;
+};
+
 /** Trata `null`/`undefined`/string em branco como "não informado" de forma uniforme. */
 const informed = (value: string | null | undefined): string | undefined => {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -31,48 +60,63 @@ const informed = (value: string | null | undefined): string | undefined => {
 export const formatLineLabel = (lineIndex: number): string =>
   lineIndex === 0 ? 'HEADER' : String(lineIndex - 1).padStart(3, '0');
 
+/** Granularidade REAL da identificação — nunca alegue mais precisão do que este valor. */
+export type ValidationErrorIdentity = 'field' | 'record' | 'line';
+
 export interface ValidationErrorTarget {
   /** Onde está o defeito, na maior precisão que o payload sustenta. */
   label: string;
-  /**
-   * `true` só quando o BACK-END informou o campo. `false` significa que caímos na anotação
-   * por linha/posição — e a UI não deve alegar identidade de campo nesse caso.
-   */
-  identifiedField: boolean;
+  identity: ValidationErrorIdentity;
   fieldName?: string;
   fieldGuid?: string;
+  recordName?: string;
+  recordGuid?: string;
   targetXPath?: string;
 }
 
 /**
- * Descreve o alvo de um erro de validação priorizando a IDENTIDADE DE CAMPO (spec §3) e
- * caindo para linha/posição quando ela não vem.
+ * Descreve o alvo de um erro de validação na hierarquia campo → registro → linha/posição.
  *
- * `fieldName`/`fieldGuid`/`targetXPath` são opcionais e explicitamente anuláveis enquanto o
- * back-end não os emite (`targetXPath` depende da linhagem campo→XPath, que ainda não
- * existe). `null` aqui significa "não sei qual campo" — e a resposta certa a isso é apontar a
- * linha, não adivinhar um campo que o dado não sustenta.
+ * Por que os três níveis, e por que o do meio é o que roda hoje (spec §5.1): o validador
+ * recebe só texto e um comprimento esperado — nunca vê o layout —, então `fieldName`/
+ * `fieldGuid` vêm SEMPRE nulos e continuarão assim até existir validação escopada a campo.
+ * O que o back-end consegue resolver é o REGISTRO (`recordName`/`recordGuid`), casando o
+ * `sequence` do erro com o `LineElement` do layout.
+ *
+ * Consequência para o texto da UI: com dado de registro só é honesto dizer "o registro X tem
+ * problema na linha N, colunas A-B". Prometer precisão de campo aqui seria mentir com dado de
+ * segmento — que é exatamente o que a spec recusou ao manter `fieldGuid` nulo em vez de
+ * preenchê-lo com o GUID do registro.
  */
 export const describeValidationErrorTarget = (
   error: DocumentValidationError
 ): ValidationErrorTarget => {
   const fieldName = informed(error.fieldName);
+  const recordName = informed(error.recordName);
   const lineLabel = formatLineLabel(error.lineIndex);
+  const position = `linha ${lineLabel} · posições ${error.startPosition}–${error.endPosition}`;
+
+  const common = {
+    fieldName,
+    fieldGuid: informed(error.fieldGuid),
+    recordName,
+    recordGuid: informed(error.recordGuid),
+    targetXPath: informed(error.targetXPath),
+  };
 
   if (fieldName) {
-    return {
-      label: `Campo ${fieldName} · linha ${lineLabel}`,
-      identifiedField: true,
-      fieldName,
-      fieldGuid: informed(error.fieldGuid),
-      targetXPath: informed(error.targetXPath),
-    };
+    return { ...common, label: `Campo ${fieldName} · ${position}`, identity: 'field' };
+  }
+
+  if (recordName) {
+    // Registro sozinho não localiza o defeito (o segmento se repete ao longo do arquivo), por
+    // isso linha e colunas continuam no rótulo — o registro entra como CONTEXTO.
+    return { ...common, label: `Registro ${recordName} · ${position}`, identity: 'record' };
   }
 
   return {
+    ...common,
     label: `Linha ${lineLabel} · posições ${error.startPosition}–${error.endPosition}`,
-    identifiedField: false,
-    fieldGuid: informed(error.fieldGuid),
-    targetXPath: informed(error.targetXPath),
+    identity: 'line',
   };
 };

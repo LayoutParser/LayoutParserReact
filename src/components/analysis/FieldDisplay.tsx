@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
 import type { Field } from '../../types/field';
+import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import DocumentHealthBanner from './DocumentHealthBanner';
 import './FieldDisplay.css';
 
@@ -216,11 +217,17 @@ const FieldDisplay: React.FC = () => {
     );
   }
 
-  // ✅ Verificar se há erros de validação de tamanho de linha
+  // ✅ Verificar se há erros de validação no documento
   const validationErrors = parseResult?.validationErrors || [];
-  const firstErrorLineIndex =
-    validationErrors.length > 0 ? Math.min(...validationErrors.map(e => e.lineIndex)) : -1;
   const hasValidationErrors = validationErrors.length > 0;
+
+  // O CORTE da exibição é condicionado à CLASSE do erro, não à mera existência de erro.
+  // Só erro de tamanho de linha desloca os offsets seguintes; erro de conteúdo (sequência
+  // inválida etc.) não move nada e não pode esconder o resto do documento. Ver
+  // `isDesyncingValidationError`. Antes, qualquer erro cortava — e num caso real 46 registros
+  // alinhados sumiam da tela por causa de erros de sequência.
+  const firstDesyncLineIndex = findFirstDesyncLineIndex(validationErrors);
+  const isTruncated = firstDesyncLineIndex >= 0;
 
   // ✅ Índice físico da linha no TXT (0-based, considerando blocos de 600 chars)
   // Preferimos calcular via `position` (mais confiável) para não depender do índice do array.
@@ -232,20 +239,19 @@ const FieldDisplay: React.FC = () => {
     return fallbackIndex;
   };
 
-  // ✅ Quando há erro de validação, renderizar apenas até a linha com erro (inclusive)
-  // IMPORTANTE: como o TXT é posicional, qualquer erro de tamanho invalida as linhas seguintes
-  const groupsToRender =
-    hasValidationErrors && firstErrorLineIndex >= 0
-      ? displayGroups.filter((g, idx) => getPhysicalLineIndex(g, idx) <= firstErrorLineIndex)
-      : displayGroups;
+  // ✅ Renderizar apenas até a primeira linha que DESSINCRONIZA (inclusive). Sem erro desse
+  // tipo, o documento inteiro é exibido — com os defeitos anotados linha a linha.
+  const groupsToRender = isTruncated
+    ? displayGroups.filter((g, idx) => getPhysicalLineIndex(g, idx) <= firstDesyncLineIndex)
+    : displayGroups;
 
   // ✅ Função para verificar se uma linha tem erro específico
-  const isLineWithError = (lineIndex: number): boolean => {
-    if (firstErrorLineIndex === -1 || validationErrors.length === 0) return false;
-
-    // ✅ Verificar se esta linha específica tem erro de validação
-    return validationErrors.some(error => error.lineIndex === lineIndex);
-  };
+  //
+  // Independe do corte: TODA linha com defeito é marcada, inclusive as que continuam sendo
+  // exibidas depois de um erro que não dessincroniza. Marcar é o que aponta o problema ao
+  // usuário; cortar é só a proteção contra exibir dado desalinhado.
+  const isLineWithError = (lineIndex: number): boolean =>
+    validationErrors.some(error => error.lineIndex === lineIndex);
 
   // ✅ Função para identificar qual campo específico está causando erro na linha
   const getProblematicField = (
@@ -259,6 +265,12 @@ const FieldDisplay: React.FC = () => {
     // abaixo (spec "Taxonomia de falha do parse" §3). A heurística deduz o campo por
     // aritmética de posição acumulada — é chute educado, e chute não deve competir com quem
     // validou o documento. Enquanto `fieldName` vier null/ausente, seguimos na heurística.
+    //
+    // ⚠️ `recordName`/`recordGuid` NÃO entram aqui de propósito, mesmo sendo o que o back-end
+    // realmente emite hoje: eles identificam o REGISTRO (a linha inteira), não um campo dela.
+    // Usá-los para destacar um campo específico seria apresentar dado de segmento como se
+    // fosse de campo — exatamente o erro que a spec §5.1 recusou ao manter `fieldGuid` nulo.
+    // A identidade de registro aparece no DocumentHealthBanner, onde o rótulo é honesto.
     const reportedField = lineError.fieldName?.trim();
     if (reportedField) {
       return {
@@ -324,7 +336,9 @@ const FieldDisplay: React.FC = () => {
 
   // ✅ Log informativo sobre processamento
   console.log(
-    `📊 FieldDisplay: renderizando ${groupsToRender.length} grupos de linhas${hasValidationErrors ? ` (cortado no erro na linha física ${firstErrorLineIndex})` : ''}`
+    `📊 FieldDisplay: renderizando ${groupsToRender.length} grupos de linhas` +
+      `${isTruncated ? ` (cortado na linha física ${firstDesyncLineIndex}, que dessincroniza)` : ''}` +
+      `${hasValidationErrors && !isTruncated ? ` (${validationErrors.length} defeito(s) anotado(s), sem corte)` : ''}`
   );
 
   return (
@@ -335,11 +349,14 @@ const FieldDisplay: React.FC = () => {
       <DocumentHealthBanner />
 
       {/* Nota de leitura específica desta aba: o corte das linhas seguintes é comportamento
-          do FieldDisplay, não do payload, então não pertence ao banner de saúde. */}
-      {hasValidationErrors && (
+          do FieldDisplay, não do payload, então não pertence ao banner de saúde. Só aparece
+          quando o corte REALMENTE aconteceu — anunciar corte inexistente faria o usuário
+          procurar linhas que estão logo ali na tela. */}
+      {isTruncated && (
         <p className="field-display-truncation-note">
           O documento é posicional: um tamanho de linha errado desalinha tudo o que vem depois,
-          então a exibição vai até a primeira linha com defeito (destacada em vermelho) e para.
+          então a exibição vai até a primeira linha com tamanho incorreto (destacada em vermelho) e
+          para. Os demais defeitos ficam marcados no documento, sem interromper a exibição.
         </p>
       )}
 

@@ -122,13 +122,19 @@ export type ParseErrorKind = 'parse_error' | 'server_error' | 'network_error';
  * campo não vier no corpo. Quem reconcilia os dois é `assessParseFailure`
  * (utils/parseFailure.ts) — NÃO classifique falha lendo `kind` direto na UI.
  *
- * Regra de produto por trás disso:
+ * Os dois rótulos de 422 são divididos POR ARTEFATO — qual arquivo o usuário deve abrir —
+ * e não pela natureza abstrata do erro. É o que torna a mensagem acionável:
  *  - `parser_defect`      → a culpa é NOSSA (vem como 500). Não apresentar o documento nem
- *                           mandar o usuário caçar problema no arquivo dele.
- *  - `document_malformed` → o arquivo enviado está corrompido/ilegível (422).
- *  - `layout_mismatch`    → o arquivo é legível, mas não casa com o layout escolhido (422).
+ *                           mandar o usuário caçar problema nos arquivos dele.
+ *  - `document_malformed` → problema no DOCUMENTO (TXT): encoding, arquivo vazio (422).
+ *  - `layout_invalid`     → problema no XML DO LAYOUT: ilegível (422).
+ *
+ * `layout_mismatch` NÃO existe como valor emitido: ficou reservado, no vocabulário da spec,
+ * para o caso futuro "XML bem-formado que não é um layout" (o usuário subiu o arquivo
+ * errado). Não reintroduza o literal aqui antes de o back-end emitir — valor desconhecido já
+ * cai num fallback genérico, que é o comportamento desejado quando surgirem rótulos novos.
  */
-export type ParseFailureCause = 'parser_defect' | 'document_malformed' | 'layout_mismatch';
+export type ParseFailureCause = 'parser_defect' | 'document_malformed' | 'layout_invalid';
 
 export interface ParseErrorInfo {
   kind: ParseErrorKind;
@@ -149,15 +155,25 @@ export interface DocumentValidationError {
   errorMessage: string;
   startPosition: number;
   endPosition: number;
-  // ── Identidade de campo (spec §3) ────────────────────────────────────────────────────────
-  // Os três são OPCIONAIS e explicitamente anuláveis: o back-end emite `null` quando não
-  // consegue resolver a identidade, e `targetXPath` fica `null` até a linhagem campo→XPath
-  // existir (lacuna conhecida do projeto, spec §5).
+  // ── Identidade do erro (spec §3 e §5.1) ──────────────────────────────────────────────────
+  // Todos OPCIONAIS e explicitamente anuláveis. `null` significa "não sei", e nesse caso a UI
+  // CAI para a anotação por linha/posição. Não inferir identidade que o payload não sustenta.
+
+  // Identidade de REGISTRO/SEGMENTO (ex.: "IDE000") — é o que o dado sustenta hoje. Sai do
+  // casamento entre o `sequence` do erro e o `LineElement` do layout, feito no ParseAsync.
+  // `recordGuid` vem do XML do layout e é estável entre documentos (ao contrário de
+  // startPosition/endPosition, que não generalizam nada).
+  recordName?: string | null;
+  recordGuid?: string | null;
+
+  // Identidade de CAMPO. Decisão da spec §5.1: virão SEMPRE `null` até existir validação
+  // escopada a campo — o validador de hoje recebe só texto e um comprimento esperado, nunca
+  // vê o layout, e todos os erros que emite são de enquadramento de LINHA. Não é bug.
   //
-  // `null` significa "não sei qual campo", e nesse caso a UI CAI para a anotação por
-  // linha/posição que já existia. Não inferir campo que o payload não sustenta.
+  // Deliberadamente NÃO se preenche isto com o dado de registro: o campo diria "campo" e o
+  // conteúdo seria "registro", e um dataset mal rotulado é pior que um campo nulo.
   fieldName?: string | null; // nome do elemento no layout (ex.: "vNF")
-  fieldGuid?: string | null; // identidade estável do campo — é o que rotula o dataset da IA
+  fieldGuid?: string | null; // identidade estável do campo — é o que rotularia o dataset da IA
   targetXPath?: string | null; // destino no XML de saída (ex.: "/NFe/infNFe/total/ICMSTot/vNF")
 }
 

@@ -71,9 +71,9 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* Alvo resolvido até o CAMPO (o back-end informou `fieldName`) tem peso visual maior que o
-   fallback por linha/posição — a diferença de precisão precisa ser legível. */
-.document-health-banner-target--field {
+/* Alvo com identidade resolvida (campo ou registro informado pelo back-end) tem peso visual
+   maior que o fallback por linha/posição — a diferença de precisão precisa ser legível. */
+.document-health-banner-target--identified {
   padding: 0 var(--spacing-xs);
   background: var(--color-surface);
   border: 1px solid var(--color-warning);

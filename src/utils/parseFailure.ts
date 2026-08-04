@@ -14,14 +14,14 @@ import type { ParseErrorInfo, ParseFailureCause } from '../types/api';
 export type ParseFailureView =
   | ParseFailureCause
   // Fallbacks (nenhum `failureCause` no corpo):
-  | 'document_unclassified' // 422 sem causa declarada — sabemos que é do documento, não qual
+  | 'document_unclassified' // 422 sem causa declarada — sabemos que é dos arquivos, não qual
   | 'request_rejected' // 4xx que não 422 (ex.: BadRequest por arquivo faltando)
   | 'unreachable'; // nunca houve resposta HTTP (rede/timeout/CORS)
 
 const FAILURE_CAUSES: readonly ParseFailureCause[] = [
   'parser_defect',
   'document_malformed',
-  'layout_mismatch',
+  'layout_invalid',
 ];
 
 /** Type guard do conjunto fechado da spec — usado ao ler o corpo do erro em services/api.ts. */
@@ -32,14 +32,18 @@ export interface ParseFailureAssessment {
   /** Chave única de apresentação. Ver ParseFailureView. */
   view: ParseFailureView;
   /**
-   * A falha aponta para o ARQUIVO do usuário?
+   * A falha aponta para algum ARQUIVO ENVIADO PELO USUÁRIO (o documento ou o layout)?
    *
    * É a regra de produto do dono do projeto em forma de booleano: quando a falha é nossa
    * (`parser_defect`) ou da requisição, não se apresenta o documento nem se manda o usuário
-   * caçar problema num arquivo que provavelmente está bom. Só quando ela é do arquivo é que
-   * vale apontar o erro com a maior precisão que o payload permitir.
+   * caçar problema em arquivo que provavelmente está bom. Só quando ela é dos arquivos dele é
+   * que vale apontar o erro com a maior precisão que o payload permitir.
+   *
+   * Fala em "artefato" e não em "documento" de propósito: `layout_invalid` culpa o XML do
+   * LAYOUT, não o TXT. Qual dos dois abrir é o que distingue os rótulos de 422 — quem escreve
+   * o texto de cada view é que resolve isso, não este booleano.
    */
-  blamesDocument: boolean;
+  blamesUserArtifact: boolean;
 }
 
 /** Classifica uma falha de parse já capturada, priorizando o `failureCause` do back-end. */
@@ -47,16 +51,16 @@ export const assessParseFailure = (error: ParseErrorInfo): ParseFailureAssessmen
   if (error.failureCause) {
     return {
       view: error.failureCause,
-      blamesDocument: error.failureCause !== 'parser_defect',
+      blamesUserArtifact: error.failureCause !== 'parser_defect',
     };
   }
 
   if (error.kind === 'network_error') {
-    return { view: 'unreachable', blamesDocument: false };
+    return { view: 'unreachable', blamesUserArtifact: false };
   }
 
   if (error.kind === 'parse_error') {
-    return { view: 'document_unclassified', blamesDocument: true };
+    return { view: 'document_unclassified', blamesUserArtifact: true };
   }
 
   // `server_error` cobre 5xx e os 4xx inesperados.
@@ -68,6 +72,6 @@ export const assessParseFailure = (error: ParseErrorInfo): ParseFailureAssessmen
   const isServerFault = typeof error.httpStatus === 'number' && error.httpStatus >= 500;
   return {
     view: isServerFault ? 'parser_defect' : 'request_rejected',
-    blamesDocument: false,
+    blamesUserArtifact: false,
   };
 };
