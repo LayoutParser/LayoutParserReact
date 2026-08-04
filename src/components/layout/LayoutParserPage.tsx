@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { parseService } from '../../services/api';
+import { parseService, ParseRequestError } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
+import ParseErrorBanner from '../upload/ParseErrorBanner';
 import AnalysisModeTabs from '../analysis/AnalysisModeTabs';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
@@ -23,10 +24,12 @@ const LayoutParserPage: React.FC = () => {
   const {
     isUploading,
     uploadError,
+    parseError,
     selectedLayout,
     parseResult,
     setUploading,
     setUploadError,
+    setParseError,
     setParseResult,
     setTxtContent,
     setFields,
@@ -101,6 +104,7 @@ const LayoutParserPage: React.FC = () => {
     if (file) {
       setTxtFile(file);
       setUploadError(null);
+      setParseError(null);
     }
   };
 
@@ -118,7 +122,10 @@ const LayoutParserPage: React.FC = () => {
     }
 
     setUploading(true);
+    // Os dois estados de erro convivem (ver useAppStore) e precisam ser limpos juntos no
+    // início do submit, senão sobra erro do envio anterior na tela.
     setUploadError(null);
+    setParseError(null);
 
     try {
       let layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
@@ -184,8 +191,15 @@ const LayoutParserPage: React.FC = () => {
         setFields([]);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      setUploadError(errorMessage);
+      // Falha da chamada de parse já classificada pelo service (422 x 5xx x rede) — vai para
+      // `parseError` e ganha apresentação própria. Qualquer outra falha (ex.: as validações
+      // locais lançadas acima, "Layout não encontrado...") continua no `uploadError` de texto.
+      if (error instanceof ParseRequestError) {
+        setParseError(error.toInfo());
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        setUploadError(errorMessage);
+      }
       console.error('❌ Erro no parsing:', error);
     } finally {
       setUploading(false);
@@ -278,6 +292,7 @@ const LayoutParserPage: React.FC = () => {
                 </label>
               </div>
 
+              {parseError && <ParseErrorBanner error={parseError} />}
               {uploadError && <div className="error-message">❌ {uploadError}</div>}
               {searchError && <div className="error-message">❌ {searchError}</div>}
 

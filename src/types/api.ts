@@ -74,7 +74,38 @@ export interface ParseResponse {
   // Estado assíncrono da transformação XML (Sysmiddle/TCL-XSL) associada a este parse.
   // 'not_applicable' quando o layout não tem Mapper cadastrado (ver transformationService).
   // Usado por AnalysisModeTabs para refletir loading/erro sem precisar de polling manual.
+  //
+  // ⚠️ ATENÇÃO — 'not_applicable' é AMBÍGUO NA ORIGEM: o back-end emite a mesma string em dois
+  // pontos distintos do ParseController — quando o gate `detectedType == "mqseries"` barra o
+  // documento (nem chegou a rodar) e quando o pathway rodou mas nenhum mapper serviu. O front
+  // NÃO tem como distinguir os dois casos hoje; `transformationsReason` abaixo é o campo que
+  // resolveria isso, mas ele ainda não é emitido. Não invente distinção que o dado não suporta.
   transformationsStatus?: 'completed' | 'processing' | 'not_applicable' | 'error';
+  // Motivo detalhado da ausência de transformação. ADITIVO E OPCIONAL: contrato antecipado da
+  // Fase 3 do back-end (spec §1.6) — enquanto não for emitido, a UI cai no texto genérico.
+  transformationsReason?:
+    | 'type_not_positional'
+    | 'no_mapper'
+    | 'empty_input'
+    | 'timeout_sync'
+    | 'structural_error';
+}
+
+/**
+ * Classificação de uma falha ao chamar POST /api/parse/upload.
+ *
+ * Existe para o front parar de achatar toda falha em `new Error(string)`: um 422 é um
+ * DIAGNÓSTICO DO DOCUMENTO ("não consegui parsear este documento com este layout") e precisa
+ * ser apresentado de forma diferente de uma falha de sistema (5xx) ou de conectividade.
+ */
+export type ParseErrorKind = 'parse_error' | 'server_error' | 'network_error';
+
+export interface ParseErrorInfo {
+  kind: ParseErrorKind;
+  message: string; // mensagem já pronta para exibir (no 422 vem do corpo da resposta)
+  httpStatus?: number; // 422 | 5xx | undefined (rede/timeout/CORS)
+  detectedType?: string; // só no 422 — tipo que o back-end detectou (ex.: "idoc")
+  correlationId?: string; // header X-Correlation-ID da resposta, para o usuário reportar
 }
 
 export interface DocumentValidationError {
