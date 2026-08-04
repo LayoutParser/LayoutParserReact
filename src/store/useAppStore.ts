@@ -1,13 +1,17 @@
 import { create } from 'zustand';
-import type { ParseResponse, Field } from '../types/api';
+import type { ParseErrorInfo, ParseResponse, Field } from '../types/api';
 import type { Layout } from '../types/layout';
 
 interface AppState {
   // Estado de upload
   isUploading: boolean;
   uploadProgress: number;
+  // Mensagens de VALIDAÇÃO LOCAL do formulário ("selecione um layout"). Natureza diferente de
+  // uma falha de API — misturar as duas num campo só é o que costuma gerar estado preso.
   uploadError: string | null;
-  
+  // Falha da chamada de parse já CLASSIFICADA (422 x 5xx x rede). Ver ParseRequestError.
+  parseError: ParseErrorInfo | null;
+
   // Resultado do parsing
   parseResult: ParseResponse | null;
   txtContent: string;
@@ -20,6 +24,7 @@ interface AppState {
   setUploading: (uploading: boolean) => void;
   setUploadProgress: (progress: number) => void;
   setUploadError: (error: string | null) => void;
+  setParseError: (error: ParseErrorInfo | null) => void;
   setParseResult: (result: ParseResponse | null) => void;
   setTxtContent: (content: string) => void;
   setFields: (fields: Field[]) => void;
@@ -31,6 +36,7 @@ const initialState = {
   isUploading: false,
   uploadProgress: 0,
   uploadError: null,
+  parseError: null,
   parseResult: null,
   txtContent: '',
   fields: [],
@@ -43,6 +49,7 @@ export const useAppStore = create<AppState>((set) => ({
   setUploading: (uploading) => set({ isUploading: uploading }),
   setUploadProgress: (progress) => set({ uploadProgress: progress }),
   setUploadError: (error) => set({ uploadError: error }),
+  setParseError: error => set({ parseError: error }),
   setParseResult: (result) => set({ parseResult: result }),
   setTxtContent: (content) => set({ txtContent: content }),
   setFields: (fields) => set({ fields }),
