@@ -1,7 +1,7 @@
 .structure-tree {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 1rem;
   max-height: 600px;
   overflow-y: auto;
@@ -13,11 +13,12 @@
   color: var(--color-text-muted);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .tree-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
@@ -25,6 +26,7 @@
 }
 
 .tree-control-btn {
+  min-height: 40px;
   padding: 6px 12px;
   border: 1px solid var(--color-accent);
   background: var(--color-surface);
@@ -38,6 +40,12 @@
 .tree-control-btn:hover {
   background: var(--color-accent);
   color: var(--color-text-inverse);
+}
+
+.tree-control-btn:focus-visible,
+.tree-toggle:focus-visible {
+  outline: 3px solid rgba(var(--color-accent-rgb), 0.35);
+  outline-offset: 2px;
 }
 
 .tree-root {
@@ -73,8 +81,8 @@
 }
 
 .tree-toggle {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
   color: var(--color-accent);
@@ -87,7 +95,7 @@
 }
 
 .tree-spacer {
-  width: 20px;
+  width: 32px;
   display: inline-block;
 }
 
@@ -128,5 +136,20 @@
 }
 
 .structure-tree::-webkit-scrollbar-thumb:hover {
-  background: var(--color-danger);
+  background: var(--color-accent-hover);
+}
+
+@media (max-width: 600px) {
+  .structure-tree,
+  .structure-tree-empty {
+    padding: var(--spacing-sm);
+  }
+
+  .tree-children {
+    padding-left: var(--spacing-md);
+  }
+
+  .tree-node-header {
+    padding: var(--spacing-sm);
+  }
 }
