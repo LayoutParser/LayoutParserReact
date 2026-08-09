@@ -18,7 +18,7 @@ import type {
  * - POST /api/transformationexecution/execute      -> ver types/transformation.ts
  *
  * Rota multi-candidato confirmada por handoff @lp-architect (Aria) em 2026-07-29:
- * - POST /api/transformation-execution/execute-candidates -> ver types/transformation.ts
+ * - POST /api/transformationexecution/execute-candidates -> ver types/transformation.ts
  */
 export const transformationService = {
   /**
@@ -92,7 +92,7 @@ export const transformationService = {
   ): Promise<TransformationCandidatesResponse> {
     try {
       const response = await apiClient.post<TransformationCandidatesResponse>(
-        '/api/transformation-execution/execute-candidates',
+        '/api/transformationexecution/execute-candidates',
         request
       );
       return response.data;

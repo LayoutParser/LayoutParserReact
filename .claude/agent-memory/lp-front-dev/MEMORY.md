@@ -18,13 +18,12 @@
 - `GET /api/layoutdatabase/mqseries-nfe`, `POST /api/layoutdatabase/refresh-cache`.
 - `GET /api/monitoring/layouts-analysis`, `GET /api/monitoring/layout-validations`.
 - `GET /api/mapperdatabase/by-input/{layoutGuid}` (200 com mapper | 404 "não encontrado"), `POST /api/transformationexecution/execute` — ver detalhe em [Feature XML Transformação](project_xml_transformation_feature.md).
-- `POST /api/transformation-execution/execute-candidates` (multi-candidato) e `POST /api/xml-analysis/diagnose-validation-error` (diagnóstico IA/Ollama) — integrados, ver [Handoff aba de análise](project_document_analysis_tab_handoff.md).
+- `POST /api/transformationexecution/execute-candidates` (multi-candidato; **sem hífen**, validado em runtime em 2026-08-05) e `POST /api/xml-analysis/diagnose-validation-error` (diagnóstico IA/Ollama) — integrados, ver [Handoff aba de análise](project_document_analysis_tab_handoff.md). O request deve mandar `layoutGuid` do parse e strings vazias, não `null`, nos campos não anuláveis de tipo/saída.
 - `GET /api/ai-metrics/generations` e `GET /api/ai-metrics/summary` — contrato antecipado (back-end ainda não implementou), ver [Painel de métricas de IA (Gap 3)](project_ai_metrics_panel_gap3.md).
 
 ## Gates
-`npx tsc --noEmit`, `npm run build` e — desde 2026-08-03 — `npm run format:check` passam limpos e valem como sinal de regressão.
-**`npm run lint` para em 30 warnings pré-existentes** (29 `no-explicit-any` + 1 `exhaustive-deps`) e falha só por `--max-warnings 0`; a dívida de CRLF que causava 5395 warnings **acabou** (`core.autocrlf=false` + `.gitattributes`, não mexer). Regra atual = **delta zero**: ver [Gates: piso de 30 warnings](gates_crlf_divida.md).
-Sem suite de testes, mas dá pra rodar helper puro **e componente real** (react-dom/server + payload da API) via esbuild+node — ver [Ambiente local](reference_ambiente_local_dev.md).
+`npx tsc --noEmit`, `npm run build` e `npm run format:check` passam na branch `chore/normaliza-crlf` (validado em 2026-08-05). Sem suite de testes ainda (mas dá para testar helper puro com esbuild+node — ver [Ambiente local](reference_ambiente_local_dev.md)).
+**`npm run lint` continua vermelho**, agora por 30 warnings preexistentes de `no-explicit-any`/hooks e não mais por CRLF. Use lint direcionado nos arquivos tocados e `--quiet` para confirmar ausência de erros, mas não trate isso como substituto da dívida global.
 `node_modules` pode não estar instalado (rodar `npm install` primeiro). Os ~12 erros de `tsc` (`noUnusedLocals`/TS7006) de 6 arquivos antigos foram **corrigidos em 2026-07-20** — se reaparecerem, é regressão nova.
 
 ## Aprendizados

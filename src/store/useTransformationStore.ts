@@ -27,7 +27,7 @@ interface TransformationState {
   executionError: string | null;
   transformationResult: TransformationExecutionResponse | null;
 
-  // Multi-candidato (POST /api/transformation-execution/execute-candidates)
+  // Multi-candidato (POST /api/transformationexecution/execute-candidates)
   isLoadingCandidates: boolean;
   candidatesError: string | null;
   candidates: TransformationCandidate[];

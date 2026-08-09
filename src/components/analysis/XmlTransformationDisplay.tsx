@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { transformationService } from '../../services/api/transformationService';
@@ -7,6 +7,7 @@ import {
   DiagnoseValidationErrorException,
   xmlAnalysisService,
 } from '../../services/api/xmlAnalysisService';
+import { resolveLayoutGuid } from '../../utils/layoutGuid';
 import './XmlTransformationDisplay.css';
 
 /**
@@ -60,6 +61,45 @@ const PATHWAY_LABEL: Record<string, string> = {
   'tcl-xsl': 'TCL/XSL',
 };
 
+interface XmlDeliveryFeedback {
+  kind: 'success' | 'error';
+  message: string;
+}
+
+/** Copia também em HTTP/intranets, onde a Clipboard API moderna pode não estar disponível. */
+const copyTextToClipboard = async (text: string): Promise<void> => {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    if (!document.execCommand('copy')) {
+      throw new Error('O navegador recusou a cópia para a área de transferência.');
+    }
+  } finally {
+    textArea.remove();
+  }
+};
+
+const createXmlFileName = (layoutName: string, candidateId: string): string => {
+  const sanitize = (value: string): string =>
+    value
+      .trim()
+      .replace(/[^a-z0-9._-]+/gi, '-')
+      .replace(/^-+|-+$/g, '') || 'transformacao';
+
+  return `${sanitize(layoutName)}-${sanitize(candidateId)}.xml`;
+};
+
 /**
  * Exibe o resultado da "XML Transformação Final": o back-end valida o input e devolve o(s)
  * XML(s) transformado(s) — hoje via multi-candidato (`execute-candidates`), que substitui a
@@ -70,7 +110,8 @@ const PATHWAY_LABEL: Record<string, string> = {
  * pode ser custosa no back-end.
  */
 const XmlTransformationDisplay: React.FC = () => {
-  const { selectedLayout, txtContent } = useAppStore();
+  const { selectedLayout, txtContent, parseResult } = useAppStore();
+  const [deliveryFeedback, setDeliveryFeedback] = useState<XmlDeliveryFeedback | null>(null);
   const {
     isLoadingCandidates,
     candidatesError,
@@ -113,15 +154,24 @@ const XmlTransformationDisplay: React.FC = () => {
     setCandidatesError(null);
     setDiagnostic(null);
     setDiagnosticError(null);
+    setDeliveryFeedback(null);
 
     try {
+      // O GUID do parse é autoritativo: há layouts legados cujo registro resumido do catálogo
+      // contém Guid.Empty, enquanto o layout efetivamente processado devolve um LAY_* válido.
+      const layoutGuid = resolveLayoutGuid(
+        parseResult?.layout?.layoutGuid,
+        selectedLayout.layoutGuid
+      );
+
       const result = await transformationService.executeTransformationCandidates({
         inputContent: txtContent,
         layoutName: selectedLayout.name,
-        sourceDocumentType: null,
-        targetDocumentType: null,
+        layoutGuid: layoutGuid ?? null,
+        sourceDocumentType: '',
+        targetDocumentType: '',
         validate: true,
-        expectedOutput: null,
+        expectedOutput: '',
       });
 
       setCandidatesResult(result.candidates, result.warnings);
@@ -143,6 +193,54 @@ const XmlTransformationDisplay: React.FC = () => {
       });
     } finally {
       setLoadingCandidates(false);
+    }
+  };
+
+  const handleCopyXml = async () => {
+    if (!activeCandidate?.transformedXml) {
+      setDeliveryFeedback({ kind: 'error', message: 'Não há XML transformado para copiar.' });
+      return;
+    }
+
+    try {
+      // Copiar sempre o valor bruto da API. `formattedXml` existe apenas para leitura na tela.
+      await copyTextToClipboard(activeCandidate.transformedXml);
+      setDeliveryFeedback({
+        kind: 'success',
+        message: 'XML bruto copiado para a área de transferência.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível copiar o XML.';
+      setDeliveryFeedback({ kind: 'error', message });
+    }
+  };
+
+  const handleDownloadXml = () => {
+    if (!activeCandidate?.transformedXml) {
+      setDeliveryFeedback({ kind: 'error', message: 'Não há XML transformado para baixar.' });
+      return;
+    }
+
+    try {
+      // O Blob recebe o XML bruto retornado pela API; a versão indentada nunca é exportada.
+      const blob = new Blob([activeCandidate.transformedXml], {
+        type: 'application/xml;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = createXmlFileName(
+        selectedLayout?.name ?? 'transformacao',
+        activeCandidate.candidateId
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setDeliveryFeedback({ kind: 'success', message: 'Download do XML bruto iniciado.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível baixar o XML.';
+      setDeliveryFeedback({ kind: 'error', message });
     }
   };
 
@@ -235,7 +333,10 @@ const XmlTransformationDisplay: React.FC = () => {
                   className={`xml-transformation-candidate-btn ${
                     candidate.candidateId === activeCandidate?.candidateId ? 'active' : ''
                   }`}
-                  onClick={() => setActiveCandidateId(candidate.candidateId)}
+                  onClick={() => {
+                    setActiveCandidateId(candidate.candidateId);
+                    setDeliveryFeedback(null);
+                  }}
                 >
                   {PATHWAY_LABEL[candidate.pathway] || candidate.pathway}
                 </button>
@@ -257,6 +358,37 @@ const XmlTransformationDisplay: React.FC = () => {
                 XML Transformado (
                 {PATHWAY_LABEL[activeCandidate.pathway] || activeCandidate.pathway})
               </h3>
+
+              <div
+                className="xml-transformation-delivery-actions"
+                role="group"
+                aria-label="Ações do XML transformado"
+              >
+                <button
+                  type="button"
+                  className="xml-transformation-copy-btn"
+                  onClick={handleCopyXml}
+                >
+                  Copiar XML
+                </button>
+                <button
+                  type="button"
+                  className="xml-transformation-download-btn"
+                  onClick={handleDownloadXml}
+                >
+                  Baixar XML
+                </button>
+              </div>
+
+              {deliveryFeedback && (
+                <p
+                  className={`xml-transformation-delivery-feedback xml-transformation-delivery-feedback--${deliveryFeedback.kind}`}
+                  role={deliveryFeedback.kind === 'error' ? 'alert' : 'status'}
+                  aria-live="polite"
+                >
+                  {deliveryFeedback.message}
+                </p>
+              )}
 
               {activeCandidate.failureReason && (
                 <div className="xml-transformation-error" role="alert">

@@ -39,6 +39,8 @@ layout, descriptografia, geração de transformação) vive no **back-end .NET**
 - envia para a API (`POST /api/parse/upload`);
 - exibe o **mapeamento** retornado: resumo do documento, campos, propriedades de linha,
   **árvore de estrutura** e **destaque de linhas inválidas (vermelho)**;
+- quando existe mapeador, solicita à API os candidatos de transformação, permite alternar
+  entre os pathways **Sysmiddle** e **TCL/XSL** e entrega o XML bruto por **cópia ou download**;
 - tem uma área **Admin** com monitoramento e validação dos layouts cadastrados.
 
 ## 2. Ecossistema de projetos
@@ -118,8 +120,7 @@ src/
 ├── layouts/MainLayout.tsx   # shell (header/nav + <Outlet/>)
 ├── components/
 │   ├── upload/              # UploadSection, LayoutCombobox, LayoutSearch
-│   ├── analysis/            # AnalysisSection, DocumentSummary, FieldDisplay,
-│   │                        # FieldProperties, FieldSearch, LineProperties, StructureTree
+│   ├── analysis/            # Resumo, árvore, campos, tabs de análise e entrega do XML
 │   ├── admin/               # AdminPage, MonitoringTab, LayoutValidationTab
 │   ├── layout/              # LayoutParserPage (página principal upload+analysis)
 │   └── shared/              # Button, Modal, Tabs
@@ -127,6 +128,8 @@ src/
 ├── services/
 │   ├── api.ts               # axios + parseService + base URL
 │   ├── api/layoutService.ts # catálogo de layouts + refresh de cache
+│   ├── api/transformationService.ts # disponibilidade e candidatos de transformação
+│   ├── api/xmlAnalysisService.ts    # diagnóstico de falha de validação via IA
 │   ├── api/monitoringService.ts # análise/validação de layouts (Admin)
 │   └── cache/layoutCache.ts # cache de layouts em localStorage (TTL 1h)
 ├── types/                   # api.ts, layout.ts, field.ts, structure.ts
@@ -142,6 +145,7 @@ src/
 | `useFieldStore` | Seleção/estado dos campos exibidos. |
 | `usePropertiesStore` | Painel de propriedades (linha/campo selecionado). |
 | `useSearchStore` | Busca/filtro de campos e layouts. |
+| `useTransformationStore` | Candidatos de transformação, seleção ativa e diagnóstico de IA. |
 
 **Convenções:** um componente por pasta com seu `.css` ao lado (`Foo.tsx` + `Foo.css`);
 imports via alias `@/`; tipos em `src/types`; chamadas HTTP só na camada `services`.
@@ -153,12 +157,22 @@ imports via alias `@/`; tipos em `src/types`; chamadas HTTP só na camada `servi
 | `POST` | `/api/parse/upload` | `parseService.parseFiles` | `ParseResponse` (campos, `lineValidations`, `documentStructure`, `validationErrors`) |
 | `GET` | `/api/layoutdatabase/mqseries-nfe` | `layoutService.searchLayouts` | `LayoutSearchResponse` |
 | `POST` | `/api/layoutdatabase/refresh-cache` | `layoutService.refreshCache` | `{ success, message? }` |
+| `GET` | `/api/mapperdatabase/by-input/{layoutGuid}` | `transformationService.checkMapperAvailability` | Disponibilidade do mapeador |
+| `POST` | `/api/transformationexecution/execute-candidates` | `transformationService.executeTransformationCandidates` | Candidatos com o XML transformado |
+| `POST` | `/api/xml-analysis/diagnose-validation-error` | `xmlAnalysisService.diagnoseValidationError` | Diagnóstico de falha via IA/Ollama |
 | `GET` | `/api/monitoring/layouts-analysis` | `monitoringService.getLayoutsAnalysis` | `MonitoringResponse` |
 | `GET` | `/api/monitoring/layout-validations?forceRevalidation` | `monitoringService.getLayoutValidations` | `LayoutValidationsResponse` |
 
 `POST /api/parse/upload` usa **`multipart/form-data`** com os campos: `layoutFile` (File),
 `txtFile` (File), e os opcionais `layoutName`, `layoutType`, `layoutConfig` (JSON). Os
 contratos completos estão em [`src/types/api.ts`](src/types/api.ts).
+
+Na transformação multi-candidato, o front envia `inputContent`, `layoutName` e o
+`layoutGuid` devolvido pelo parse (com fallback para o catálogo). Também envia strings vazias
+nos campos de tipo/saída não aplicáveis, pois o model binding da API os exige. A rota sem hífen
+foi validada em runtime contra a API local; `/api/transformation-execution/...` retorna `404`.
+O XML exportado é sempre o conteúdo bruto retornado pela API — a indentação existe apenas para
+leitura em tela.
 
 ## 9. Fluxo do usuário
 
@@ -167,6 +181,7 @@ contratos completos estão em [`src/types/api.ts`](src/types/api.ts).
         → ParseResponse → useAppStore
 /analysis → DocumentSummary + StructureTree (treeBuilder) + FieldDisplay/Properties
           → linhas com validação inválida são destacadas em vermelho
+          → XML Transformação Final → gerar candidatos → escolher pathway → copiar/baixar XML
 /admin → MonitoringTab (análise de layouts) + LayoutValidationTab (erros de tamanho de linha)
 ```
 

@@ -10,6 +10,10 @@ npm run format:check
 npm run build           # tsc && vite build
 ```
 
+- Estado em 2026-08-05: type-check, build, format e `git diff --check` passam.
+- O lint global falha por 30 warnings preexistentes (`any` e dependência de hook), sem erros;
+  a entrega de XML passou no lint direcionado e não acrescentou warnings.
+
 ## Validação manual (não há suite ainda)
 - Upload TXT+layout → `ParseResponse` chega → árvore renderiza.
 - Linhas com tamanho inválido em vermelho; `validationErrors` refletidos.

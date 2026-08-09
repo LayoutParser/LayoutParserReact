@@ -231,6 +231,11 @@ const LayoutParserPage: React.FC = () => {
             onClick={() => setIsControlsVisible(!isControlsVisible)}
             className="toggle-controls-btn"
             title={isControlsVisible ? 'Retrair menu' : 'Mostrar menu'}
+            aria-label={
+              isControlsVisible ? 'Ocultar painel de controles' : 'Mostrar painel de controles'
+            }
+            aria-expanded={isControlsVisible}
+            aria-controls="layout-controls-panel"
           >
             {isControlsVisible ? '<<' : '>>'}
           </button>
@@ -257,7 +262,10 @@ const LayoutParserPage: React.FC = () => {
         </div>
 
         {/* Bottom-Left: Controles */}
-        <div className={`l-bottom-left ${isControlsVisible ? '' : 'hidden'}`}>
+        <div
+          id="layout-controls-panel"
+          className={`l-bottom-left ${isControlsVisible ? '' : 'hidden'}`}
+        >
           <div className="controls-panel">
             {/* Atualizar Layout */}
             <button
@@ -330,7 +338,7 @@ const LayoutParserPage: React.FC = () => {
             <AnalysisModeTabs />
           ) : (
             <div className="file-visualization-placeholder">
-              <p>Vai ficar oculto até o usuário escolher um arquivo</p>
+              <p>Selecione um layout e anexe um documento TXT para iniciar a análise.</p>
             </div>
           )}
         </div>
