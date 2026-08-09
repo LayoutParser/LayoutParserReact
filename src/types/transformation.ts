@@ -87,22 +87,29 @@ export type TransformationExecutionResponse =
 // ---------------------------------------------------------------------------------------
 // Multi-candidato de transformação (Gap 1) e diagnóstico de erro via IA (Gap 2).
 // Contrato CONFIRMADO por handoff @lp-architect (Aria) em 2026-07-29, implementado por
-// @lp-backend-dev (Dex) e @lp-parser-llm (Lia). Ver POST /api/transformation-execution/
+// @lp-backend-dev (Dex) e @lp-parser-llm (Lia). Ver POST /api/transformationexecution/
 // execute-candidates e POST /api/xml-analysis/diagnose-validation-error.
 // ---------------------------------------------------------------------------------------
 
 /**
- * Request para POST /api/transformation-execution/execute-candidates.
+ * Request para POST /api/transformationexecution/execute-candidates.
  * Idêntico ao request de `execute` (ver `TransformationExecutionRequest`), mas devolve todos
  * os caminhos de transformação possíveis em vez de um só.
  */
 export interface TransformationCandidatesRequest {
   inputContent: string;
   layoutName: string;
-  sourceDocumentType: string | null;
-  targetDocumentType: string | null;
+  /**
+   * GUID devolvido pelo parse, quando disponível. O back-end o prioriza porque o catálogo
+   * legado pode devolver Guid.Empty mesmo quando o XML do layout contém um LAY_* válido.
+   */
+  layoutGuid: string | null;
+  // O model binding da API exige a presença destes campos não anuláveis. Enviar string vazia
+  // quando o fallback interno do back-end deve escolher o tipo de documento.
+  sourceDocumentType: string;
+  targetDocumentType: string;
   validate: boolean;
-  expectedOutput: string | null;
+  expectedOutput: string;
 }
 
 /**
@@ -130,7 +137,7 @@ export interface TransformationCandidate {
 }
 
 /**
- * Resposta de POST /api/transformation-execution/execute-candidates.
+ * Resposta de POST /api/transformationexecution/execute-candidates.
  * Zero candidatos é SUCESSO (200, `candidates: []` + `warnings` explicando o motivo) —
  * tratar como estado vazio da UI, nunca como falha de rede.
  */

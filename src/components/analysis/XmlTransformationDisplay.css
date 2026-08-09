@@ -1,72 +1,95 @@
 .xml-transformation-display {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: var(--radius-md);
+  padding: clamp(var(--spacing-md), 2vw, var(--spacing-lg));
   height: 100%;
   overflow-y: auto;
   overflow-x: auto;
+  scrollbar-gutter: stable;
 }
 
 .xml-transformation-actions {
   display: flex;
-  margin-bottom: 1rem;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .xml-transformation-generate-btn {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
   color: var(--color-text-inverse);
-  border: none;
+  min-height: 44px;
+  border: 1px solid transparent;
   padding: 0.75rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
   box-shadow: 0 2px 8px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .xml-transformation-generate-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(var(--color-accent-rgb), 0.4);
 }
 
 .xml-transformation-generate-btn:disabled {
-  opacity: 0.6;
+  background: var(--color-pending-bg);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  box-shadow: none;
+  opacity: 1;
   cursor: not-allowed;
   transform: none;
 }
 
-.xml-transformation-generate-btn:focus-visible {
-  outline: 3px solid var(--color-accent);
+.xml-transformation-generate-btn:focus-visible,
+.xml-transformation-candidate-btn:focus-visible,
+.xml-transformation-copy-btn:focus-visible,
+.xml-transformation-download-btn:focus-visible,
+.xml-transformation-diagnose-btn:focus-visible {
+  outline: 3px solid rgba(var(--color-accent-rgb), 0.35);
   outline-offset: 2px;
 }
 
 .xml-transformation-error {
-  background: rgba(var(--color-danger-rgb), 0.1);
-  color: var(--color-danger);
-  padding: 0.75rem;
-  border-radius: 6px;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-danger);
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
+  border-left-width: 4px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+  margin-bottom: var(--spacing-md);
+  overflow-wrap: anywhere;
+}
+
+.xml-transformation-result {
+  padding-top: var(--spacing-xs);
 }
 
 .xml-transformation-result h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.95rem;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-md);
   color: var(--color-text-strong);
-  font-weight: 600;
+  font-weight: var(--font-weight-bold);
 }
 
 .xml-transformation-content {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 1rem;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
   font-family: var(--font-family-mono);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 60vh;
@@ -77,15 +100,18 @@
    precisa de um indicador de foco visível, já que <pre> não tem um nativo tão claro
    quanto um botão. */
 .xml-transformation-content:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 3px solid rgba(var(--color-accent-rgb), 0.35);
   outline-offset: 2px;
 }
 
 .xml-transformation-empty {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   text-align: center;
-  padding: 1.5rem 0;
+  padding: var(--spacing-lg);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
 }
 
 .xml-transformation-empty ul {
@@ -96,20 +122,37 @@
 
 .xml-transformation-candidate-selector {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.2);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
 }
 
 .xml-transformation-candidate-btn {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   color: var(--color-text-strong);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  min-height: 40px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.xml-transformation-candidate-btn:hover:not(.active) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  transform: translateY(-1px);
 }
 
 .xml-transformation-candidate-btn.active {
@@ -118,19 +161,89 @@
   border-color: transparent;
 }
 
-.xml-transformation-candidate-btn:focus-visible {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
+/* Terceiro estágio do fluxo: depois de gerar e escolher o candidato, o XML pode ser
+   entregue ao usuário por cópia ou download. Ações ficam visualmente próximas do título
+   do resultado para não se confundirem com o disparo da transformação. */
+.xml-transformation-delivery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+}
+
+.xml-transformation-copy-btn,
+.xml-transformation-download-btn {
+  min-height: 40px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.xml-transformation-copy-btn {
+  border: 1px solid var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
+
+.xml-transformation-download-btn {
+  border: 1px solid var(--color-success);
+  background: var(--color-success);
+  color: var(--color-text-inverse);
+  box-shadow: 0 1px 3px rgba(var(--color-success-rgb), 0.24);
+}
+
+.xml-transformation-copy-btn:hover {
+  background: var(--color-accent-soft);
+  transform: translateY(-1px);
+}
+
+.xml-transformation-download-btn:hover {
+  box-shadow: 0 3px 8px rgba(var(--color-success-rgb), 0.32);
+  transform: translateY(-1px);
+}
+
+.xml-transformation-delivery-feedback {
+  margin: 0 0 var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid;
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-base);
+}
+
+.xml-transformation-delivery-feedback--success {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.xml-transformation-delivery-feedback--error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .xml-transformation-warnings {
   background: rgba(var(--color-warning-rgb), 0.12);
   color: var(--color-warning-text);
   border: 1px solid var(--color-warning);
-  border-radius: 6px;
-  padding: 0.75rem;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .xml-transformation-warnings p {
@@ -146,20 +259,16 @@
   color: var(--color-danger);
   border: 1px solid var(--color-danger);
   padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
 }
 
 .xml-transformation-diagnose-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.xml-transformation-diagnose-btn:focus-visible {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 /* Estado de loading explícito para o diagnóstico de IA — NÃO é um spinner genérico: o
@@ -204,8 +313,37 @@
   /* var(--color-text-muted) (não var(--color-text-muted)) para manter contraste AA em texto normal — mesmo tom já usado em
      .structure-placeholder (LayoutParserPage.css) e .analysis-mode-tabs-checking. */
   color: var(--color-text-muted);
-  font-size: 0.9rem;
-  font-style: italic;
+  margin: 0;
+  font-size: var(--font-size-sm);
   text-align: center;
-  padding: 2rem 0;
+  padding: var(--spacing-xl) var(--spacing-md);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  line-height: var(--line-height-base);
+}
+
+@media (max-width: 600px) {
+  .xml-transformation-display {
+    padding: var(--spacing-md);
+  }
+
+  .xml-transformation-actions,
+  .xml-transformation-generate-btn,
+  .xml-transformation-copy-btn,
+  .xml-transformation-download-btn,
+  .xml-transformation-candidate-btn {
+    width: 100%;
+  }
+
+  .xml-transformation-delivery-actions,
+  .xml-transformation-candidate-selector {
+    flex-direction: column;
+  }
+
+  .xml-transformation-content {
+    max-height: 50vh;
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
 }

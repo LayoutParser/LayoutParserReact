@@ -44,7 +44,7 @@ confirmação — próximo passo é essa confirmação, depois vira feature sepa
 confirmou os dois contratos (implementados por @lp-backend-dev/Dex e @lp-parser-llm/Lia).
 Tipos fechados em `transformation.ts` (sem mais TODO), services
 `transformationService.executeTransformationCandidates` (POST
-`/api/transformation-execution/execute-candidates`) e novo
+`/api/transformationexecution/execute-candidates`) e novo
 `xmlAnalysisService.diagnoseValidationError` (POST
 `/api/xml-analysis/diagnose-validation-error`), store estendido e UI ligada em
 `XmlTransformationDisplay.tsx` (seletor de candidato, estado vazio, painel de diagnóstico).
