@@ -28,6 +28,23 @@
   font-weight: 600;
 }
 
+/* Saúde do documento (200 limpo x 200 com defeito). Warning, nunca danger: há documento na
+   tela e ele é utilizável — o vermelho fica para o que impede de ver o arquivo. */
+.summary-value--health {
+  padding: 0 var(--spacing-xs);
+  border-radius: var(--radius-pill);
+}
+
+.summary-value--health-defects {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.summary-value--health-clean {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
 @media (max-width: 768px) {
   .document-summary {
     width: 100%;

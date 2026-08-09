@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useStructureStore } from '../../store/useStructureStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { buildTreeFromFields, buildTreeFromLayout } from '../../utils/treeBuilder';
+import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import type { TreeNode } from '../../types/structure';
 import './StructureTree.css';
 
@@ -32,18 +33,21 @@ const StructureTree: React.FC = () => {
     // Usar campos do parseResult se fields estiver vazio
     const actualFields = fields.length > 0 ? fields : parseResult.fields || [];
 
-    // ✅ Se houver erro de validação (linha > 600), o documento fica desalinhado.
-    // Portanto, o StructureTree deve mostrar apenas até a primeira linha com erro (inclusive).
+    // ✅ Erro de TAMANHO de linha desalinha o documento posicional a partir dali, então a
+    // árvore só pode ir até a primeira linha nessa condição (inclusive).
+    //
+    // O critério é a classe do erro, não a existência dele: erro de conteúdo (sequência
+    // inválida etc.) não move offset nenhum e não pode podar a árvore — ver
+    // `isDesyncingValidationError`. Mantido em sincronia com o corte do FieldDisplay: as duas
+    // views mostram o mesmo documento e divergir aqui deixaria a árvore menor que a lista.
     const validationErrors = parseResult.validationErrors || [];
-    const hasValidationErrors = validationErrors.length > 0;
-    const firstErrorLineIndex = hasValidationErrors
-      ? Math.min(...validationErrors.map(e => e.lineIndex))
-      : -1;
+    const firstDesyncLineIndex = findFirstDesyncLineIndex(validationErrors);
+    const isTruncated = firstDesyncLineIndex >= 0;
 
     const cleanText = (parseResult.text || '').replace(/\r/g, '').replace(/\n/g, '');
     const allowedLineSequences = new Set<string>();
-    if (hasValidationErrors && firstErrorLineIndex >= 0 && cleanText.length >= 6) {
-      for (let i = 0; i <= firstErrorLineIndex; i++) {
+    if (isTruncated && cleanText.length >= 6) {
+      for (let i = 0; i <= firstDesyncLineIndex; i++) {
         const start = i * 600;
         if (start + 6 <= cleanText.length) {
           allowedLineSequences.add(cleanText.substring(start, start + 6));
@@ -52,7 +56,7 @@ const StructureTree: React.FC = () => {
     }
 
     const fieldsForTree =
-      hasValidationErrors && firstErrorLineIndex >= 0 && allowedLineSequences.size > 0
+      isTruncated && allowedLineSequences.size > 0
         ? actualFields.filter(f => {
             const seq = String((f as any).lineSequence || '').trim();
             return allowedLineSequences.has(seq);
@@ -73,8 +77,9 @@ const StructureTree: React.FC = () => {
       fieldsFromResult: parseResult.fields?.length || 0,
       actualFields: actualFields.length,
       fieldsForTree: fieldsForTree.length,
-      hasValidationErrors,
-      firstErrorLineIndex,
+      validationErrors: validationErrors.length,
+      isTruncated,
+      firstDesyncLineIndex,
       documentStructure: parseResult.documentStructure,
       summary: parseResult.summary,
     });
@@ -83,11 +88,12 @@ const StructureTree: React.FC = () => {
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
 
-    if (hasValidationErrors) {
-      // ✅ Em caso de erro de tamanho, NÃO exibir estrutura completa do layout,
-      // pois ela induz o usuário ao erro (linhas seguintes não são confiáveis).
+    if (isTruncated) {
+      // ✅ Em caso de erro de TAMANHO, NÃO exibir estrutura completa do layout, pois ela
+      // induz o usuário ao erro (as linhas seguintes não são confiáveis). Com defeitos que
+      // não dessincronizam, a árvore do layout continua válida e é a mais informativa.
       console.log(
-        '🌳 Documento com erro de validação: usando buildTreeFromFields (cortado no erro)'
+        '🌳 Documento com erro que dessincroniza: usando buildTreeFromFields (cortado no erro)'
       );
       tree = buildTreeFromFields(fieldsForTree);
     } else if (hasLayoutElements) {

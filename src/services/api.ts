@@ -3,10 +3,12 @@ import type {
   ApiConfig,
   ParseErrorInfo,
   ParseErrorKind,
+  ParseFailureCause,
   ParseRequest,
   ParseResponse,
 } from '../types/api';
 import { createCorrelationId } from '../utils/correlation';
+import { isParseFailureCause } from '../utils/parseFailure';
 
 // Configuração da API
 const getApiBaseUrl = (): string => {
@@ -92,6 +94,7 @@ export class ParseRequestError extends Error implements ParseErrorInfo {
   readonly httpStatus?: number;
   readonly detectedType?: string;
   readonly correlationId?: string;
+  readonly failureCause?: ParseFailureCause;
 
   constructor(info: ParseErrorInfo) {
     super(info.message);
@@ -100,6 +103,7 @@ export class ParseRequestError extends Error implements ParseErrorInfo {
     this.httpStatus = info.httpStatus;
     this.detectedType = info.detectedType;
     this.correlationId = info.correlationId;
+    this.failureCause = info.failureCause;
   }
 
   /** Cópia serializável (sem o rastro de `Error`) para guardar no store. */
@@ -110,15 +114,17 @@ export class ParseRequestError extends Error implements ParseErrorInfo {
       httpStatus: this.httpStatus,
       detectedType: this.detectedType,
       correlationId: this.correlationId,
+      failureCause: this.failureCause,
     };
   }
 }
 
-/** Campos que o back-end manda no corpo do 422 (ParseController). */
+/** Campos que o back-end manda no corpo do 422/500 (ParseController). */
 interface ParseErrorBody {
   success?: boolean;
   detectedType?: string;
   message?: string;
+  failureCause?: ParseFailureCause;
 }
 
 /**
@@ -133,9 +139,21 @@ const readErrorBody = (data: unknown): ParseErrorBody => {
 
   if (typeof data === 'object' && data !== null) {
     const body = data as ParseErrorBody;
+
+    // `failureCause` é validado contra o conjunto fechado da spec: um valor desconhecido
+    // (contrato mudou / typo do back-end) vira `undefined` para a UI cair no fallback por
+    // status HTTP, em vez de sumir com o banner por causa de um `Record` sem a chave. O warn
+    // existe justamente para essa divergência não passar silenciosa.
+    const rawCause: unknown = body.failureCause;
+    const failureCause = isParseFailureCause(rawCause) ? rawCause : undefined;
+    if (rawCause !== undefined && failureCause === undefined) {
+      console.warn('⚠️ failureCause desconhecido no corpo do erro de parse:', rawCause);
+    }
+
     return {
       detectedType: typeof body.detectedType === 'string' ? body.detectedType : undefined,
       message: typeof body.message === 'string' && body.message.trim() ? body.message : undefined,
+      failureCause,
     };
   }
 
@@ -191,6 +209,12 @@ export const parseService = {
 
         // 422: o back-end parseou a requisição e concluiu que o documento não é processável
         // com o layout informado. É diagnóstico do documento, não falha da aplicação.
+        //
+        // O `kind` continua sendo a leitura do TRANSPORTE (status HTTP). Quem manda na
+        // apresentação é o `failureCause` do corpo quando ele vem — inclusive se discordar do
+        // status (ex.: `parser_defect` num 422, que seria divergência da spec §3): ver
+        // `assessParseFailure`. Não reescrevemos o `kind` aqui de propósito, para o fato bruto
+        // "a API respondeu 422" continuar disponível/diagnosticável.
         if (response.status === 422) {
           throw new ParseRequestError({
             kind: 'parse_error',
@@ -198,10 +222,11 @@ export const parseService = {
             httpStatus: response.status,
             detectedType: body.detectedType,
             correlationId,
+            failureCause: body.failureCause,
           });
         }
 
-        // 5xx e demais status inesperados.
+        // 5xx (spec §2.3: `failureCause: "parser_defect"`) e demais status inesperados.
         //
         // Nota: o contrato só especifica 422 / >=500 / rede. Um 4xx que não seja 422 (ex.: o
         // BadRequest do ParseController quando falta arquivo) cai aqui também — nesse caso o
@@ -219,6 +244,7 @@ export const parseService = {
           httpStatus: response.status,
           detectedType: body.detectedType,
           correlationId,
+          failureCause: body.failureCause,
         });
       }
       throw error;
