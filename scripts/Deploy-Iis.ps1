@@ -157,8 +157,16 @@ npm ci --omit=dev --ignore-scripts --prefix $serverTarget
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependências de produção do BFF.' }
 
 $nodeSource = (Get-Command node.exe -ErrorAction Stop).Source
-$nodeTarget = Join-Path $runtimeRoot 'node.exe'
-Copy-Item -LiteralPath $nodeSource -Destination $nodeTarget -Force
+$nodeHash = (Get-FileHash -LiteralPath $nodeSource -Algorithm SHA256).Hash.ToLowerInvariant()
+$nodeTarget = Join-Path $runtimeRoot "node-$($nodeHash.Substring(0, 16)).exe"
+if (Test-Path -LiteralPath $nodeTarget -PathType Leaf) {
+  $existingNodeHash = (Get-FileHash -LiteralPath $nodeTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($existingNodeHash -ne $nodeHash) {
+    throw "Colisão inesperada no runtime Node versionado: $nodeTarget"
+  }
+} else {
+  Copy-Item -LiteralPath $nodeSource -Destination $nodeTarget
+}
 
 $launcherPath = Join-Path $releaseRoot 'Start-Bff.ps1'
 $launcher = @(
