@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
-import type { Field } from '../../types/field';
+import type { DisplayGroup, Field } from '../../types/field';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
@@ -10,8 +10,14 @@ const FieldDisplay: React.FC = () => {
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
 
-  // Usar campos do parseResult se fields estiver vazio
-  const actualFields = fields.length > 0 ? fields : parseResult?.fields || [];
+  // Usar campos do parseResult se fields estiver vazio.
+  // Memoizado para estabilizar a identidade do array: o efeito de sincronização mais abaixo
+  // depende dele e, sem isso, o `|| []` devolvia um array novo a cada render. O valor
+  // calculado é o mesmo de antes — só a identidade passa a ser reaproveitada.
+  const actualFields = useMemo(
+    () => (fields.length > 0 ? fields : parseResult?.fields || []),
+    [fields, parseResult?.fields]
+  );
 
   // Função comentada - não utilizada (número da linha agora é sequencial)
   // const getLineInitialValue = (lineName: string): string | null => {
@@ -123,7 +129,7 @@ const FieldDisplay: React.FC = () => {
 
   // Criar grupos se fieldGroups estiver vazio mas houver campos
   // Agrupar por lineSequence + occurrence para manter múltiplas ocorrências da mesma linha
-  const displayGroups =
+  const displayGroups: DisplayGroup[] =
     fieldGroups.length > 0
       ? fieldGroups
       : (() => {
@@ -133,8 +139,8 @@ const FieldDisplay: React.FC = () => {
           // Agrupar por lineSequence + occurrence para distinguir múltiplas ocorrências
           actualFields.forEach(field => {
             const lineName = field.lineName || 'OUTROS';
-            const lineSequence = (field as any).lineSequence || extractLineNumber(lineName);
-            const occurrence = (field as any).occurrence || 1;
+            const lineSequence = field.lineSequence || extractLineNumber(lineName);
+            const occurrence = field.occurrence || 1;
             // Chave única: lineSequence + occurrence para distinguir múltiplas ocorrências
             const key = `${lineSequence}_${occurrence}_${lineName}`;
 
@@ -220,7 +226,7 @@ const FieldDisplay: React.FC = () => {
 
   // ✅ Índice físico da linha no TXT (0-based, considerando blocos de 600 chars)
   // Preferimos calcular via `position` (mais confiável) para não depender do índice do array.
-  const getPhysicalLineIndex = (group: any, fallbackIndex: number): number => {
+  const getPhysicalLineIndex = (group: DisplayGroup, fallbackIndex: number): number => {
     const pos = group?.position;
     if (typeof pos === 'number' && pos >= 0) {
       return Math.floor(pos / 600);
@@ -253,7 +259,7 @@ const FieldDisplay: React.FC = () => {
 
   // ✅ Função para identificar qual campo específico está causando erro na linha
   const getProblematicField = (
-    group: any,
+    group: DisplayGroup,
     groupIndex: number
   ): { fieldName: string; issue: string; expectedSize?: number; actualSize?: number } | null => {
     const lineError = validationErrors.find(error => error.lineIndex === groupIndex);
@@ -261,9 +267,9 @@ const FieldDisplay: React.FC = () => {
 
     // Para linhas com erro de tamanho, identificar qual campo está causando o problema
     const displayFields = group.fields
-      .filter((field: any) => !field.fieldName?.toUpperCase().includes('SEQUENCIA'))
+      .filter((field: Field) => !field.fieldName?.toUpperCase().includes('SEQUENCIA'))
       .sort(
-        (a: any, b: any) =>
+        (a: Field, b: Field) =>
           (a.startPosition ?? a.sequence ?? 0) - (b.startPosition ?? b.sequence ?? 0)
       );
 
@@ -357,7 +363,7 @@ const FieldDisplay: React.FC = () => {
       )}
 
       {groupsToRender.map((group, groupIndex) => {
-        const groupData = group as any;
+        const groupData: DisplayGroup = group;
         const physicalLineIndex = getPhysicalLineIndex(groupData, groupIndex);
         const isHeader = group.lineName === 'HEADER' || groupData.lineSequence === 'HEADER';
         const isLine999999 = group.lineName === 'LINHA999999' || group.lineName?.includes('999999');
@@ -380,8 +386,11 @@ const FieldDisplay: React.FC = () => {
         // Extrair diretamente do txtContent (primeiras 6 posições de cada linha)
         let displaySequential = '000000';
 
-        if (txtContent && groupData.position >= 0) {
-          const lineStart = Math.floor(groupData.position / 600) * 600;
+        // `position` só existe nos grupos derivados aqui; vindo do store é undefined.
+        // O -1 reproduz o comportamento anterior, em que `undefined >= 0` já era falso.
+        const groupPosition = groupData.position ?? -1;
+        if (txtContent && groupPosition >= 0) {
+          const lineStart = Math.floor(groupPosition / 600) * 600;
           const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
           if (sequentialInFile) {
             displaySequential = sequentialInFile;
@@ -580,7 +589,7 @@ const FieldDisplay: React.FC = () => {
           // - sequencial (6 dígitos) vem do ParsedField.LineSequence (primeiros 6 chars da linha)
           // - número da linha (3 dígitos) vem do nome da linha (LINHA096 -> 096)
           const seqCandidate = String(
-            groupData.lineSequence || (group.fields?.[0] as any)?.lineSequence || ''
+            groupData.lineSequence || group.fields?.[0]?.lineSequence || ''
           ).trim();
           if (/^\d{6}$/.test(seqCandidate)) {
             sequentialFromJson = seqCandidate;
@@ -597,7 +606,7 @@ const FieldDisplay: React.FC = () => {
 
         // Debug: log para verificar extração do JSON
         if (groupIndex < 3) {
-          const previousGroup = groupIndex > 0 ? (groupsToRender[groupIndex - 1] as any) : null;
+          const previousGroup = groupIndex > 0 ? groupsToRender[groupIndex - 1] : null;
           const previousSequenciaField = previousGroup?.fields?.find((f: Field) => {
             const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
             return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
@@ -607,9 +616,7 @@ const FieldDisplay: React.FC = () => {
             return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
           });
           const prevLineSeqFromGroup =
-            previousGroup?.lineSequence ||
-            (previousGroup?.fields?.[0] as any)?.lineSequence ||
-            'N/A';
+            previousGroup?.lineSequence || previousGroup?.fields?.[0]?.lineSequence || 'N/A';
           console.log(`🔍 Linha ${groupIndex} (${group.lineName}) - Dados do JSON:`, {
             lineSequence: groupData.lineSequence,
             sequentialFromJson,

@@ -26,6 +26,19 @@ export interface FieldGroup {
   sequence: number;
 }
 
+/**
+ * Grupo de linha como o FieldDisplay consome. Pode vir pronto do `useFieldStore`
+ * (aí é só um `FieldGroup`) ou ser derivado no próprio componente, caso em que
+ * carrega também a posição da linha dentro do TXT. Os extras são opcionais
+ * justamente porque o caminho do store não os fornece.
+ */
+export interface DisplayGroup extends FieldGroup {
+  lineSequence?: string;
+  position?: number;
+  sequential?: string;
+  occurrence?: number;
+}
+
 export interface FieldSearchResult {
   field: Field;
   lineName: string;
