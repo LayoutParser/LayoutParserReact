@@ -6,6 +6,7 @@ Set-StrictMode -Version Latest
 
 $arrDownloadUrl = 'https://download.microsoft.com/download/E/9/8/E9849D6A-020E-47E4-9FD0-A023E99B54EB/requestRouter_amd64.msi'
 $arrSha256 = 'FB61FDB7101795A34D5129CB37EEE43AB675C7ED76BA3A3B23B039D8C90C2A4B'
+$appCmd = Join-Path $env:windir 'System32\inetsrv\appcmd.exe'
 
 function Test-IsAdministrator {
   $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
@@ -14,12 +15,20 @@ function Test-IsAdministrator {
 }
 
 function Test-GlobalIisModule([string] $Name) {
-  Import-Module WebAdministration -Force -ErrorAction Stop
-  return $null -ne (Get-WebGlobalModule -Name $Name -ErrorAction SilentlyContinue)
+  $moduleConfig = & $appCmd list config -section:system.webServer/globalModules 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    throw "Não foi possível consultar os módulos globais do IIS: $($moduleConfig | Out-String)"
+  }
+
+  return ($moduleConfig | Out-String).Contains($Name, [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 if (-not (Test-IsAdministrator)) {
   throw 'A instalação do ARR exige execução como administrador ou pelo runner LocalSystem.'
+}
+
+if (-not (Test-Path -LiteralPath $appCmd -PathType Leaf)) {
+  throw "appcmd.exe não encontrado em $appCmd. Instale as ferramentas de gerenciamento do IIS."
 }
 
 if (Test-GlobalIisModule -Name 'ApplicationRequestRouting') {
