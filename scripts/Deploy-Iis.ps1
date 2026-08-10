@@ -82,6 +82,38 @@ function Wait-BffHealth([int] $Port) {
   throw "O BFF não ficou saudável em $healthUrl."
 }
 
+function Set-IisSiteAuthentication([string] $AppCmd, [string] $TargetSiteName) {
+  $settings = @(
+    [pscustomobject]@{
+      Section = 'system.webServer/security/authentication/anonymousAuthentication'
+      Enabled = 'false'
+    },
+    [pscustomobject]@{
+      Section = 'system.webServer/security/authentication/windowsAuthentication'
+      Enabled = 'true'
+    }
+  )
+
+  foreach ($setting in $settings) {
+    $setOutput = & $AppCmd `
+      set config $TargetSiteName `
+      "-section:$($setting.Section)" `
+      "/enabled:$($setting.Enabled)" `
+      '/commit:apphost' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+      throw "Não foi possível configurar $($setting.Section) no site '$TargetSiteName': $($setOutput | Out-String)"
+    }
+
+    $configOutput = & $AppCmd list config $TargetSiteName "-section:$($setting.Section)" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+      throw "Não foi possível validar $($setting.Section) no site '$TargetSiteName'."
+    }
+    if (($configOutput | Out-String) -notmatch "enabled=`"$($setting.Enabled)`"") {
+      throw "A configuração $($setting.Section) não assumiu enabled=$($setting.Enabled)."
+    }
+  }
+}
+
 if ($SiteName -notmatch '^[A-Za-z0-9._-]{1,64}$') {
   throw 'IIS_SITE_NAME deve conter apenas letras, números, ponto, hífen ou underscore.'
 }
@@ -114,6 +146,9 @@ if (-not (Get-WebGlobalModule -Name 'RewriteModule' -ErrorAction SilentlyContinu
 if (-not (Get-WebGlobalModule -Name 'ApplicationRequestRouting' -ErrorAction SilentlyContinue)) {
   throw 'IIS Application Request Routing (ARR) não está instalado.'
 }
+if (-not (Get-WebGlobalModule -Name 'WindowsAuthenticationModule' -ErrorAction SilentlyContinue)) {
+  throw 'O serviço de função IIS Windows Authentication não está instalado.'
+}
 Set-WebConfigurationProperty `
   -PSPath 'MACHINE/WEBROOT/APPHOST' `
   -Filter 'system.webServer/proxy' `
@@ -129,6 +164,7 @@ if (($allowedVariables | Out-String) -notmatch 'HTTP_X_IIS_USER') {
 }
 $website = Get-Website -Name $SiteName -ErrorAction SilentlyContinue
 if (-not $website) { throw "O site IIS '$SiteName' precisa ser provisionado antes do deploy." }
+Set-IisSiteAuthentication -AppCmd $appCmd -TargetSiteName $SiteName
 $httpsBinding = Get-WebBinding -Name $SiteName -Protocol 'https' -ErrorAction SilentlyContinue
 if (-not $httpsBinding) { throw "O site IIS '$SiteName' não possui binding HTTPS." }
 $httpBinding = Get-WebBinding -Name $SiteName -Protocol 'http' -ErrorAction SilentlyContinue

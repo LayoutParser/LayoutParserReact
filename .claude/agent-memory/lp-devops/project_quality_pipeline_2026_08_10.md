@@ -21,4 +21,6 @@
   `WebAdministration` via compatibilidade sem expor esse drive ao processo chamador.
 - O runtime Node do BFF usa nome content-addressed por SHA-256 para nunca sobrescrever um
   `node.exe` ainda aberto pela release anterior.
+- `Deploy-Iis.ps1` grava Anonymous=false e Windows=true na location do site em
+  `applicationHost.config`; o `web.config` não tenta sobrescrever seções de autenticação bloqueadas.
 - Dependabot, dependency review, CodeQL e CODEOWNERS fazem parte da supply chain.
