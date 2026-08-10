@@ -261,7 +261,8 @@ automáticas na infraestrutura produtiva.
 Quando o certificado de desenvolvimento é autoassinado, o bootstrap adiciona somente sua parte
 pública à raiz confiável da máquina após validar hostname, período de validade e chave privada. O
 workflow também força e verifica o checkout em LF sem alterar permanentemente a configuração Git
-do runner.
+do runner. A exceção de `safe.directory` usada nessa verificação é limitada ao workspace exato do
+job e não é persistida na conta do serviço.
 
 As etapas que manipulam o provider `IIS:\` usam o Windows PowerShell nativo (`powershell.exe`).
 Isso evita a sessão de compatibilidade do PowerShell 7, que importa os cmdlets de

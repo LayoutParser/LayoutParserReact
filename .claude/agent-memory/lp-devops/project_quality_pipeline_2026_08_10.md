@@ -15,7 +15,8 @@
   variable, allowlist e BFF em loopback.
 - O bootstrap dev confia automaticamente apenas no certificado autoassinado já validado para
   `PUBLIC_HOST_DEV`. Ambos os workflows forçam checkout LF via configuração Git efêmera do job;
-  produção também regrava e verifica o workspace após o checkout.
+  produção também regrava e verifica o workspace após o checkout, usando `safe.directory` somente
+  por comando porque a pasta persistida pode pertencer à conta de serviço do runner.
 - Scripts que usam o provider `IIS:\` rodam em `powershell.exe`; o PowerShell 7 pode carregar
   `WebAdministration` via compatibilidade sem expor esse drive ao processo chamador.
 - O runtime Node do BFF usa nome content-addressed por SHA-256 para nunca sobrescrever um
