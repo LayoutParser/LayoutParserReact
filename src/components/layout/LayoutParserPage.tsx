@@ -128,7 +128,7 @@ const LayoutParserPage: React.FC = () => {
     setParseError(null);
 
     try {
-      let layoutContent = selectedLayout.decryptedContent || (selectedLayout as any).valueContent;
+      let layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
       let layoutToUse = selectedLayout;
 
       // Se não tiver layoutContent, buscar da API
@@ -142,8 +142,8 @@ const LayoutParserPage: React.FC = () => {
               l => l.layoutGuid === selectedLayout.layoutGuid || l.name === selectedLayout.name
             );
 
-            if (fullLayout && (fullLayout.decryptedContent || (fullLayout as any).valueContent)) {
-              layoutContent = fullLayout.decryptedContent || (fullLayout as any).valueContent;
+            if (fullLayout && (fullLayout.decryptedContent || fullLayout.valueContent)) {
+              layoutContent = fullLayout.decryptedContent || fullLayout.valueContent;
               layoutToUse = fullLayout;
               setSelectedLayout(fullLayout);
               console.log('✅ Layout completo carregado da API');

@@ -11,7 +11,7 @@ import { createCorrelationId } from '../utils/correlation';
 // Configuração da API
 const getApiBaseUrl = (): string => {
   // Usar variável de ambiente se disponível
-  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl) {
     return envUrl;
   }
