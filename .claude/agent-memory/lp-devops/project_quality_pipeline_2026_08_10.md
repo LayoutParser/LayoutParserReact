@@ -8,6 +8,8 @@
   checkout não persistem.
 - Deploy publica releases versionadas com `Deploy-Iis.ps1`, reinicia BFF em Scheduled Task,
   valida health/HTTPS e restaura a release anterior se o smoke falhar.
-- IIS deve ser pré-provisionado com site/binding HTTPS. O script exige ARR, URL Rewrite,
-  autenticação Windows, allowed server variable, allowlist e BFF em loopback.
+- IIS deve ser pré-provisionado com site/binding HTTPS. Em desenvolvimento,
+  `Install-IisArr.ps1` instala ARR 3 de forma idempotente após validar assinatura Microsoft e
+  SHA-256; produção continua pré-provisionada. O deploy exige URL Rewrite, autenticação Windows,
+  allowed server variable, allowlist e BFF em loopback.
 - Dependabot, dependency review, CodeQL e CODEOWNERS fazem parte da supply chain.
