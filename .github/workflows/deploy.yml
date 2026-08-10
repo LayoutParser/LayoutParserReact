@@ -35,6 +35,21 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Normalizar fim de linha do workspace
+        shell: powershell
+        run: |
+          git checkout-index --all --force
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível normalizar o workspace do runner.' }
+
+          $lineEndingViolations = @(
+            git ls-files --eol | Where-Object { $_ -match '\bw/crlf\b.*\beol=lf\b' }
+          )
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível validar os finais de linha do workspace.' }
+          if ($lineEndingViolations.Count -gt 0) {
+            $lineEndingViolations | Write-Host
+            throw 'O checkout contém arquivos CRLF que deveriam estar em LF.'
+          }
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
