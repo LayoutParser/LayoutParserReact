@@ -58,6 +58,19 @@ jobs:
         shell: pwsh
         run: ./scripts/Install-IisArr.ps1
 
+      - name: Garantir HTTPS no IIS de desenvolvimento
+        shell: powershell
+        env:
+          IIS_SITE_NAME: ${{ vars.IIS_SITE_NAME_DEV }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST_DEV }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variável IIS_SITE_NAME_DEV ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variável PUBLIC_HOST_DEV ausente.' }
+
+          ./scripts/Initialize-IisDevHttps.ps1 `
+            -SiteName $env:IIS_SITE_NAME `
+            -PublicHost $env:PUBLIC_HOST
+
       - name: Publicar ambiente de desenvolvimento
         shell: pwsh
         env:
