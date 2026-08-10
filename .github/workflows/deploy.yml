@@ -26,7 +26,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-      # Não usar cache pois não temos package-lock.json
+        cache: 'npm'
     
     - name: Install dependencies
       run: |
@@ -45,17 +45,17 @@ jobs:
           exit 1
         }
         
-        Write-Host "Instalando dependencias npm..."
-        npm install
+        Write-Host "Instalando dependencias npm a partir do lockfile..."
+        npm ci
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Error "Falha ao instalar dependencias"
+          Write-Error "Falha ao instalar dependencias (npm ci)"
           exit 1
         }
         
         Write-Host "Dependencias instaladas com sucesso"
     
-    - name: Build LayoutParserReact
+    - name: Quality gates e build do LayoutParserReact
       run: |
         $ErrorActionPreference = "Stop"
         $WORK_DIR = $PWD.Path
@@ -66,16 +66,17 @@ jobs:
         # Verificar se node_modules existe
         $nodeModules = Join-Path $WORK_DIR "node_modules"
         if (-not (Test-Path $nodeModules)) {
-          Write-Error "node_modules nao encontrado. Execute 'npm install' primeiro."
+          Write-Error "node_modules nao encontrado. Execute 'npm ci' primeiro."
           exit 1
         }
         
-        # Build para produção
-        Write-Host "Executando build de producao..."
-        npm run build:prod
+        # O comando valida lint, tipos, testes/cobertura, builds de desenvolvimento e
+        # producao, formatacao e vulnerabilidades altas/criticas antes do deploy.
+        Write-Host "Executando quality gates completos..."
+        npm run quality
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Error "Falha ao compilar LayoutParserReact"
+          Write-Error "Quality gates ou build do LayoutParserReact falharam"
           exit 1
         }
         
@@ -139,7 +140,7 @@ jobs:
         # Verificar se o diretório de build existe
         if (-not (Test-Path $BUILD_SOURCE)) {
           Write-Error "Diretorio de build nao encontrado: $BUILD_SOURCE"
-          Write-Host "Execute 'npm run build:prod' primeiro."
+          Write-Host "Execute 'npm run quality' primeiro."
           exit 1
         }
         

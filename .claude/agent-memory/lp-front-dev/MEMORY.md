@@ -3,17 +3,20 @@
 > Fatos duráveis do projeto + aprendizados acumulados. Atualize ao descobrir algo não óbvio.
 
 ## Ecossistema (fixo)
+
 - Front Vite+React+TS. **Regra de negócio mora na API .NET** (`LayoutParserApi`, hub). Aqui é só apresentação.
 - Repos: Api (hub) · Lib (cripto) · Decrypt (.exe) · React (este).
 
 ## Stack & convenções
-- React 18.2, react-router-dom 6.20 (`createBrowserRouter`), Zustand 4.4, Axios 1.6, TS 5.2 strict.
+
+- React 18, react-router-dom 6.30 (`createBrowserRouter`), Zustand 4, Axios 1.19, TS 5 strict e Vite 7.
 - Doc diz alias `@/` → `src/` e "componente = pasta própria", mas **o código real 100% usa path relativo e nunca usa subpasta por componente** — ver [Convenções reais vs. doc](feedback_convencoes_reais_vs_doc.md), seguir o código.
 - HTTP **só** em `services/`. Tipos em `src/types`. Não introduzir `any` novo.
 - 7 stores: `useAppStore` (upload/parse), `useLayoutStore`, `useFieldStore`, `usePropertiesStore`, `useSearchStore`, `useStructureStore`, `useTransformationStore` (mapper/transformação XML).
 - `apiClient` (axios) injeta `X-Correlation-ID` — **não remover** o interceptor.
 
 ## Endpoints consumidos
+
 - `POST /api/parse/upload` (FormData: layoutFile, txtFile, layoutName?, layoutType?, layoutConfig?) → `ParseResponse`. **422** quando não parseia: `application/json` `{success:false, detectedType, message}` + header `X-Correlation-ID` (validado em runtime 2026-08-03). **400** (falta arquivo) vem como `application/problem+json`, **sem** campo `message`. Contrato antecipado de `failureCause`/`documentHealth`/identidade de campo já consumido no front — ver [Taxonomia de falha do parse](project_taxonomia_falha_parse.md).
 - `GET /api/layoutdatabase/mqseries-nfe`, `POST /api/layoutdatabase/refresh-cache`.
 - `GET /api/monitoring/layouts-analysis`, `GET /api/monitoring/layout-validations`.
@@ -22,11 +25,13 @@
 - `GET /api/ai-metrics/generations` e `GET /api/ai-metrics/summary` — contrato antecipado (back-end ainda não implementou), ver [Painel de métricas de IA (Gap 3)](project_ai_metrics_panel_gap3.md).
 
 ## Gates
-`npx tsc --noEmit`, `npm run build` e `npm run format:check` passam na branch `chore/normaliza-crlf` (validado em 2026-08-05). Sem suite de testes ainda (mas dá para testar helper puro com esbuild+node — ver [Ambiente local](reference_ambiente_local_dev.md)).
+
+O gate canônico é `npm run quality`; baseline e decisões em [Baseline moderno de front e qualidade](project_modern_front_quality_baseline.md).
 **Os 4 gates ficaram VERDES em 2026-08-10**, incluindo `npm run lint` com `--max-warnings 0`: a dívida histórica de 30 warnings (29 `no-explicit-any` + 1 `react-hooks/exhaustive-deps`) foi zerada. Se o lint voltar a acusar `any`, é regressão nova — não dívida herdada. Antes de reintroduzir um `as any`, ver a causa raiz das interfaces concorrentes nos Aprendizados.
-`node_modules` pode não estar instalado (rodar `npm install` primeiro). Os ~12 erros de `tsc` (`noUnusedLocals`/TS7006) de 6 arquivos antigos foram **corrigidos em 2026-07-20** — se reaparecerem, é regressão nova.
+`node_modules` pode não estar instalado (rodar `npm ci` primeiro). Os ~12 erros de `tsc` (`noUnusedLocals`/TS7006) de 6 arquivos antigos foram **corrigidos em 2026-07-20** — se reaparecerem, é regressão nova.
 
 ## Aprendizados
+
 - [Ambiente local de dev](reference_ambiente_local_dev.md) — API em **:5100**, Vite em **:3000**; sonde antes de assumir "sem backend". Catálogo cai por timeout de pool SQL, **mas isso não impede validar com payload real**: o parse aceita o layout como arquivo (par real versionado no repo da API).
 - [Gates: piso de 30 warnings](gates_crlf_divida.md) — dívida de CRLF resolvida; o que sobrou e como não acrescentar warning novo.
 - [Taxonomia de falha do parse](project_taxonomia_falha_parse.md) — `failureCause`/`documentHealth`/identidade de campo consumidos contra contrato antecipado; back-end ainda não emite nenhum dos três.

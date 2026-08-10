@@ -8,53 +8,12 @@ import {
   xmlAnalysisService,
 } from '../../services/api/xmlAnalysisService';
 import { resolveLayoutGuid } from '../../utils/layoutGuid';
+import {
+  copyTextToClipboard,
+  createXmlFileName,
+  formatXmlForDisplay,
+} from '../../utils/xmlDelivery';
 import './XmlTransformationDisplay.css';
-
-/**
- * Formata XML para leitura, sem lib externa: insere quebra de linha e indentação a partir
- * da estrutura de tags. É só um auxílio visual — não altera o XML retornado pela API, apenas
- * a apresentação em tela. Se o conteúdo tiver CDATA (não coberto pela lógica de indentação)
- * ou algo inesperado acontecer, devolve o texto original sem formatar: mostrar cru é melhor
- * do que corromper a leitura.
- */
-const formatXmlForDisplay = (xml: string): string => {
-  if (!xml || xml.includes('<![CDATA[')) {
-    return xml;
-  }
-
-  try {
-    const withLineBreaks = xml.replace(/>\s*</g, '><').replace(/></g, '>\n<');
-    const indentUnit = '  ';
-    let indentLevel = 0;
-
-    return withLineBreaks
-      .split('\n')
-      .map(rawLine => {
-        const line = rawLine.trim();
-        if (!line) return '';
-
-        const isClosingTag = /^<\/[^>]+>$/.test(line);
-        const isSelfClosingOrDirective =
-          /\/>$/.test(line) || /^<\?.*\?>$/.test(line) || /^<!--.*-->$/.test(line);
-        const isOpenAndCloseSameLine = /^<([^\s/>]+)[^>]*>.*<\/\1>$/.test(line);
-
-        if (isClosingTag && indentLevel > 0) {
-          indentLevel -= 1;
-        }
-
-        const indented = indentUnit.repeat(indentLevel) + line;
-
-        if (!isClosingTag && !isSelfClosingOrDirective && !isOpenAndCloseSameLine) {
-          indentLevel += 1;
-        }
-
-        return indented;
-      })
-      .join('\n');
-  } catch {
-    return xml;
-  }
-};
 
 const PATHWAY_LABEL: Record<string, string> = {
   sysmiddle: 'Sysmiddle',
@@ -65,40 +24,6 @@ interface XmlDeliveryFeedback {
   kind: 'success' | 'error';
   message: string;
 }
-
-/** Copia também em HTTP/intranets, onde a Clipboard API moderna pode não estar disponível. */
-const copyTextToClipboard = async (text: string): Promise<void> => {
-  if (navigator.clipboard?.writeText && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  textArea.setAttribute('readonly', '');
-  textArea.style.position = 'fixed';
-  textArea.style.opacity = '0';
-  document.body.appendChild(textArea);
-  textArea.select();
-
-  try {
-    if (!document.execCommand('copy')) {
-      throw new Error('O navegador recusou a cópia para a área de transferência.');
-    }
-  } finally {
-    textArea.remove();
-  }
-};
-
-const createXmlFileName = (layoutName: string, candidateId: string): string => {
-  const sanitize = (value: string): string =>
-    value
-      .trim()
-      .replace(/[^a-z0-9._-]+/gi, '-')
-      .replace(/^-+|-+$/g, '') || 'transformacao';
-
-  return `${sanitize(layoutName)}-${sanitize(candidateId)}.xml`;
-};
 
 /**
  * Exibe o resultado da "XML Transformação Final": o back-end valida o input e devolve o(s)
@@ -224,7 +149,7 @@ const XmlTransformationDisplay: React.FC = () => {
     try {
       // O Blob recebe o XML bruto retornado pela API; a versão indentada nunca é exportada.
       const blob = new Blob([activeCandidate.transformedXml], {
-        type: 'application/xml;charset=utf-8',
+        type: 'application/xml',
       });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -447,16 +372,16 @@ const XmlTransformationDisplay: React.FC = () => {
                 </div>
               )}
 
-              {/* tabIndex + role="region" permitem rolar o bloco via teclado (Tab + setas/Page
-                  Down) — sem isso, quem não usa mouse não conseguia rolar um XML longo. */}
-              <pre
+              {/* Textarea somente leitura mantém o XML navegável e rolável por teclado sem
+                  apresentar o conteúdo como um campo editável. */}
+              <textarea
                 className="xml-transformation-content"
-                tabIndex={0}
-                role="region"
                 aria-label="Conteúdo XML transformado"
-              >
-                {formattedXml}
-              </pre>
+                value={formattedXml}
+                readOnly
+                rows={18}
+                spellCheck={false}
+              />
             </div>
           )}
         </>

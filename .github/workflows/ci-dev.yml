@@ -3,7 +3,7 @@ name: CI Dev (LayoutParserReact)
 # CI de DESENVOLVIMENTO — roda exclusivamente no runner local de dev (label 'dev-local').
 # Deploys de produção exigem a label 'production' (ver deploy.yml): os dois pools nunca se cruzam.
 #
-# Push em 'feat/**': só valida (install + build, tsc estrito). Push em 'develop': além de
+# Push em 'feat/**': só valida todos os quality gates. Push em 'develop': além de
 # validar, publica o front de verdade nesta máquina — site IIS de dev DEDICADO na porta
 # vars.FRONTEND_DEV_PORT (ex.: 8081), deliberadamente separado do Default Web Site (porta 80)
 # e de C:\inetpub\wwwroot\layoutparser (já usado pelo deploy de dev do back-end). Variables
@@ -40,6 +40,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
+        cache: 'npm'
 
     - name: Install dependencies (npm ci)
       run: |
@@ -53,18 +54,18 @@ jobs:
 
         Write-Host "Dependencias instaladas com sucesso"
 
-    - name: Build (tsc + vite)
+    - name: Quality gates completos
       run: |
-        # 'npm run build' roda 'tsc && vite build' — inclui type-check completo,
-        # mais estrito que o 'build:prod' usado no deploy. Sem deploy aqui.
-        npm run build
+        # Bloqueia o deploy se lint, tipos, testes/cobertura, builds, formatacao
+        # ou auditoria de vulnerabilidades altas/criticas falharem.
+        npm run quality
 
         if ($LASTEXITCODE -ne 0) {
-          Write-Error "Falha ao compilar LayoutParserReact"
+          Write-Error "Um ou mais quality gates do LayoutParserReact falharam"
           exit 1
         }
 
-        Write-Host "Build concluido com sucesso"
+        Write-Host "Quality gates concluidos com sucesso"
 
     # ── Deploy local de DEV (site IIS dedicado, só em push para 'develop') ──────────
 
@@ -112,8 +113,8 @@ jobs:
     - name: Build de producao (dev) com API URL correta
       if: github.ref == 'refs/heads/develop'
       run: |
-        # 'build:prod' (= vite build --mode production) NAO roda tsc — mesmo comando do
-        # deploy.yml de producao.
+        # Este build repete somente a empacotacao de producao para injetar a URL da API de
+        # dev; tipos, testes e demais gates ja passaram no step anterior.
         #
         # O override de VITE_API_BASE_URL abaixo e OBRIGATORIO, nao uma otimizacao: por ser
         # um build em modo production, o Vite carrega o .env.production — que aponta para a

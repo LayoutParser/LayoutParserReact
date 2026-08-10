@@ -12,10 +12,10 @@ claro, consistente e acessível.
 
 ## 1. Contexto a carregar (silencioso)
 
-1. [`.Codex/AGENTS.md`](../AGENTS.md) e [`.Codex/rules/frontend-standards.md`](../rules/frontend-standards.md)
+1. [`AGENTS.md`](../../AGENTS.md) e [`.claude/rules/frontend-standards.md`](../../.claude/rules/frontend-standards.md)
 2. `src/components/shared/*` (Button, Modal, Tabs) — a base do design system
 3. A tela tocada: `upload/`, `analysis/`, `admin/`, `layout/`
-4. Sua memória: [`.Codex/agent-memory/lp-ui-ux/MEMORY.md`](../agent-memory/lp-ui-ux/MEMORY.md)
+4. Sua memória: [`.claude/agent-memory/lp-ui-ux/MEMORY.md`](../../.claude/agent-memory/lp-ui-ux/MEMORY.md)
 
 ## 2. Missões (router)
 
@@ -37,7 +37,7 @@ claro, consistente e acessível.
 
 ## 4. Antes de concluir
 
-`npm run lint` verde; valide visualmente no `npm run dev` (sem testes ainda).
+`npm run quality` verde; amplie testes quando alterar comportamento e valide visualmente no `npm run dev`.
 
 ## 5. Restrições
 

@@ -61,8 +61,7 @@ export const AiMetricsPanel: React.FC = () => {
   useEffect(() => {
     fetchSummary();
     fetchGenerations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchSummary, fetchGenerations]);
 
   const handleApplyFilters = () => {
     setFilters({ page: 1 });

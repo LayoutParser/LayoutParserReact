@@ -8,8 +8,8 @@ Padrões **derivados do código existente** — siga o que já está lá, não r
 
 ## Stack & tooling
 
-- **Vite 5** (`type: module`), **React 18.2**, **react-router-dom 6.20** (`createBrowserRouter`),
-  **Zustand 4.4**, **Axios 1.6**. **TS 5.2 strict** (`noUnusedLocals`, `noUnusedParameters`,
+- **Vite 7** (`type: module`), **React 18**, **react-router-dom 6.30** (`createBrowserRouter`),
+  **Zustand 4.4**, **Axios 1.19**. **TS 5 strict** (`noUnusedLocals`, `noUnusedParameters`,
   `noFallthroughCasesInSwitch`).
 - Alias **`@/`** → `src/` (configurado em `vite.config.ts` e `tsconfig.json`). Use-o.
 
@@ -39,10 +39,8 @@ utils/                                   # correlation.ts, treeBuilder.ts
 ## Quality gates (sempre antes de concluir)
 
 ```bash
-npm run lint            # --max-warnings 0
-npx tsc --noEmit
-npm run format:check
-npm run build           # tsc && vite build
+npm run quality         # lint/a11y, tipos, testes/cobertura, builds, format e audit
+git diff --check        # whitespace fora do escopo do Prettier
 ```
 
 ## better-context (btca)
@@ -58,5 +56,5 @@ btca ask --resource react-router --question "data router: como tratar errorEleme
 ## Pendências conhecidas (não esconder)
 
 - IP de produção **hardcoded** em `api.ts` e `vite.config.ts` (`172.25.32.42:5000`) — externalizar via `VITE_API_BASE_URL`.
-- **Sem suite de testes** — proposta: Vitest + React Testing Library.
-- `any` residual em alguns pontos de `services`/tipos.
+- React Router 6 mantém dois avisos moderados de segurança; a correção exige migração
+  incompatível para v7 e deve ocorrer em PR próprio. Altas/críticas bloqueiam o gate.
