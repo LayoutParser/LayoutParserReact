@@ -53,16 +53,63 @@ export interface LineValidationInfo {
 }
 
 /**
- * Saúde do documento num parse BEM-SUCEDIDO (HTTP 200).
+ * Estrutura do documento devolvida em `ParseResponse.documentStructure`.
  *
- * Spec "Taxonomia de falha do parse" §2.1: defeito localizável NÃO é 422 — é 200 com o
- * documento renderizável e o erro anotado por cima. `clean` x `has_defects` é o terceiro
- * estado que faltava (antes só existiam "200 limpo" e "erro").
+ * Derivada dos modelos reais da API .NET, não inferida do runtime:
+ * `Models/Structure/DocumentStructure.cs`, `Models/Structure/LineDetail.cs`,
+ * `Models/Validation/DocumentValidation.cs` e `Models/Validation/ValidationSuggestion.cs`.
+ * A serialização é camelCase (default do `AddJsonOptions`) e omite nulos
+ * (`DefaultIgnoreCondition = WhenWritingNull`) — por isso as propriedades que no C# não têm
+ * valor default aparecem opcionais aqui.
  *
- * ADITIVO E OPCIONAL: enquanto o back-end não emitir o campo, a UI deriva de
- * `validationErrors` (ver `resolveDocumentHealth` em utils/documentHealth.ts).
+ * Hoje o front apenas ecoa este objeto em log (StructureTree); a árvore é montada a partir
+ * de `fields`/`layout`. O tipo existe para quando ele for consumido de fato.
  */
-export type DocumentHealth = 'clean' | 'has_defects';
+export interface DocumentStructure {
+  linesPresent: string[];
+  linesExpected: string[];
+  missingRequiredLines: string[];
+  lineDetails: Record<string, LineDetail>;
+  validation: DocumentValidation;
+}
+
+export interface LineDetail {
+  lineNumber: number;
+  occurrences: number;
+  isRequired: boolean;
+  isPresent: boolean;
+  fieldsCount: number;
+  sampleContent?: string;
+  totalLength: number;
+}
+
+/** Não confundir com `DocumentValidationError`, que descreve erro de tamanho de linha. */
+export interface DocumentValidation {
+  isValid: boolean;
+  hasErrors: boolean;
+  hasWarnings: boolean;
+  overallStatus: string;
+  missingRequiredLines: string[];
+  structuralErrors: string[];
+  validationWarnings: string[];
+  criticalErrors: string[];
+  isStructurallyValid: boolean;
+  isBusinessValid: boolean;
+  isCompliant: boolean;
+  complianceScore: number;
+  structureScore: number;
+  businessScore: number;
+  suggestions: ValidationSuggestion[];
+}
+
+export interface ValidationSuggestion {
+  type: string;
+  target: string;
+  message: string;
+  fieldName: string;
+  lineNumber: number;
+  confidence: string;
+}
 
 export interface ParseResponse {
   success: boolean;
@@ -74,7 +121,7 @@ export interface ParseResponse {
   text?: string;
   errors?: string[];
   warnings?: string[];
-  documentStructure?: any;
+  documentStructure?: DocumentStructure;
   summary?: {
     totalLines?: number;
     totalFields?: number;
@@ -206,4 +253,9 @@ export interface Field {
   isValid?: boolean;
   hasWarning?: boolean;
   errorMessage?: string;
+  // Campos que a API já manda e que `types/field.ts` documenta há mais tempo. Como o
+  // `useAppStore` tipa os campos por ESTA interface, sem eles os componentes precisavam
+  // de `(field as any).lineSequence` para ler algo que sempre esteve no payload.
+  lineSequence?: string; // Sequência da linha (ex: "000", "001", "HEADER")
+  occurrence?: number; // Ocorrência da linha no documento
 }

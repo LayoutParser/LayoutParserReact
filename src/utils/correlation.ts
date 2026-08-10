@@ -1,6 +1,8 @@
 export function createCorrelationId(): string {
   // Preferir UUID nativo do browser
-  const cryptoObj = (globalThis as any).crypto;
+  // Tipado como possivelmente ausente de propósito: `crypto.randomUUID` não existe em
+  // navegadores antigos nem em contexto não-seguro (HTTP sem TLS), daí o fallback abaixo.
+  const cryptoObj: Crypto | undefined = globalThis.crypto;
   if (cryptoObj?.randomUUID) {
     return cryptoObj.randomUUID();
   }

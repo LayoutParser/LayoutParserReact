@@ -1,6 +1,40 @@
 import type { LayoutElement, TreeNode } from '../types/structure';
 
 /**
+ * FieldElementVO como ele chega serializado dentro de `LayoutElement.elements`.
+ * Toda propriedade é opcional e aparece nas duas grafias porque a API emite ora em
+ * PascalCase, ora em camelCase — o código abaixo já lia as duas; isto só declara o fato.
+ */
+interface RawFieldElement {
+  ElementGuid?: string;
+  elementGuid?: string;
+  Name?: string;
+  name?: string;
+  Sequence?: number;
+  sequence?: number;
+  Type?: string;
+  type?: string;
+  Description?: string;
+  description?: string;
+  IsRequired?: boolean;
+  isRequired?: boolean;
+}
+
+/**
+ * Subconjunto de um campo parseado que `buildTreeFromFields` realmente lê. Declarado
+ * como superset tolerante (tudo opcional) para aceitar tanto o `Field` de `types/api.ts`
+ * quanto o de `types/field.ts`, que divergem entre si.
+ */
+interface FieldLike {
+  lineName?: string;
+  fieldName?: string;
+  fieldGuid?: string;
+  sequence?: number;
+  description?: string;
+  isRequired?: boolean;
+}
+
+/**
  * Converte elementos do layout em uma árvore hierárquica
  */
 export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
@@ -31,13 +65,15 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
 
     // Se o elemento tem elementos filhos (array de strings JSON representando FieldElementVO)
     if (element.elements && element.elements.length > 0) {
-      element.elements.forEach(childElementStr => {
+      // `childElementStr` é anotado como `unknown` de propósito: o tipo declara `string[]`,
+      // mas o runtime também entrega objetos já desserializados — daí o branch `else`.
+      element.elements.forEach((childElementStr: unknown) => {
         try {
           // Parsear a string JSON para obter o FieldElementVO
-          let childElement: any;
+          let childElement: RawFieldElement;
           if (typeof childElementStr === 'string') {
             try {
-              childElement = JSON.parse(childElementStr);
+              childElement = JSON.parse(childElementStr) as RawFieldElement;
             } catch (parseError) {
               console.warn(
                 'Erro ao parsear elemento filho como JSON:',
@@ -47,7 +83,7 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
               return;
             }
           } else {
-            childElement = childElementStr;
+            childElement = (childElementStr ?? {}) as RawFieldElement;
           }
 
           // Criar nó filho para o campo
@@ -118,8 +154,8 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
 /**
  * Converte campos parseados em uma árvore simples agrupada por linha
  */
-export const buildTreeFromFields = (fields: any[]): TreeNode[] => {
-  const groupedByLine = fields.reduce<Record<string, any[]>>((acc, field) => {
+export const buildTreeFromFields = (fields: FieldLike[]): TreeNode[] => {
+  const groupedByLine = fields.reduce<Record<string, FieldLike[]>>((acc, field) => {
     const lineName = field.lineName || 'OUTROS';
     if (!acc[lineName]) {
       acc[lineName] = [];
