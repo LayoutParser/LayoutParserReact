@@ -79,8 +79,8 @@ criar uma fronteira web segura e estável entre o navegador e os serviços inter
 
 | Camada              | Tecnologia atual                                                                   |
 | ------------------- | ---------------------------------------------------------------------------------- |
-| Front-end           | React 18, React Router 7, Zustand 4 e Axios                                        |
-| Build               | Vite 7 e TypeScript em modo estrito                                                |
+| Front-end           | React 19, React Router 7, Zustand 4 e Axios                                        |
+| Build               | Vite 8 e TypeScript em modo estrito                                                |
 | Gateway             | Node.js 20+, Fastify 5 e TypeScript                                                |
 | Testes do front     | Vitest, Testing Library, MSW e cobertura V8                                        |
 | Testes de navegador | Playwright, com Chromium desktop e perfil móvel                                    |
@@ -324,6 +324,9 @@ Playwright roda em job próprio do workflow de qualidade. Os demais gates fazem 
 `npm run quality`, inclusive o BFF e a auditoria de ambos os lockfiles.
 
 Os workflows de qualidade e segurança estão em [`.github/workflows/`](.github/workflows/).
+O Dependabot agrupa atualizações compatíveis de React, ESLint e Vite, enquanto upgrades major
+dessas famílias ficam bloqueados para migração manual conjunta. Isso evita PRs isolados com
+peer dependencies incompatíveis sem enfraquecer as atualizações minor, patch ou de segurança.
 
 ## Estrutura do repositório
 

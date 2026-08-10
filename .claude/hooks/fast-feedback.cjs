@@ -85,7 +85,7 @@ function acquireTestLock(projectRoot) {
   try {
     const stat = fs.statSync(lockPath);
     if (Date.now() - stat.mtimeMs > 60_000) fs.unlinkSync(lockPath);
-  } catch (_) {
+  } catch {
     // Ausencia do lock e o caso normal.
   }
 
@@ -96,11 +96,11 @@ function acquireTestLock(projectRoot) {
     return () => {
       try {
         fs.unlinkSync(lockPath);
-      } catch (_) {
+      } catch {
         // Outro processo pode ter removido um lock obsoleto.
       }
     };
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -122,7 +122,7 @@ readStdin()
     let event;
     try {
       event = JSON.parse(rawInput || '{}');
-    } catch (_) {
+    } catch {
       process.exit(0);
       return;
     }
