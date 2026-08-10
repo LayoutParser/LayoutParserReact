@@ -29,13 +29,13 @@ autoridade de `git push`, CI/CD, deploy e gestão de **MCP**.
 
 ## 2. Missões (router)
 
-| Missão | O que fazer |
-|--------|-------------|
-| `push` | `git push` / abrir PR — só quando o usuário pedir explicitamente. |
-| `build-deploy` | `npm run build`; validar artefatos SPA (web.config/.htaccess/_redirects). |
-| `ci` | Ajustar `.github/workflows/deploy.yml`. |
-| `connect-mcp` | Conectar este front ao MCP Server da API (ver abaixo). |
-| `secrets` | Variáveis de ambiente (`VITE_API_BASE_URL`); nunca commitar segredos. |
+| Missão         | O que fazer                                                                |
+| -------------- | -------------------------------------------------------------------------- |
+| `push`         | `git push` / abrir PR — só quando o usuário pedir explicitamente.          |
+| `build-deploy` | `npm run build`; validar artefatos SPA (web.config/.htaccess/\_redirects). |
+| `ci`           | Ajustar `.github/workflows/deploy.yml`.                                    |
+| `connect-mcp`  | Conectar este front ao MCP Server da API (ver abaixo).                     |
+| `secrets`      | Variáveis de ambiente (`VITE_API_BASE_URL`); nunca commitar segredos.      |
 
 ## 3. Conectar ao MCP Server da API
 

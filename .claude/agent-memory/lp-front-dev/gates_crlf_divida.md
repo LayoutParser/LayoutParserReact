@@ -18,12 +18,12 @@ alteração, e não valiam como sinal de regressão.
 
 ## Estado atual dos gates (medido em 2026-08-04)
 
-| Gate | Status |
-|---|---|
-| `npx tsc --noEmit` | passa limpo |
-| `npm run build` | passa limpo |
-| `npm run format:check` | **passa limpo** (era vermelho) |
-| `npm run lint` | **30 warnings, 0 erros** — falha só por `--max-warnings 0` |
+| Gate                   | Status                                                     |
+| ---------------------- | ---------------------------------------------------------- |
+| `npx tsc --noEmit`     | passa limpo                                                |
+| `npm run build`        | passa limpo                                                |
+| `npm run format:check` | **passa limpo** (era vermelho)                             |
+| `npm run lint`         | **30 warnings, 0 erros** — falha só por `--max-warnings 0` |
 
 Os 30 são **29 `no-explicit-any` + 1 `react-hooks/exhaustive-deps`**, todos pré-existentes e
 deliberadamente mantidos (dívida de tipagem; mexer neles é mudança de tipo com risco e merece

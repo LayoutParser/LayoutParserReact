@@ -69,7 +69,8 @@
 }
 
 .admin-tab:focus-visible {
-  outline-color: var(--color-text-inverse);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.42);
+  outline: none;
 }
 
 .admin-content,
@@ -97,6 +98,18 @@
 
   .admin-header {
     padding: var(--spacing-md);
+  }
+
+  .admin-tabs {
+    margin-inline: calc(var(--spacing-md) * -1);
+    padding-inline: var(--spacing-md);
+    scroll-padding-inline: var(--spacing-md);
+    scroll-snap-type: x proximity;
+  }
+
+  .admin-tab {
+    min-height: 48px;
+    scroll-snap-align: start;
   }
 
   .admin-content,

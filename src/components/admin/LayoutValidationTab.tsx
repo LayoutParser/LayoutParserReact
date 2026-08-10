@@ -4,6 +4,7 @@ import {
   type LayoutValidationsResponse,
   type LayoutValidation,
 } from '../../services/api/monitoringService';
+import { logService } from '../../services/api/logService';
 import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './LayoutValidationTab.css';
 
@@ -22,7 +23,9 @@ const LayoutValidationTab: React.FC = () => {
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar validações');
-      console.error('Erro ao carregar validações:', err);
+      logService.error('Falha ao carregar validações administrativas', {
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+      });
     } finally {
       setLoading(false);
     }

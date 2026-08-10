@@ -5,9 +5,7 @@ metadata:
   type: project
 ---
 
-Feature em desenvolvimento na branch `feat/xml-transformation-toggle` (nada commitado ainda em
-2026-07-20 — Remy implementou a lógica/estado, eu revisei a UX; usuário revisa o diff completo
-antes de qualquer commit). Adiciona uma 2ª forma de ver o documento processado: aba "TXT
+Feature incorporada ao fluxo principal. Adiciona uma 2ª forma de ver o documento processado: aba "TXT
 Posicional" (a view antiga, sempre presente) e aba "XML Transformação Final" (só aparece se
 existe Mapper cadastrado pro layout selecionado — checagem automática contra a API ao
 processar o documento). Arquivos: `components/analysis/AnalysisModeTabs.tsx` +

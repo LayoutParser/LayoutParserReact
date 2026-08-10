@@ -13,6 +13,14 @@
 interface ImportMetaEnv {
   /** URL base da API .NET (LayoutParserApi). Definida em `.env.development`/`.env.production`. */
   readonly VITE_API_BASE_URL?: string;
+  /** Limite cliente do documento enviado, em MB (padrão 25; faixa aceita de 1 a 100). */
+  readonly VITE_MAX_UPLOAD_MB?: string;
+  /** Destino local do gateway Node usado exclusivamente pelo proxy do Vite. */
+  readonly VITE_DEV_BFF_PROXY_TARGET?: string;
+  /** Identidade simulada pelo proxy local; nunca é usada no bundle de produção. */
+  readonly VITE_DEV_BFF_USER?: string;
+  /** Funções simuladas pelo proxy local; nunca são aceitas em produção. */
+  readonly VITE_DEV_BFF_ROLES?: string;
 }
 
 interface ImportMeta {

@@ -89,6 +89,18 @@
   color: var(--color-text-inverse);
 }
 
+.search-nav-btn:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.search-nav-btn:disabled {
+  background: var(--color-pending-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
 .search-no-results {
   flex: 0 0 auto;
   padding: var(--spacing-sm) 0.75rem;
@@ -110,7 +122,12 @@
   }
 
   .search-input-wrapper {
-    min-width: min(100%, 16rem);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .search-controls {
+    margin-left: auto;
   }
 
   .search-no-results {

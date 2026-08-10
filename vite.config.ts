@@ -8,20 +8,11 @@ export default defineConfig(({ mode }) => {
   // Só as chaves com prefixo VITE_ (padrão do Vite) são lidas aqui.
   const env = loadEnv(mode, process.cwd());
 
-  // Destino do proxy `/api` do servidor de dev.
-  //
-  // ATENÇÃO: este alvo precisa ser SEMPRE um ambiente de desenvolvimento. Até 2026-08-10 ele
-  // apontava para `http://172.25.32.42:5000`, que é a API de PRODUÇÃO (WINSRV2022-LIB) — um
-  // `npm run dev` que caísse no proxy enviaria uploads de teste para produção. O único motivo
-  // de isso nunca ter acontecido é que `.env.development` define `VITE_API_BASE_URL`, fazendo o
-  // axios usar URL absoluta e nunca exercitar o proxy.
-  //
-  // Default `http://localhost:5100`: é a instância de dev desta máquina (serviço Windows
-  // `LayoutParserApi`, publicada pelo `ci-dev.yml` da API com override
-  // `Kestrel__Endpoints__Http__Url` na 5100 justamente para não colidir com o `dotnet run`
-  // do desenvolvedor, que escuta 5000 por causa do `Kestrel` fixado no appsettings.json).
-  // Rodando a API na mão via `dotnet run`? Use VITE_DEV_API_PROXY_TARGET=http://localhost:5000.
-  const devApiProxyTarget = env.VITE_DEV_API_PROXY_TARGET || 'http://localhost:5100';
+  // O navegador fala apenas com `/api`. Em desenvolvimento, o Vite encaminha ao BFF Node;
+  // o BFF é responsável por alcançar a API .NET configurada em `server/.env`.
+  const devBffTarget = env.VITE_DEV_BFF_PROXY_TARGET || 'http://127.0.0.1:3100';
+  const devUser = env.VITE_DEV_BFF_USER?.trim();
+  const devRoles = env.VITE_DEV_BFF_ROLES?.trim();
 
   return {
     plugins: [react()],
@@ -39,15 +30,22 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api': {
-          target: devApiProxyTarget,
+          target: devBffTarget,
           changeOrigin: true,
           secure: false,
+          headers: {
+            ...(devUser ? { 'x-dev-user': devUser } : {}),
+            ...(devRoles ? { 'x-dev-roles': devRoles } : {}),
+          },
         },
       },
     },
     build: {
       outDir: 'dist',
-      sourcemap: true,
+      // Source maps completos ajudam no build de desenvolvimento, mas não devem ser publicados
+      // junto com os assets de produção. Se observabilidade externa for adotada, o pipeline pode
+      // gerar mapas ocultos e enviá-los de forma privada.
+      sourcemap: mode === 'development',
       rollupOptions: {
         output: {
           manualChunks: {

@@ -11,19 +11,19 @@ Spec autoritativa: `LayoutParserApi/docs/architecture/spec-taxonomia-de-falha-do
 (escrita pela `@lp-architect` em 2026-08-03). Front implementado em
 **`feat/taxonomia-falha-parse`** (commit `02a2ff7`), a partir de `chore/normaliza-crlf`.
 
-**Why:** pergunta do dono do projeto — *"falhou por quê?"*. Se a falha é nossa, não se apresenta
+**Why:** pergunta do dono do projeto — _"falhou por quê?"_. Se a falha é nossa, não se apresenta
 o arquivo; se é do arquivo, aponta-se o erro com precisão. Além da UI, `fieldGuid` no erro é o
-que transforma cada documento processado em par rotulado *(campo, correto/incorreto)* para a IA,
-em vez de *(intervalo de bytes, errado)* — que não generaliza entre documentos.
+que transforma cada documento processado em par rotulado _(campo, correto/incorreto)_ para a IA,
+em vez de _(intervalo de bytes, errado)_ — que não generaliza entre documentos.
 
 ## Os campos novos (nenhum emitido pela instância que roda hoje)
 
-| Campo | Onde | Estado em 2026-08-04 |
-|---|---|---|
-| `failureCause` (`parser_defect`/`document_malformed`/`layout_invalid`) | corpo do 422/500 | não emitido |
-| `documentHealth` (`clean`/`has_defects`) | corpo do 200 | não emitido |
-| `recordName`/`recordGuid` | itens de `validationErrors[]` | não emitidos |
-| `fieldName`/`fieldGuid`/`targetXPath` | itens de `validationErrors[]` | **sempre `null` por decisão** |
+| Campo                                                                  | Onde                          | Estado em 2026-08-04          |
+| ---------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
+| `failureCause` (`parser_defect`/`document_malformed`/`layout_invalid`) | corpo do 422/500              | não emitido                   |
+| `documentHealth` (`clean`/`has_defects`)                               | corpo do 200                  | não emitido                   |
+| `recordName`/`recordGuid`                                              | itens de `validationErrors[]` | não emitidos                  |
+| `fieldName`/`fieldGuid`/`targetXPath`                                  | itens de `validationErrors[]` | **sempre `null` por decisão** |
 
 Verificado em runtime contra a API em `:5100` — **inclusive depois de o back-end declarar a
 implementação concluída: o processo em execução seguia servindo o contrato antigo.** Ou seja,

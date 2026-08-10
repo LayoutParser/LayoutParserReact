@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseService, ParseRequestError } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
+import { logService } from '../../services/api/logService';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
@@ -11,11 +12,13 @@ import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
 import type { ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
+import { ALLOWED_UPLOAD_EXTENSIONS, validateUploadFile } from '../../utils/uploadValidation';
 import './LayoutParserPage.css';
 
 const LayoutParserPage: React.FC = () => {
   const [txtFile, setTxtFile] = useState<File | null>(null);
   const txtFileInputRef = React.useRef<HTMLInputElement>(null);
+  const uploadAbortRef = React.useRef<AbortController | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showSearchButton, setShowSearchButton] = useState(false);
@@ -25,17 +28,26 @@ const LayoutParserPage: React.FC = () => {
   const {
     isUploading,
     uploadError,
+    uploadProgress,
     parseError,
     selectedLayout,
     parseResult,
     setUploading,
     setUploadError,
+    setUploadProgress,
     setParseError,
     setParseResult,
     setTxtContent,
     setFields,
     setSelectedLayout,
   } = useAppStore();
+
+  React.useEffect(
+    () => () => {
+      uploadAbortRef.current?.abort();
+    },
+    []
+  );
 
   // Só para saber qual aba de análise está ativa (ver AnalysisModeTabs) e decidir se a busca
   // de campos faz sentido na tela — não interfere no fluxo de upload/parse abaixo.
@@ -102,11 +114,28 @@ const LayoutParserPage: React.FC = () => {
 
   const handleTxtFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setTxtFile(file);
-      setUploadError(null);
-      setParseError(null);
+
+    if (!file) {
+      setTxtFile(null);
+      return;
     }
+
+    const validation = validateUploadFile(file, import.meta.env.VITE_MAX_UPLOAD_MB);
+
+    if (!validation.isValid) {
+      setTxtFile(null);
+      e.currentTarget.value = '';
+      if (txtFileInputRef.current) {
+        txtFileInputRef.current.value = '';
+      }
+      setUploadError(validation.message);
+      setParseError(null);
+      return;
+    }
+
+    setTxtFile(file);
+    setUploadError(null);
+    setParseError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,12 +152,15 @@ const LayoutParserPage: React.FC = () => {
     }
 
     setUploading(true);
+    setUploadProgress(0);
     // Os dois estados de erro convivem (ver useAppStore) e precisam ser limpos juntos no
     // início do submit, senão sobra erro do envio anterior na tela.
     setUploadError(null);
     setParseError(null);
 
     try {
+      const abortController = new AbortController();
+      uploadAbortRef.current = abortController;
       let layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
       let layoutToUse = selectedLayout;
 
@@ -177,7 +209,10 @@ const LayoutParserPage: React.FC = () => {
         layoutName: layoutToUse.name,
       };
 
-      const result = await parseService.parseFiles(request);
+      const result = await parseService.parseFiles(request, {
+        signal: abortController.signal,
+        onUploadProgress: setUploadProgress,
+      });
 
       setParseResult(result);
       if (result.text) {
@@ -186,14 +221,14 @@ const LayoutParserPage: React.FC = () => {
       if (result.fields && result.fields.length > 0) {
         setFields(result.fields);
       } else {
-        // Anomalia real: 200 sem nenhum campo. Fica só no dev server para não expor
-        // conteúdo do documento do cliente em nenhum artefato buildado.
-        if (import.meta.env.DEV) {
-          console.warn('⚠️ Nenhum campo na resposta ou array vazio');
-        }
         setFields([]);
       }
     } catch (error) {
+      if (uploadAbortRef.current?.signal.aborted) {
+        setUploadError('Processamento cancelado. Nenhum resultado novo foi aplicado.');
+        return;
+      }
+
       // Falha da chamada de parse já classificada pelo service (422 x 5xx x rede) — vai para
       // `parseError` e ganha apresentação própria. Qualquer outra falha (ex.: as validações
       // locais lançadas acima, "Layout não encontrado...") continua no `uploadError` de texto.
@@ -209,16 +244,21 @@ const LayoutParserPage: React.FC = () => {
         setFields([]);
         setTxtContent('');
         setParseError(error.toInfo());
+        logService.warn('Falha de parse classificada no front-end', {
+          kind: error.kind,
+          httpStatus: error.httpStatus,
+          failureCause: error.failureCause,
+          correlationId: error.correlationId,
+        });
       } else {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         setUploadError(errorMessage);
-      }
-      // O erro já é apresentado ao usuário (parseError/uploadError) e o service carrega o
-      // correlationId; o console fica como apoio de dev, sem despejar o payload em produção.
-      if (import.meta.env.DEV) {
-        console.error('❌ Erro no parsing:', error);
+        logService.error('Falha inesperada no fluxo de processamento', {
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+        });
       }
     } finally {
+      uploadAbortRef.current = null;
       setUploading(false);
     }
   };
@@ -313,17 +353,22 @@ const LayoutParserPage: React.FC = () => {
                   ref={txtFileInputRef}
                   type="file"
                   id="txtFile"
-                  accept=".txt,.mq_series,.idoc"
+                  accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
                   onChange={handleTxtFileChange}
                   disabled={isUploading}
                   hidden
-                  aria-describedby="txtFile-status"
+                  aria-describedby={
+                    uploadError && !txtFile ? 'txtFile-status txtFile-error' : 'txtFile-status'
+                  }
+                  aria-invalid={Boolean(uploadError && !txtFile)}
                 />
                 <button
                   type="button"
                   className="file-input"
                   disabled={isUploading}
-                  aria-describedby="txtFile-status"
+                  aria-describedby={
+                    uploadError && !txtFile ? 'txtFile-status txtFile-error' : 'txtFile-status'
+                  }
                   onClick={() => {
                     if (txtFileInputRef.current) {
                       txtFileInputRef.current.value = '';
@@ -346,7 +391,17 @@ const LayoutParserPage: React.FC = () => {
               </div>
 
               {parseError && <ParseErrorBanner error={parseError} />}
-              {uploadError && <div className="error-message">❌ {uploadError}</div>}
+              {uploadError && (
+                <div
+                  id={uploadError && !txtFile ? 'txtFile-error' : undefined}
+                  className="error-message"
+                  role="alert"
+                  aria-live="assertive"
+                  aria-atomic="true"
+                >
+                  ❌ {uploadError}
+                </div>
+              )}
               {searchError && <div className="error-message">❌ {searchError}</div>}
 
               <button
@@ -356,6 +411,22 @@ const LayoutParserPage: React.FC = () => {
               >
                 {isUploading ? 'Processando...' : 'Processar Documento'}
               </button>
+
+              {isUploading && (
+                <div className="upload-progress" aria-live="polite">
+                  <label htmlFor="upload-progress-value">
+                    Enviando documento{uploadProgress > 0 ? ` — ${uploadProgress}%` : '…'}
+                  </label>
+                  <progress id="upload-progress-value" max={100} value={uploadProgress} />
+                  <button
+                    type="button"
+                    className="upload-cancel-btn"
+                    onClick={() => uploadAbortRef.current?.abort()}
+                  >
+                    Cancelar processamento
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

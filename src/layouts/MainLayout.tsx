@@ -1,12 +1,18 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { useSessionStore } from '../store/useSessionStore';
 import './MainLayout.css';
 
 export const MainLayout: React.FC = () => {
   const { parseResult } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const loadSession = useSessionStore(state => state.loadSession);
+
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
 
   // Redirecionar para /upload se estiver em /analysis sem parseResult
   useEffect(() => {

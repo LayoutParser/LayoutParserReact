@@ -16,12 +16,12 @@ apagar consolida a dívida em vez de resolvê-la. E há prova de que a bibliotec
 
 Evidência levantada (contagem de `<button>` escrito à mão, fora de `shared/`):
 
-| Arquivo | `<button>` |
-|---|---|
-| `analysis/XmlTransformationDisplay.tsx` | 5 |
-| `admin/AdminPage.tsx` · `admin/LayoutValidationTab.tsx` · `aiMetrics/AiMetricsPanel.tsx` · `layout/LayoutParserPage.tsx` | 4 cada |
-| `admin/MonitoringTab.tsx` · `analysis/StructureTree.tsx` | 3 cada |
-| `analysis/FieldSearch.tsx` | 2 |
+| Arquivo                                                                                                                  | `<button>` |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| `analysis/XmlTransformationDisplay.tsx`                                                                                  | 5          |
+| `admin/AdminPage.tsx` · `admin/LayoutValidationTab.tsx` · `aiMetrics/AiMetricsPanel.tsx` · `layout/LayoutParserPage.tsx` | 4 cada     |
+| `admin/MonitoringTab.tsx` · `analysis/StructureTree.tsx`                                                                 | 3 cada     |
+| `analysis/FieldSearch.tsx`                                                                                               | 2          |
 
 29 no total, em 8 arquivos, e **nenhum** usa as classes `.btn`/`.btn-*` que o
 `shared/Button.css` define — cada um tem classe própria (`retry-btn`, `tree-control-btn`...).
@@ -33,5 +33,5 @@ projeto. Não é dívida de adoção — é componente sem demanda ainda. Contin
 
 **How to apply:** ao varrer órfãos, para qualquer coisa em `shared/` inverta a pergunta antes
 de propor remoção — "existe markup à mão que deveria estar usando isto?". Se existir, o
-veredito é *adotar*, não *apagar*, e a decisão de quando adotar é do usuário (é refactor de
+veredito é _adotar_, não _apagar_, e a decisão de quando adotar é do usuário (é refactor de
 UI com impacto visual, território do [[convencoes-reais-vs-doc]] e do `@lp-ui-ux`).

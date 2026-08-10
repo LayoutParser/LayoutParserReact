@@ -1,7 +1,7 @@
 // Tipos para o fluxo de "XML Transformação Final" (mapper + execução de transformação).
 //
-// Contrato validado em 2026-07-20 direto contra a API real (LayoutParserApi, ambiente
-// 172.25.32.42:5000), não apenas por leitura do código C#. Fontes:
+// Contrato validado em 2026-07-20 contra um ambiente de integração da LayoutParserApi,
+// não apenas por leitura do código C#. Fontes:
 // - LayoutParserApi/Controllers/MapperDatabaseController.cs (GetMapperByInputLayoutGuid)
 // - LayoutParserApi/Controllers/TransformationExecutionController.cs (ExecuteTransformation)
 //

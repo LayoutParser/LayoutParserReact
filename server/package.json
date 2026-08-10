@@ -1,0 +1,36 @@
+{
+  "name": "@layout-parser/academic-bff",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BFF acadêmico e seguro para o front-end LayoutParser.",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "audit": "npm audit --audit-level=moderate",
+    "quality": "npm run typecheck && npm run test:coverage && npm run build && npm run audit"
+  },
+  "dependencies": {
+    "@fastify/busboy": "3.2.0",
+    "@fastify/helmet": "13.1.0",
+    "@fastify/http-proxy": "11.6.0",
+    "@fastify/rate-limit": "11.2.0",
+    "dotenv": "17.4.2",
+    "fastify": "5.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.2.0",
+    "@vitest/coverage-v8": "4.1.10",
+    "tsx": "4.23.12",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

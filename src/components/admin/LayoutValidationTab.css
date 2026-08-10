@@ -88,6 +88,23 @@
   background: var(--color-danger-bg);
 }
 
+.validation-container .retry-btn:focus-visible,
+.validation-container .refresh-btn:focus-visible,
+.validation-container .force-refresh-btn:focus-visible,
+.validation-container .close-btn:focus-visible,
+.validation-container .layout-card:focus-visible,
+.validation-container .error-header:focus-visible,
+.validation-container .valid-layouts-section summary:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.validation-container .layout-card:focus-visible,
+.validation-container .error-header:focus-visible,
+.validation-container .valid-layouts-section summary:focus-visible {
+  border-color: var(--color-accent);
+}
+
 .validation-container .validation-header {
   margin-bottom: var(--spacing-xl);
 }

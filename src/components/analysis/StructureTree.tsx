@@ -159,7 +159,7 @@ const StructureTree: React.FC = () => {
 
       if (!fieldName) {
         if (import.meta.env.DEV) {
-          console.warn('⚠️ Nome do campo não encontrado no nó:', node);
+          console.warn('⚠️ Nó de campo sem nome utilizável.');
         }
         return;
       }
@@ -187,12 +187,7 @@ const StructureTree: React.FC = () => {
       } else if (import.meta.env.DEV) {
         // Clique numa folha da árvore que não casa com nenhum campo parseado: indica
         // divergência entre layout e documento, útil só em desenvolvimento.
-        console.warn('⚠️ Campo não encontrado:', {
-          lineName,
-          fieldName,
-          nodeName: node.name,
-          availableFields: fields.filter(f => f.lineName === lineName).map(f => f.fieldName),
-        });
+        console.warn('⚠️ Campo selecionado na árvore não existe no resultado do parse.');
       }
     }
   };

@@ -1,0 +1,15 @@
+self-hosted-runner:
+  labels:
+    - dev-local
+    - production
+
+config-variables:
+  - BFF_TRUSTED_PROXY_IPS
+  - BFF_TRUSTED_PROXY_IPS_DEV
+  - DEPLOY_PATH_DEV
+  - IIS_SITE_NAME
+  - IIS_SITE_NAME_DEV
+  - LAYOUTPARSER_API_URL
+  - LAYOUTPARSER_API_URL_DEV
+  - PUBLIC_HOST
+  - PUBLIC_HOST_DEV
