@@ -28,6 +28,21 @@
   border-radius: 8px;
 }
 
+/* Explica o CORTE da exibição no primeiro defeito (decisão desta view, não do payload).
+   Tom neutro de propósito: o alarme sobre o defeito é do DocumentHealthBanner, aqui é só
+   instrução de leitura — dois blocos amarelos empilhados viram ruído. */
+.field-display-truncation-note {
+  margin: 0 0 var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-pending-bg);
+  border-left: 3px solid var(--color-pending);
+  border-radius: var(--radius-sm);
+  color: var(--color-pending-text);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+}
+
 /* Visualização: todas as linhas no mesmo formato - apenas campos inline */
 .field-line-container {
   margin-bottom: 0.2rem;
@@ -310,18 +325,6 @@
   text-decoration-style: wavy;
 }
 
-/* Alerta de erro de validação */
-.validation-error-alert {
-  animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* A regra `.validation-error-alert` (e o keyframe `slideDown`, sem nenhum outro consumidor no
+   projeto) saiu junto com o alerta inline que este arquivo estilizava: o aviso de defeito
+   agora é o DocumentHealthBanner, com CSS próprio. */
