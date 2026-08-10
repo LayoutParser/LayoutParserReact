@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
-import type { Field } from '../../types/field';
+import type { DisplayGroup, Field } from '../../types/field';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import DocumentHealthBanner from './DocumentHealthBanner';
 import './FieldDisplay.css';
@@ -225,7 +225,6 @@ const FieldDisplay: React.FC = () => {
 
   // ✅ Verificar se há erros de validação no documento
   const validationErrors = parseResult?.validationErrors || [];
-  const hasValidationErrors = validationErrors.length > 0;
 
   // O CORTE da exibição é condicionado à CLASSE do erro, não à mera existência de erro.
   // Só erro de tamanho de linha desloca os offsets seguintes; erro de conteúdo (sequência
@@ -340,13 +339,6 @@ const FieldDisplay: React.FC = () => {
     };
   };
 
-  // ✅ Log informativo sobre processamento
-  console.log(
-    `📊 FieldDisplay: renderizando ${groupsToRender.length} grupos de linhas` +
-      `${isTruncated ? ` (cortado na linha física ${firstDesyncLineIndex}, que dessincroniza)` : ''}` +
-      `${hasValidationErrors && !isTruncated ? ` (${validationErrors.length} defeito(s) anotado(s), sem corte)` : ''}`
-  );
-
   return (
     <div className="field-display">
       {/* Estado "200 com defeito": o documento continua abaixo, com os defeitos anotados.
@@ -442,54 +434,18 @@ const FieldDisplay: React.FC = () => {
               const calculatedPos = calculatedPositions[key];
               if (calculatedPos !== undefined && calculatedPos !== null) {
                 field.startPosition = calculatedPos;
-              } else if (field.sequence === undefined || field.sequence === null) {
+              } else if (import.meta.env.DEV) {
+                // Chave de posição ausente/ambígua: indica layout mal configurado no
+                // back-end. Diagnóstico de desenvolvimento — roda por campo, então nunca
+                // deve sobrar no bundle.
                 console.warn(
-                  `⚠️ Campo "${field.fieldName}" da linha ${group.lineName} sem "sequence" definido; usando fieldName puro como chave de posição pode colidir com campos de mesmo nome na linha.`
-                );
-              } else {
-                console.warn(
-                  `⚠️ Chave "${key}" não encontrada em calculatedPositions para o campo "${field.fieldName}" da linha ${group.lineName}.`
+                  field.sequence === undefined || field.sequence === null
+                    ? `⚠️ Campo "${field.fieldName}" da linha ${group.lineName} sem "sequence" definido; usar fieldName puro como chave de posição pode colidir com campos de mesmo nome na linha.`
+                    : `⚠️ Chave "${key}" não encontrada em calculatedPositions para o campo "${field.fieldName}" da linha ${group.lineName}.`
                 );
               }
             });
-
-            if (groupIndex === 0) {
-              console.log(`✅ Usando posições calculadas do back-end para ${group.lineName}:`, {
-                totalLength: lineValidation.totalLength,
-                isValid: lineValidation.isValid,
-                positions: Object.entries(calculatedPositions).slice(0, 5),
-              });
-            }
           }
-        } else {
-          // Se não houver lineValidations (layout não configurado para cálculo), usar startPosition que já vem nos campos
-          // Isso é normal para layouts que não estão na lista de layouts com cálculo específico
-          if (groupIndex === 0 && parseResult?.lineValidations) {
-            // Se lineValidations existe mas não tem esta linha, significa que o layout não está configurado
-            console.log(
-              `ℹ️ Layout não configurado para cálculo de validação, usando startPosition dos campos para ${group.lineName}`
-            );
-          }
-        }
-
-        // Debug: log dos campos
-        if (groupIndex === 0) {
-          const lineValidation = parseResult?.lineValidations?.find(
-            lv => lv.lineName === group.lineName
-          );
-          console.log('🔍 FieldDisplay - Primeira linha:', {
-            lineName: group.lineName,
-            fieldsCount: displayFields.length,
-            fields: displayFields.slice(0, 5).map(f => ({
-              name: f.fieldName,
-              value: f.value?.substring(0, 20) || '(vazio)',
-              startPosition: f.startPosition,
-              length: f.length,
-            })),
-            calculatedPositions: lineValidation?.calculatedPositions
-              ? Object.entries(lineValidation.calculatedPositions).slice(0, 5)
-              : [],
-          });
         }
 
         // Se não há campos, retornar linha vazia
@@ -557,17 +513,6 @@ const FieldDisplay: React.FC = () => {
           if (lineStart >= txtContent.length) {
             lineStart = -1;
           }
-
-          // Debug: verificar cálculo do lineStart
-          if (groupIndex < 3) {
-            console.log(`📍 Cálculo lineStart para linha ${groupIndex}:`, {
-              groupDataPosition: groupData.position,
-              groupIndex,
-              calculatedByIndex: groupIndex * 600,
-              finalLineStart: lineStart,
-              firstFieldStartPosition: displayFields[0]?.startPosition,
-            });
-          }
         }
 
         // IMPORTANTE: Usar APENAS os dados do JSON retornado pela API
@@ -608,35 +553,6 @@ const FieldDisplay: React.FC = () => {
           lineNumberFromJson = extractLineNumber3(group.lineName);
         }
 
-        // Debug: log para verificar extração do JSON
-        if (groupIndex < 3) {
-          const previousGroup = groupIndex > 0 ? groupsToRender[groupIndex - 1] : null;
-          const previousSequenciaField = previousGroup?.fields?.find((f: Field) => {
-            const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
-            return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
-          });
-          const currentSequenciaField = group.fields?.find((f: Field) => {
-            const fieldNameUpper = (f.fieldName?.toUpperCase() || '').trim();
-            return fieldNameUpper === 'SEQUENCIA' || fieldNameUpper === 'SEQUÊNCIA';
-          });
-          const prevLineSeqFromGroup =
-            previousGroup?.lineSequence || previousGroup?.fields?.[0]?.lineSequence || 'N/A';
-          console.log(`🔍 Linha ${groupIndex} (${group.lineName}) - Dados do JSON:`, {
-            lineSequence: groupData.lineSequence,
-            sequentialFromJson,
-            lineNumberFromJson,
-            isHeader,
-            previousLineName: previousGroup?.lineName,
-            previousLineSequence: prevLineSeqFromGroup,
-            previousSequenciaValue: previousSequenciaField?.value,
-            previousSequenciaStartPos: previousSequenciaField?.startPosition,
-            currentSequenciaValue: currentSequenciaField?.value,
-            currentSequenciaStartPos: currentSequenciaField?.startPosition,
-            allFieldNames: group.fields?.slice(0, 5).map((f: Field) => f.fieldName),
-            firstFieldStartPosition: displayFields[0]?.startPosition,
-          });
-        }
-
         // 1. Adicionar sequencial (6 dígitos) - APENAS para linhas que NÃO são HEADER ou LINHA999999
         // IMPORTANTE: O sequencial vem do campo "Sequencia" da linha ANTERIOR (já parseado pela API)
         // HEADER e LINHA999999 NÃO têm sequencial, começam direto com o número da linha
@@ -672,43 +588,6 @@ const FieldDisplay: React.FC = () => {
           currentPos += lineNumberFromJson.length;
         }
 
-        // Debug: verificar o que foi adicionado ao lineParts
-        if (groupIndex < 3) {
-          const sequencePart = lineParts.find(p => p.type === 'sequence');
-          const initialPart = lineParts.find(p => p.type === 'initial');
-          console.log(
-            `📝 lineParts após adicionar sequencial/linha (${group.lineName}) - DO JSON:`,
-            {
-              sequentialFromJson,
-              lineNumberFromJson,
-              currentPos,
-              linePartsCount: lineParts.length,
-              sequencePart: sequencePart
-                ? {
-                    type: sequencePart.type,
-                    content: sequencePart.content,
-                    start: sequencePart.start,
-                    end: sequencePart.end,
-                  }
-                : null,
-              initialPart: initialPart
-                ? {
-                    type: initialPart.type,
-                    content: initialPart.content,
-                    start: initialPart.start,
-                    end: initialPart.end,
-                  }
-                : null,
-              allParts: lineParts.map(p => ({
-                type: p.type,
-                content: p.content?.substring(0, 20),
-                start: p.start,
-                end: p.end,
-              })),
-            }
-          );
-        }
-
         // ✅ As posições (startPosition/length) já vêm corretas do back-end (1-based).
         // Não tentar "adivinhar" offsets no front-end.
 
@@ -726,7 +605,7 @@ const FieldDisplay: React.FC = () => {
           const prev = displayFields[i - 1];
           const curr = displayFields[i];
           if (prev.startPosition !== undefined && curr.startPosition !== undefined) {
-            if (curr.startPosition <= prev.startPosition) {
+            if (curr.startPosition <= prev.startPosition && import.meta.env.DEV) {
               console.warn(
                 `⚠️ Possível nome de campo duplicado na linha ${group.lineName}: "${curr.fieldName}" (startPosition=${curr.startPosition}) não é maior que "${prev.fieldName}" (startPosition=${prev.startPosition}). Verificar mapeador/back-end (calculatedPositions).`
               );
@@ -831,10 +710,14 @@ const FieldDisplay: React.FC = () => {
             start: currentPos,
             end: LINE_LENGTH,
           });
-          console.warn(
-            `⚠️ Linha ${group.lineName} tem apenas ${currentPos} chars, preenchendo ${missing} espaços`
-          );
-        } else if (currentPos > LINE_LENGTH) {
+          // Linha fora dos 600 chars: sintoma de layout/documento desalinhado. Diagnóstico
+          // só de desenvolvimento — roda por linha e cita conteúdo do documento.
+          if (import.meta.env.DEV) {
+            console.warn(
+              `⚠️ Linha ${group.lineName} tem apenas ${currentPos} chars, preenchendo ${missing} espaços`
+            );
+          }
+        } else if (currentPos > LINE_LENGTH && import.meta.env.DEV) {
           console.warn(`⚠️ Linha ${group.lineName} excedeu 600 chars (${currentPos}), truncando`);
         }
 
@@ -843,22 +726,6 @@ const FieldDisplay: React.FC = () => {
         lineParts.forEach(part => {
           fullLineContent += part.content;
         });
-
-        // Log de validação (apenas para primeira linha)
-        if (groupIndex === 0) {
-          console.log(`📏 Validação da linha ${group.lineName}:`, {
-            totalChars: fullLineContent.length,
-            expected: LINE_LENGTH,
-            isValid: fullLineContent.length === LINE_LENGTH,
-            partsCount: lineParts.length,
-            parts: lineParts.map(p => ({
-              type: p.type,
-              length: p.content.length,
-              start: p.start,
-              end: p.end,
-            })),
-          });
-        }
 
         // Se não tiver 600 caracteres, preencher com espaços no final
         if (fullLineContent.length < LINE_LENGTH) {
@@ -873,7 +740,9 @@ const FieldDisplay: React.FC = () => {
         } else if (fullLineContent.length > LINE_LENGTH) {
           // Truncar se exceder (não deveria acontecer)
           fullLineContent = fullLineContent.substring(0, LINE_LENGTH);
-          console.warn(`⚠️ Linha ${group.lineName} excedeu 600 caracteres, truncando`);
+          if (import.meta.env.DEV) {
+            console.warn(`⚠️ Linha ${group.lineName} excedeu 600 caracteres, truncando`);
+          }
         }
 
         return (
@@ -893,24 +762,6 @@ const FieldDisplay: React.FC = () => {
                 className={`field-line-content ${hasLineError ? 'line-with-error-content' : ''}`}
               >
                 {(() => {
-                  // Debug: verificar lineParts antes de renderizar
-                  if (groupIndex < 3) {
-                    const sequencePart = lineParts.find(p => p.type === 'sequence');
-                    console.log(`🎬 ANTES DE RENDERIZAR linha ${groupIndex} (${group.lineName}):`, {
-                      linePartsCount: lineParts.length,
-                      sequencePart: sequencePart
-                        ? {
-                            type: sequencePart.type,
-                            content: sequencePart.content,
-                            start: sequencePart.start,
-                            end: sequencePart.end,
-                          }
-                        : null,
-                      allSequenceParts: lineParts
-                        .filter(p => p.type === 'sequence')
-                        .map(p => ({ content: p.content, start: p.start, end: p.end })),
-                    });
-                  }
                   return lineParts.map((part, partIndex) => {
                     if (part.type === 'space') {
                       // Renderizar espaços diretamente sem span, mas reduzir espaços múltiplos
@@ -933,29 +784,6 @@ const FieldDisplay: React.FC = () => {
                       } else {
                         // Se não for numérico, garantir 6 caracteres
                         sequentialContent = sequentialContent.padEnd(6, ' ');
-                      }
-
-                      // Debug: verificar o valor sendo renderizado
-                      if (groupIndex < 3) {
-                        console.log(
-                          `🎨 Renderizando sequencial para linha ${groupIndex} (${group.lineName}) partIndex ${partIndex}:`,
-                          {
-                            partContent: part.content,
-                            partContentType: typeof part.content,
-                            sequentialContent,
-                            sequentialContentLength: sequentialContent.length,
-                            isHeader,
-                            isLine999999,
-                            partType: part.type,
-                            partStart: part.start,
-                            partEnd: part.end,
-                            partObject: JSON.stringify(part),
-                            linePartsLength: lineParts.length,
-                            allSequenceParts: lineParts
-                              .filter(p => p.type === 'sequence')
-                              .map(p => ({ content: p.content, index: lineParts.indexOf(p) })),
-                          }
-                        );
                       }
 
                       // Usar uma key única que inclui o conteúdo para forçar re-render se mudar

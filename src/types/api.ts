@@ -1,5 +1,27 @@
 // Tipos para a API de Layout Parser
 
+// Fonte única dos tipos que antes existiam em duplicata aqui.
+//
+// `Field`, `LayoutElement` e o layout parseado eram declarados NESTE arquivo e também em
+// `field.ts`/`structure.ts`, com campos diferentes entre si. Como `useAppStore` tipava por
+// este arquivo e `useFieldStore` pelo outro, o mesmo dado ganhava tipo distinto conforme a
+// origem — e os componentes "resolviam" a divergência com `as any`. As declarações locais
+// foram substituídas por reexports para que exista um tipo só, sem quebrar quem importa
+// `Field`/`LayoutElement`/`Layout` de `types/api`.
+import type { Field } from './field';
+import type { LayoutElement, ParsedLayout } from './structure';
+
+export type { Field, LayoutElement };
+
+/**
+ * Layout PARSEADO (o que volta no `ParseResponse`), com seus `elements`. Não confundir com
+ * o `Layout` de `types/layout.ts`, que é o registro do CATÁLOGO (com `decryptedContent`) —
+ * são entidades diferentes que por acidente compartilhavam o nome.
+ *
+ * Alias de `ParsedLayout` (`types/structure.ts`), que já descrevia exatamente este shape.
+ */
+export type Layout = ParsedLayout;
+
 export interface ApiConfig {
   baseUrl: string;
   endpoints: {
@@ -110,6 +132,18 @@ export interface ValidationSuggestion {
   lineNumber: number;
   confidence: string;
 }
+
+/**
+ * Saúde do documento num parse BEM-SUCEDIDO (HTTP 200).
+ *
+ * Spec "Taxonomia de falha do parse" §2.1: defeito localizável NÃO é 422 — é 200 com o
+ * documento renderizável e o erro anotado por cima. `clean` x `has_defects` é o terceiro
+ * estado que faltava (antes só existiam "200 limpo" e "erro").
+ *
+ * ADITIVO E OPCIONAL: enquanto o back-end não emitir o campo, a UI deriva de
+ * `validationErrors` (ver `resolveDocumentHealth` em utils/documentHealth.ts).
+ */
+export type DocumentHealth = 'clean' | 'has_defects';
 
 export interface ParseResponse {
   success: boolean;
@@ -222,40 +256,4 @@ export interface DocumentValidationError {
   fieldName?: string | null; // nome do elemento no layout (ex.: "vNF")
   fieldGuid?: string | null; // identidade estável do campo — é o que rotularia o dataset da IA
   targetXPath?: string | null; // destino no XML de saída (ex.: "/NFe/infNFe/total/ICMSTot/vNF")
-}
-
-export interface Layout {
-  layoutGuid: string;
-  layoutType: string;
-  name: string;
-  description: string;
-  limitOfCaracters: number;
-  elements: LayoutElement[];
-}
-
-export interface LayoutElement {
-  type: string;
-  elementGuid: string;
-  description: string;
-  sequence: number;
-  name: string;
-  isRequired: boolean;
-  elements?: string[];
-  initialValue?: string; // Valor inicial da linha (ex: "000", "001", "HEADER")
-}
-
-export interface Field {
-  lineName: string;
-  fieldName: string;
-  value: string;
-  startPosition?: number;
-  length?: number;
-  isValid?: boolean;
-  hasWarning?: boolean;
-  errorMessage?: string;
-  // Campos que a API já manda e que `types/field.ts` documenta há mais tempo. Como o
-  // `useAppStore` tipa os campos por ESTA interface, sem eles os componentes precisavam
-  // de `(field as any).lineSequence` para ler algo que sempre esteve no payload.
-  lineSequence?: string; // Sequência da linha (ex: "000", "001", "HEADER")
-  occurrence?: number; // Ocorrência da linha no documento
 }

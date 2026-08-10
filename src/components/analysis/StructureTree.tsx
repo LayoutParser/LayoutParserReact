@@ -21,7 +21,6 @@ const StructureTree: React.FC = () => {
   } = useStructureStore();
   const { setFields } = useFieldStore();
   const fieldStoreFields = useFieldStore(s => s.fields);
-  // const { showLineProperties } = usePropertiesStore(); // Removido temporariamente
 
   // Construir árvore quando parseResult mudar
   useEffect(() => {
@@ -68,22 +67,6 @@ const StructureTree: React.FC = () => {
     const hasLayoutElements =
       layoutElements && Array.isArray(layoutElements) && layoutElements.length > 0;
 
-    console.log('🌳 StructureTree: Construindo árvore', {
-      hasLayout: !!parseResult.layout,
-      layoutElements: layoutElements?.length || 0,
-      layoutElementsRaw: layoutElements,
-      layoutFull: parseResult.layout,
-      fieldsFromStore: fields.length,
-      fieldsFromResult: parseResult.fields?.length || 0,
-      actualFields: actualFields.length,
-      fieldsForTree: fieldsForTree.length,
-      validationErrors: validationErrors.length,
-      isTruncated,
-      firstDesyncLineIndex,
-      documentStructure: parseResult.documentStructure,
-      summary: parseResult.summary,
-    });
-
     // Se tiver layout com elementos, usar buildTreeFromLayout
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
@@ -92,29 +75,19 @@ const StructureTree: React.FC = () => {
       // ✅ Em caso de erro de TAMANHO, NÃO exibir estrutura completa do layout, pois ela
       // induz o usuário ao erro (as linhas seguintes não são confiáveis). Com defeitos que
       // não dessincronizam, a árvore do layout continua válida e é a mais informativa.
-      console.log(
-        '🌳 Documento com erro que dessincroniza: usando buildTreeFromFields (cortado no erro)'
-      );
       tree = buildTreeFromFields(fieldsForTree);
     } else if (hasLayoutElements) {
-      console.log('🌳 Usando buildTreeFromLayout com', layoutElements.length, 'elementos');
-      console.log('🌳 Primeiro elemento:', layoutElements[0]);
       tree = buildTreeFromLayout(layoutElements);
-      console.log('🌳 Árvore construída do layout:', tree.length, 'nós raiz');
     } else if (fieldsForTree && fieldsForTree.length > 0) {
-      console.log('🌳 Usando buildTreeFromFields com', fieldsForTree.length, 'campos');
       tree = buildTreeFromFields(fieldsForTree);
     } else {
-      console.warn('⚠️ StructureTree: Nenhum dado disponível para construir árvore');
-      console.warn('⚠️ Layout completo:', parseResult.layout);
-      console.warn(
-        '⚠️ Tentando construir árvore vazia para exibir estrutura do layout mesmo sem campos'
-      );
-      // Mesmo sem campos, podemos tentar construir uma árvore básica se houver documentStructure
+      // Anomalia real: parse com sucesso mas sem layout e sem campos para montar a árvore.
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ StructureTree: nenhum dado disponível para construir árvore');
+      }
       tree = [];
     }
 
-    console.log('🌳 Árvore construída com', tree.length, 'nós raiz');
     setTreeData(tree);
     setFields(fieldsForTree);
   }, [parseResult, fields, setTreeData, setFields]);
@@ -175,7 +148,9 @@ const StructureTree: React.FC = () => {
       const parentLine = findParentLine(node, treeData);
 
       if (!parentLine) {
-        console.warn('⚠️ Não foi possível encontrar a linha pai do campo:', node.name);
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ Não foi possível encontrar a linha pai do campo:', node.name);
+        }
         return;
       }
 
@@ -183,7 +158,9 @@ const StructureTree: React.FC = () => {
       const fieldName = node.name || node.element?.name;
 
       if (!fieldName) {
-        console.warn('⚠️ Nome do campo não encontrado no nó:', node);
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ Nome do campo não encontrado no nó:', node);
+        }
         return;
       }
 
@@ -200,14 +177,6 @@ const StructureTree: React.FC = () => {
         const fieldId = `${field.lineName}_${field.fieldName}`;
         highlightField(fieldId);
 
-        console.log('✅ Campo destacado:', {
-          lineName: field.lineName,
-          fieldName: field.fieldName,
-          fieldId,
-          nodeName: node.name,
-          parentLineName: lineName,
-        });
-
         // Scroll para o campo destacado
         setTimeout(() => {
           const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
@@ -215,7 +184,9 @@ const StructureTree: React.FC = () => {
             fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 100);
-      } else {
+      } else if (import.meta.env.DEV) {
+        // Clique numa folha da árvore que não casa com nenhum campo parseado: indica
+        // divergência entre layout e documento, útil só em desenvolvimento.
         console.warn('⚠️ Campo não encontrado:', {
           lineName,
           fieldName,

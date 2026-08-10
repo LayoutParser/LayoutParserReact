@@ -113,11 +113,17 @@ jobs:
       if: github.ref == 'refs/heads/develop'
       run: |
         # 'build:prod' (= vite build --mode production) NAO roda tsc — mesmo comando do
-        # deploy.yml de producao. VITE_API_BASE_URL e sobrescrito aqui para apontar pra API
-        # de dev desta maquina (servico Windows nativo, porta 5100 — ver ci-dev.yml do
-        # LayoutParserApi) em vez do fallback por hostname em src/services/api.ts, que
-        # aponta 'localhost' para :5000 (porta do 'dotnet run' manual, nao da API de dev
-        # publicada).
+        # deploy.yml de producao.
+        #
+        # O override de VITE_API_BASE_URL abaixo e OBRIGATORIO, nao uma otimizacao: por ser
+        # um build em modo production, o Vite carrega o .env.production — que aponta para a
+        # API de PRODUCAO (172.25.32.42:5000) — e ignora o .env.development. Sem esta linha,
+        # o front de DEV publicado aqui sairia falando com producao. O valor injetado aponta
+        # para a API de dev desta maquina (servico Windows nativo, porta 5100 — ver ci-dev.yml
+        # do LayoutParserApi).
+        #
+        # Funciona porque no loadEnv do Vite as chaves VITE_* vindas de process.env sao
+        # aplicadas DEPOIS das dos arquivos .env, sobrescrevendo-as.
         $env:VITE_API_BASE_URL = $env:API_URL_RESOLVED_FRONT
 
         npm run build:prod
