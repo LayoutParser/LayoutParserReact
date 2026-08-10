@@ -15,6 +15,7 @@ import './LayoutParserPage.css';
 
 const LayoutParserPage: React.FC = () => {
   const [txtFile, setTxtFile] = useState<File | null>(null);
+  const txtFileInputRef = React.useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [showSearchButton, setShowSearchButton] = useState(false);
@@ -239,7 +240,7 @@ const LayoutParserPage: React.FC = () => {
             aria-expanded={isControlsVisible}
             aria-controls="layout-controls-panel"
           >
-            {isControlsVisible ? '<<' : '>>'}
+            <span aria-hidden="true">{isControlsVisible ? '‹' : '›'}</span>
           </button>
         </div>
 
@@ -305,18 +306,43 @@ const LayoutParserPage: React.FC = () => {
             {/* Anexar arquivo */}
             <form onSubmit={handleSubmit} className="file-upload-form">
               <div className="file-input-wrapper">
-                <label htmlFor="txtFile" className="file-label">
-                  <span className="file-label-text">Anexar arquivo</span>
-                  <input
-                    type="file"
-                    id="txtFile"
-                    accept=".txt,.mq_series,.idoc"
-                    onChange={handleTxtFileChange}
-                    disabled={isUploading}
-                    className="file-input"
-                  />
-                  {txtFile && <span className="file-name">✓ {txtFile.name}</span>}
+                <label htmlFor="txtFile" className="file-label-text">
+                  Arquivo do documento
                 </label>
+                <input
+                  ref={txtFileInputRef}
+                  type="file"
+                  id="txtFile"
+                  accept=".txt,.mq_series,.idoc"
+                  onChange={handleTxtFileChange}
+                  disabled={isUploading}
+                  hidden
+                  aria-describedby="txtFile-status"
+                />
+                <button
+                  type="button"
+                  className="file-input"
+                  disabled={isUploading}
+                  aria-describedby="txtFile-status"
+                  onClick={() => {
+                    if (txtFileInputRef.current) {
+                      txtFileInputRef.current.value = '';
+                      txtFileInputRef.current.click();
+                    }
+                  }}
+                >
+                  {txtFile ? 'Trocar arquivo' : 'Selecionar arquivo'}
+                </button>
+                <span
+                  id="txtFile-status"
+                  className={`file-name ${txtFile ? 'has-file' : 'empty'}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {txtFile
+                    ? `✓ Arquivo selecionado: ${txtFile.name}`
+                    : 'Nenhum arquivo selecionado'}
+                </span>
               </div>
 
               {parseError && <ParseErrorBanner error={parseError} />}

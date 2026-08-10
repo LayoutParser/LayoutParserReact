@@ -4,6 +4,7 @@ import {
   type MonitoringResponse,
   type LayoutAnalysis,
 } from '../../services/api/monitoringService';
+import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './MonitoringTab.css';
 
 const MonitoringTab: React.FC = () => {
@@ -135,7 +136,17 @@ const MonitoringTab: React.FC = () => {
               <div
                 key={layout.layoutGuid}
                 className={`layout-card ${layout.status} ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`Ver detalhes do layout ${layout.name}`}
+                aria-pressed={selectedLayout?.layoutGuid === layout.layoutGuid}
                 onClick={() => setSelectedLayout(layout)}
+                onKeyDown={event => {
+                  if (isKeyboardActivationKey(event.key)) {
+                    event.preventDefault();
+                    setSelectedLayout(layout);
+                  }
+                }}
               >
                 <div className="layout-card-header">
                   <div className="layout-card-title">
@@ -216,13 +227,16 @@ const MonitoringTab: React.FC = () => {
               <div className="line-validations">
                 <h4>Validações de Linhas ({selectedLayout.lineValidations.length})</h4>
                 <div className="validations-list">
-                  {selectedLayout.lineValidations.map(line => (
+                  {selectedLayout.lineValidations.map((line, index) => (
                     <div
                       key={line.lineName}
                       className={`validation-item ${line.isValid ? 'valid' : 'invalid'}`}
                     >
-                      <div
+                      <button
+                        type="button"
                         className="validation-header"
+                        aria-expanded={expandedLines.has(line.lineName)}
+                        aria-controls={`monitoring-validation-${index}`}
                         onClick={() => toggleLineExpansion(line.lineName)}
                       >
                         <span className="validation-toggle">
@@ -231,9 +245,9 @@ const MonitoringTab: React.FC = () => {
                         <span className="validation-line-name">{line.lineName}</span>
                         {getStatusBadge(line.isValid ? 'valid' : 'invalid')}
                         <span className="validation-total">{line.totalLength} chars</span>
-                      </div>
+                      </button>
                       {expandedLines.has(line.lineName) && (
-                        <div className="validation-details">
+                        <div id={`monitoring-validation-${index}`} className="validation-details">
                           <div className="validation-formula">
                             <div className="formula-item">
                               <span>InitialValue:</span>

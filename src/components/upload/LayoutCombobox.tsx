@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import type { Layout } from '../../types/layout';
 import './LayoutCombobox.css';
 
@@ -12,8 +12,12 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const comboboxRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const componentId = useId();
+  const listboxId = `${componentId}-layout-options`;
 
-  // Filtrar layouts baseado no termo de busca
   const filteredLayouts = layouts.filter(layout => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
@@ -22,7 +26,12 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
     return nameMatch || guidMatch;
   });
 
-  // Fechar combobox ao clicar fora
+  useEffect(() => {
+    if (isOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (comboboxRef.current && !comboboxRef.current.contains(event.target as Node)) {
@@ -40,57 +49,147 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
     };
   }, [isOpen]);
 
-  const handleSelect = (layout: Layout) => {
-    onSelect(layout);
+  const closeCombobox = (returnFocus: boolean) => {
     setIsOpen(false);
     setSearchTerm('');
+    if (returnFocus) {
+      requestAnimationFrame(() => triggerRef.current?.focus());
+    }
   };
 
-  const handleToggle = () => {
-    if (!selectedLayout) {
-      setIsOpen(!isOpen);
-    } else {
-      // Se já tem layout selecionado, permite abrir para trocar
-      setIsOpen(!isOpen);
+  const handleSelect = (layout: Layout) => {
+    onSelect(layout);
+    closeCombobox(true);
+  };
+
+  const focusOption = (index: number) => {
+    const optionCount = filteredLayouts.length;
+    if (optionCount === 0) return;
+
+    const normalizedIndex = (index + optionCount) % optionCount;
+    optionRefs.current[normalizedIndex]?.focus();
+  };
+
+  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      setIsOpen(true);
+      return;
+    }
+
+    if (event.key === 'Escape' && isOpen) {
+      event.preventDefault();
+      closeCombobox(true);
+    }
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const selectedIndex = filteredLayouts.findIndex(
+        layout => layout.layoutGuid === selectedLayout?.layoutGuid
+      );
+      focusOption(selectedIndex >= 0 ? selectedIndex : 0);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusOption(filteredLayouts.length - 1);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeCombobox(true);
+    }
+  };
+
+  const handleOptionKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusOption(index + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusOption(index - 1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusOption(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusOption(filteredLayouts.length - 1);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      closeCombobox(true);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      const layout = filteredLayouts[index];
+      if (layout) {
+        handleSelect(layout);
+      }
     }
   };
 
   return (
     <div className="layout-combobox" ref={comboboxRef}>
-      <div
+      <button
+        ref={triggerRef}
+        type="button"
+        role="combobox"
         className={`combobox-trigger ${selectedLayout ? 'has-selection' : ''}`}
-        onClick={handleToggle}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
+        aria-label={
+          selectedLayout ? `Layout selecionado: ${selectedLayout.name}` : 'Selecionar Layout'
+        }
+        onClick={() => setIsOpen(open => !open)}
+        onKeyDown={handleTriggerKeyDown}
       >
         <span className="combobox-label">
           {selectedLayout ? selectedLayout.name : 'Selecionar Layout'}
         </span>
-        <span className="combobox-arrow">{isOpen ? '▲' : '▼'}</span>
-      </div>
+        <span className="combobox-arrow" aria-hidden="true">
+          {isOpen ? '▲' : '▼'}
+        </span>
+      </button>
 
       {isOpen && (
         <div className="combobox-dropdown">
           <div className="combobox-search">
             <input
-              type="text"
+              ref={searchInputRef}
+              type="search"
+              aria-label="Buscar layout por nome ou GUID"
+              aria-controls={listboxId}
               placeholder="Buscar por nome ou layoutGuid..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={event => setSearchTerm(event.target.value)}
+              onKeyDown={handleSearchKeyDown}
               className="combobox-search-input"
-              autoFocus
             />
           </div>
 
-          <div className="combobox-options">
+          <div id={listboxId} className="combobox-options" role="listbox">
             {filteredLayouts.length === 0 ? (
-              <div className="combobox-no-results">Nenhum layout encontrado</div>
+              <div className="combobox-no-results" role="status">
+                Nenhum layout encontrado
+              </div>
             ) : (
-              filteredLayouts.map(layout => {
+              filteredLayouts.map((layout, index) => {
                 const isSelected = selectedLayout?.layoutGuid === layout.layoutGuid;
                 return (
-                  <div
+                  <button
+                    ref={element => {
+                      optionRefs.current[index] = element;
+                    }}
                     key={layout.layoutGuid || layout.name}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     className={`combobox-option ${isSelected ? 'selected' : ''}`}
                     onClick={() => handleSelect(layout)}
+                    onKeyDown={event => handleOptionKeyDown(event, index)}
                   >
                     <div className="option-name">{layout.name || 'Sem nome'}</div>
                     {layout.layoutGuid && (
@@ -98,7 +197,7 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
                         GUID: {layout.layoutGuid.substring(0, 8)}...
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })
             )}

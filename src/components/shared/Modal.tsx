@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import './Modal.css';
 
 interface ModalProps {
@@ -9,6 +9,15 @@ interface ModalProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+const FOCUSABLE_ELEMENTS = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
@@ -16,37 +25,94 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   size = 'medium',
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    previouslyFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.body.style.overflow = 'hidden';
+
+    const dialog = dialogRef.current;
+    const firstFocusableElement = dialog?.querySelector<HTMLElement>(FOCUSABLE_ELEMENTS);
+    (firstFocusableElement ?? dialog)?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab' || !dialog) return;
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_ELEMENTS)
+      );
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      previouslyFocusedElementRef.current?.focus();
     };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal-content modal-${size}`} onClick={e => e.stopPropagation()}>
-        {title && (
-          <div className="modal-header">
-            <h2>{title}</h2>
-            <button className="modal-close" onClick={onClose}>
-              ×
-            </button>
-          </div>
-        )}
+    <div
+      className="modal-overlay"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className={`modal-content modal-${size}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-label={title ? undefined : 'Janela modal'}
+        tabIndex={-1}
+      >
+        <div className="modal-header">
+          {title && <h2 id={titleId}>{title}</h2>}
+          <button
+            type="button"
+            className="modal-close"
+            onClick={onClose}
+            aria-label="Fechar janela"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
         <div className="modal-body">{children}</div>
       </div>
     </div>

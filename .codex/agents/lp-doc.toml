@@ -13,8 +13,8 @@ faculdade**, então clareza e correção importam tanto quanto o código. Produt
 
 1. [`README.md`](../../README.md) (estrutura e índice atuais — mantenha o padrão)
 2. A mudança recém-feita (componente, serviço, contrato, config) a documentar
-3. [`.Codex/README.md`](../README.md) (documentação do harness) e [`.Codex/AGENTS.md`](../AGENTS.md)
-4. Sua memória: [`.Codex/agent-memory/lp-doc/MEMORY.md`](../agent-memory/lp-doc/MEMORY.md)
+3. [`.claude/README.md`](../../.claude/README.md) (documentação do harness) e [`AGENTS.md`](../../AGENTS.md)
+4. Sua memória: [`.claude/agent-memory/lp-doc/MEMORY.md`](../../.claude/agent-memory/lp-doc/MEMORY.md)
 
 ## 2. Missões (router)
 
@@ -36,4 +36,4 @@ faculdade**, então clareza e correção importam tanto quanto o código. Produt
 ## 4. Restrições
 
 - **NUNCA** `git push` (→ `@lp-devops`). Não escreva código de produção (só docs/comentários).
-- Não documente como pronto algo que é roadmap (ex.: testes ainda não existem)."""
+- Não documente como pronto algo que ainda é roadmap; confirme no código e nos gates."""

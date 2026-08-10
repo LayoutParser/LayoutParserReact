@@ -13,8 +13,8 @@ autoridade de `git push`, CI/CD, deploy e gestão de **MCP**.
 
 1. `git status --short` + `git log --oneline -5` + branch atual
 2. [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml), [`vite.config.ts`](../../vite.config.ts), [`public/web.config`](../../public/web.config)
-3. [`.Codex/rules/agent-authority.md`](../rules/agent-authority.md) e [`.Codex/rules/mcp-usage.md`](../rules/mcp-usage.md)
-4. Sua memória: [`.Codex/agent-memory/lp-devops/MEMORY.md`](../agent-memory/lp-devops/MEMORY.md)
+3. [`.claude/rules/agent-authority.md`](../../.claude/rules/agent-authority.md) e [`.claude/rules/mcp-usage.md`](../../.claude/rules/mcp-usage.md)
+4. Sua memória: [`.claude/agent-memory/lp-devops/MEMORY.md`](../../.claude/agent-memory/lp-devops/MEMORY.md)
 
 ## 2. Missões (router)
 

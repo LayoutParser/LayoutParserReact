@@ -1,0 +1,42 @@
+name: Quality Gates
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - master
+  push:
+    branches:
+      - 'codex/**'
+      - 'fix/**'
+  workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, tipos, testes, builds e seguranca
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Instalar dependencias reproduziveis
+        run: npm ci
+
+      - name: Executar quality gates
+        run: npm run quality

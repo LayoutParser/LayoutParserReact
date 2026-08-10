@@ -49,12 +49,12 @@ layout, descriptografia, geração de transformação) vive no **back-end .NET**
 
 O LayoutParser é dividido em 4 repositórios. **A API é o hub / fonte da verdade.**
 
-| Repo | Papel |
-|------|-------|
-| **LayoutParserApi** | API ASP.NET Core (.NET 10). Orquestra parse, cache (Redis), IA e transformação. Fonte da verdade. |
-| **LayoutParserLib** | Criptografia Sysmiddle (DLL referenciada pela API). |
-| **LayoutParserDecrypt** | `.exe` de descriptografia (processo externo chamado pela API). |
-| **LayoutParserReact** *(este)* | Front-end Vite + React. |
+| Repo                           | Papel                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| **LayoutParserApi**            | API ASP.NET Core (.NET 10). Orquestra parse, cache (Redis), IA e transformação. Fonte da verdade. |
+| **LayoutParserLib**            | Criptografia Sysmiddle (DLL referenciada pela API).                                               |
+| **LayoutParserDecrypt**        | `.exe` de descriptografia (processo externo chamado pela API).                                    |
+| **LayoutParserReact** _(este)_ | Front-end Vite + React.                                                                           |
 
 ```
 ┌──────────────────┐   HTTP (axios)   ┌──────────────────┐   DLL / .exe   ┌────────────────────┐
@@ -67,39 +67,45 @@ O LayoutParser é dividido em 4 repositórios. **A API é o hub / fonte da verda
 
 ## 3. Stack
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Build/dev | **Vite 5** (`type: module`) |
-| UI | **React 18.2** + **react-router-dom 6.20** (`createBrowserRouter`) |
-| Linguagem | **TypeScript 5.2** (strict, `noUnusedLocals`/`noUnusedParameters`) |
-| Estado | **Zustand 4.4** (8 stores) |
-| HTTP | **Axios 1.6** (instância única + interceptor de `X-Correlation-ID`) |
-| Qualidade | **ESLint 8** + **Prettier 3** |
-| Aliases | `@/*` → `src/*` (vite + tsconfig) |
+| Camada    | Tecnologia                                                           |
+| --------- | -------------------------------------------------------------------- |
+| Build/dev | **Vite 7** (`type: module`)                                          |
+| UI        | **React 18** + **react-router-dom 6.30** (`createBrowserRouter`)     |
+| Linguagem | **TypeScript 5** (strict, `noUnusedLocals`/`noUnusedParameters`)     |
+| Estado    | **Zustand 4.4** (8 stores)                                           |
+| HTTP      | **Axios 1.19** (instância única + interceptor de `X-Correlation-ID`) |
+| Qualidade | **ESLint 8** + **Prettier 3** + **Vitest 4** + **Testing Library**   |
+| Aliases   | `@/*` → `src/*` (vite + tsconfig)                                    |
 
-> Ainda **não há suite de testes** (sem Vitest/RTL). Ver [roadmap](#roadmap-de-documentação--qualidade).
+Os gates automatizados cobrem lint, tipos, testes com cobertura, três builds, formatação e
+auditoria de dependências altas/críticas. O mesmo comando é executado nos pull requests e
+antes dos deploys.
 
 ## 4. Como rodar
 
-Pré-requisitos: **Node 18+** e a **API rodando**. Em `npm run dev`, o front chama a URL
+Pré-requisitos: **Node 20.19+** (ou **22.12+**) e a **API rodando**. Em `npm run dev`, o front chama a URL
 definida em [`.env.development`](.env.development) — hoje `http://localhost:5100`
 (atenção: divergente do fallback do código; ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)).
 
 ```bash
-npm install
+npm ci
 npm run dev          # front em http://localhost:3000
 ```
 
 ## 5. Scripts
 
-| Script | O que faz |
-|--------|-----------|
-| `npm run dev` | Vite dev server na porta **3000** (o proxy `/api` existe no config, mas hoje não é o caminho usado — ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)). |
-| `npm run build` | `tsc` (type-check) **e** `vite build` → `dist/` (modo `production` por padrão). |
-| `npm run build:prod` | `vite build --mode production` (sem o `tsc` prévio). |
-| `npm run preview` | Serve o `dist/` localmente. |
-| `npm run lint` | ESLint (`--max-warnings 0`). |
-| `npm run format` / `format:check` | Prettier write / check. |
+| Script                               | O que faz                                                                                                                                                                          |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                        | Vite dev server na porta **3000** (o proxy `/api` existe no config, mas hoje não é o caminho usado — ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)). |
+| `npm run build`                      | `tsc` (type-check) **e** `vite build` → `dist/` (modo `production` por padrão).                                                                                                    |
+| `npm run build:prod`                 | `vite build --mode production` (sem o `tsc` prévio).                                                                                                                               |
+| `npm run preview`                    | Serve o `dist/` localmente.                                                                                                                                                        |
+| `npm run lint`                       | ESLint (`--max-warnings 0`).                                                                                                                                                       |
+| `npm run typecheck`                  | TypeScript estrito sem gerar arquivos.                                                                                                                                             |
+| `npm run test:run` / `test:coverage` | Executa a suite Vitest uma vez, com ou sem relatório de cobertura.                                                                                                                 |
+| `npm run audit`                      | Bloqueia vulnerabilidades de severidade alta ou crítica.                                                                                                                           |
+| `npm run quality`                    | Gate completo: lint, tipos, testes/cobertura, builds, formatação e auditoria.                                                                                                      |
+| `npm run format` / `format:check`    | Prettier write / check.                                                                                                                                                            |
 
 ## 6. Configuração da API (base URL, variáveis de ambiente & proxy)
 
@@ -115,11 +121,11 @@ Este front expõe **uma única variável de ambiente**, tipada em
 [`src/vite-env.d.ts`](src/vite-env.d.ts). Os arquivos `.env` versionados no repo (o Vite
 carrega por modo; `.env.local` e `.env.*.local` estão no `.gitignore`):
 
-| Arquivo | Carregado em | Valor de `VITE_API_BASE_URL` |
-|---------|--------------|------------------------------|
-| [`.env.example`](.env.example) | **nunca** — é o modelo para copiar em `.env`/`.env.local` | `http://localhost:5000` |
-| [`.env.development`](.env.development) | `npm run dev` e builds `--mode development` | `http://localhost:5100` |
-| [`.env.production`](.env.production) | `npm run build` e `npm run build:prod` | `http://172.25.32.42:5000` |
+| Arquivo                                | Carregado em                                              | Valor de `VITE_API_BASE_URL` |
+| -------------------------------------- | --------------------------------------------------------- | ---------------------------- |
+| [`.env.example`](.env.example)         | **nunca** — é o modelo para copiar em `.env`/`.env.local` | `http://localhost:5000`      |
+| [`.env.development`](.env.development) | `npm run dev` e builds `--mode development`               | `http://localhost:5100`      |
+| [`.env.production`](.env.production)   | `npm run build` e `npm run build:prod`                    | `http://172.25.32.42:5000`   |
 
 > **Consequência prática do item 1:** como `.env.development` **define** a variável, no
 > `npm run dev` o axios chama a API por **URL absoluta** — ou seja, o **proxy `/api` do Vite
@@ -180,36 +186,36 @@ src/
 
 **Stores Zustand:**
 
-| Store | Responsabilidade |
-|-------|------------------|
-| `useAppStore` | Upload (progresso, `uploadError` de validação local e `parseError` já classificado) + `parseResult`, `fields`, `txtContent`, `selectedLayout`. |
-| `useLayoutStore` | Catálogo de layouts: lista completa, lista filtrada, índice selecionado e estado de busca. |
-| `useFieldStore` | Campos e grupos de campos, campo selecionado e destaques. |
-| `useStructureStore` | Árvore de estrutura: nós, expansão/colapso e nó selecionado. |
-| `usePropertiesStore` | Painel de propriedades (campo **ou** linha selecionada). |
-| `useSearchStore` | Busca de campos: resultados e navegação entre ocorrências. |
-| `useTransformationStore` | Modo de análise ativo, disponibilidade de mapper, candidatos de transformação e diagnóstico de IA. |
-| `useAiMetricsStore` | Métricas de IA do Admin (resumo + gerações). Enquanto o back-end não implementar os endpoints, estado de erro é o **esperado**. |
+| Store                    | Responsabilidade                                                                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useAppStore`            | Upload (progresso, `uploadError` de validação local e `parseError` já classificado) + `parseResult`, `fields`, `txtContent`, `selectedLayout`. |
+| `useLayoutStore`         | Catálogo de layouts: lista completa, lista filtrada, índice selecionado e estado de busca.                                                     |
+| `useFieldStore`          | Campos e grupos de campos, campo selecionado e destaques.                                                                                      |
+| `useStructureStore`      | Árvore de estrutura: nós, expansão/colapso e nó selecionado.                                                                                   |
+| `usePropertiesStore`     | Painel de propriedades (campo **ou** linha selecionada).                                                                                       |
+| `useSearchStore`         | Busca de campos: resultados e navegação entre ocorrências.                                                                                     |
+| `useTransformationStore` | Modo de análise ativo, disponibilidade de mapper, candidatos de transformação e diagnóstico de IA.                                             |
+| `useAiMetricsStore`      | Métricas de IA do Admin (resumo + gerações). Enquanto o back-end não implementar os endpoints, estado de erro é o **esperado**.                |
 
 **Convenções:** um componente por pasta com seu `.css` ao lado (`Foo.tsx` + `Foo.css`);
 imports via alias `@/`; tipos em `src/types`; chamadas HTTP só na camada `services`.
 
 ## 8. Contrato com a API (endpoints consumidos)
 
-| Método | Endpoint | Origem no front | Retorno |
-|--------|----------|-----------------|---------|
-| `POST` | `/api/parse/upload` | `parseService.parseFiles` | `ParseResponse` (campos, `lineValidations`, `documentStructure`, `validationErrors`) |
-| `GET` | `/api/layoutdatabase/mqseries-nfe` | `layoutService.searchLayouts` | `LayoutSearchResponse` |
-| `POST` | `/api/layoutdatabase/refresh-cache` | `layoutService.refreshCache` | `{ success, message? }` |
-| `GET` | `/api/mapperdatabase/by-input/{layoutGuid}` | `transformationService.checkMapperAvailability` | Disponibilidade do mapeador |
-| `POST` | `/api/transformationexecution/execute-candidates` | `transformationService.executeTransformationCandidates` | Candidatos com o XML transformado |
-| `POST` | `/api/transformationexecution/execute` | `transformationService.executeTransformation` | Transformação de candidato único — **existe no service, mas nenhum componente o chama hoje** |
-| `POST` | `/api/xml-analysis/diagnose-validation-error` | `xmlAnalysisService.diagnoseValidationError` | Diagnóstico de falha via IA/Ollama |
-| `GET` | `/api/monitoring/layouts-analysis` | `monitoringService.getLayoutsAnalysis` | `MonitoringResponse` |
-| `GET` | `/api/monitoring/layout-validations?forceRevalidation` | `monitoringService.getLayoutValidations` | `LayoutValidationsResponse` |
-| `POST` | `/api/logs/client` | `logService.info/warn/error` | Logs do front. *Fire-and-forget*: falha é engolida para não derrubar o fluxo. **Contrato ainda não confirmado com o back-end.** |
-| `GET` | `/api/ai-metrics/summary` | `aiMetricsService.getSummary` | `AiMetricsSummary` — **endpoint ainda não implementado no back-end** |
-| `GET` | `/api/ai-metrics/generations` | `aiMetricsService.getGenerations` | `AiGenerationsResponse` — **endpoint ainda não implementado no back-end** |
+| Método | Endpoint                                               | Origem no front                                         | Retorno                                                                                                                         |
+| ------ | ------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/parse/upload`                                    | `parseService.parseFiles`                               | `ParseResponse` (campos, `lineValidations`, `documentStructure`, `validationErrors`)                                            |
+| `GET`  | `/api/layoutdatabase/mqseries-nfe`                     | `layoutService.searchLayouts`                           | `LayoutSearchResponse`                                                                                                          |
+| `POST` | `/api/layoutdatabase/refresh-cache`                    | `layoutService.refreshCache`                            | `{ success, message? }`                                                                                                         |
+| `GET`  | `/api/mapperdatabase/by-input/{layoutGuid}`            | `transformationService.checkMapperAvailability`         | Disponibilidade do mapeador                                                                                                     |
+| `POST` | `/api/transformationexecution/execute-candidates`      | `transformationService.executeTransformationCandidates` | Candidatos com o XML transformado                                                                                               |
+| `POST` | `/api/transformationexecution/execute`                 | `transformationService.executeTransformation`           | Transformação de candidato único — **existe no service, mas nenhum componente o chama hoje**                                    |
+| `POST` | `/api/xml-analysis/diagnose-validation-error`          | `xmlAnalysisService.diagnoseValidationError`            | Diagnóstico de falha via IA/Ollama                                                                                              |
+| `GET`  | `/api/monitoring/layouts-analysis`                     | `monitoringService.getLayoutsAnalysis`                  | `MonitoringResponse`                                                                                                            |
+| `GET`  | `/api/monitoring/layout-validations?forceRevalidation` | `monitoringService.getLayoutValidations`                | `LayoutValidationsResponse`                                                                                                     |
+| `POST` | `/api/logs/client`                                     | `logService.info/warn/error`                            | Logs do front. _Fire-and-forget_: falha é engolida para não derrubar o fluxo. **Contrato ainda não confirmado com o back-end.** |
+| `GET`  | `/api/ai-metrics/summary`                              | `aiMetricsService.getSummary`                           | `AiMetricsSummary` — **endpoint ainda não implementado no back-end**                                                            |
+| `GET`  | `/api/ai-metrics/generations`                          | `aiMetricsService.getGenerations`                       | `AiGenerationsResponse` — **endpoint ainda não implementado no back-end**                                                       |
 
 `POST /api/parse/upload` usa **`multipart/form-data`** com os campos: `layoutFile` (File),
 `txtFile` (File), e os opcionais `layoutName`, `layoutType`, `layoutConfig` (JSON). Os
@@ -268,7 +274,8 @@ mesma página, após o parse:
 - **IIS:** [`public/web.config`](public/web.config) (copiado para `dist/` no build).
 - **Apache:** [`.htaccess`](.htaccess).
 - **Static hosts (Netlify-like):** [`public/_redirects`](public/_redirects).
-- **CI:** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — gestão é do `@lp-devops`.
+- **CI de pull request:** [`.github/workflows/quality.yml`](.github/workflows/quality.yml) — executa todos os gates em runner GitHub hospedado.
+- **CI/deploy:** [`.github/workflows/ci-dev.yml`](.github/workflows/ci-dev.yml) e [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — um deploy só começa depois de todos os gates passarem; gestão é do `@lp-devops`.
 
 ## 11. Harness de IA (Claude Code)
 
@@ -284,7 +291,9 @@ framework de lab e regras de negócio complexas). Veja a análise de aderência 
 
 ### Roadmap de documentação & qualidade
 
-- [ ] Suite de testes (Vitest + React Testing Library).
+- [x] Suite inicial de testes (Vitest + React Testing Library), cobertura e gate unificado.
+- [ ] Migrar React Router 6 para 7; a mudança é incompatível e elimina os dois avisos
+      moderados restantes de `npm audit`, por isso deve ser tratada em PR próprio.
 - [ ] Externalizar a base URL de produção (hoje há IP hardcoded em `api.ts`/`vite.config.ts`).
 - [ ] Unificar o destino da API em dev — hoje `.env.development` (`:5100`), fallback de
       `api.ts` (`:5000`) e proxy do Vite (`172.25.32.42:5000`) discordam entre si

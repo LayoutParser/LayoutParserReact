@@ -32,6 +32,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
+      watch: {
+        // O relatório do gate de cobertura é gerado dentro do repo; ignorá-lo evita milhares
+        // de recargas do servidor de desenvolvimento durante `npm run test:coverage`.
+        ignored: ['**/coverage/**'],
+      },
       proxy: {
         '/api': {
           target: devApiProxyTarget,
@@ -46,7 +51,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'react-vendor': ['react', 'react-dom'],
             router: ['react-router-dom'],
             ui: ['zustand', 'axios'],
           },

@@ -830,15 +830,17 @@ const FieldDisplay: React.FC = () => {
                         problematicField && problematicField.fieldName === field.fieldName;
 
                       return (
-                        <span
+                        <button
                           key={`field-${partIndex}`}
+                          type="button"
                           data-field-id={fieldId}
                           className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''} ${isProblematicField ? 'field-problematic' : ''}`}
                           onClick={() => handleFieldClick(field)}
+                          aria-label={`Campo ${field.fieldName}: ${field.value || 'vazio'}`}
                           title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}${isProblematicField ? ` - ❌ ${problematicField.issue}` : ''}`}
                         >
                           {part.content}
-                        </span>
+                        </button>
                       );
                     }
 

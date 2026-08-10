@@ -20,9 +20,10 @@ padrão de camadas. A regra de negócio é da API — aqui só consumimos o cont
 4. **Store:** se o dado é compartilhado, exponha estado/ação no store Zustand de domínio
    (ou crie um novo store seguindo o padrão dos existentes).
 5. **Componente:** consuma via store/props; mostre estados de loading/vazio/erro.
-6. **Gates:** `npm run lint && npx tsc --noEmit && npm run build`.
+6. **Gates:** adicione/atualize testes e rode `npm run quality && git diff --check`.
 7. Avise `@lp-doc` para atualizar a tabela de endpoints do README.
 
 ## Restrições
+
 - Componentes **não** chamam `axios` direto — só via `services/`.
 - Não use `any` novo. Persona: `@lp-front-dev`.
