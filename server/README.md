@@ -1,0 +1,170 @@
+# LayoutParser Academic BFF / BFF Acadêmico
+
+## Português
+
+BFF Node.js isolado para o `LayoutParserReact`, construído com Fastify e TypeScript. Ele mantém
+o front e a `LayoutParserApi` separados, centraliza controles de segurança e demonstra uma
+arquitetura web com back-end Node sem mover as regras de parsing que pertencem à API .NET.
+
+```text
+Navegador -> HTTPS/IIS -> 127.0.0.1:3100 (BFF Node) -> LayoutParserApi
+```
+
+### Rotas
+
+| Rota               | Comportamento                                                    |
+| ------------------ | ---------------------------------------------------------------- |
+| `GET /health`      | Liveness local, sem consultar nem revelar o upstream.            |
+| `GET /api/session` | Rota própria do BFF; nunca é encaminhada para a API.             |
+| `/api/*`           | Proxy transparente, preservando `/api`, método, query e payload. |
+
+O contrato determinístico de sessão é sempre:
+
+```json
+{
+  "authenticated": true,
+  "user": { "name": "usuario-autenticado" },
+  "roles": ["RoleA"],
+  "isAdmin": false
+}
+```
+
+Quando não há identidade confiável, `authenticated` é `false`, `user.name` é uma string vazia,
+`roles` é uma lista vazia e `isAdmin` é `false`.
+
+### Limites: 32 MiB versus 25 MiB
+
+- **32 MiB (`BFF_REQUEST_LIMIT_MIB`)**: limite da requisição HTTP inteira, incluindo boundary e
+  metadados multipart, `layoutFile`, `txtFile` e demais campos. O padrão é 32 MiB.
+- **25 MiB (`BFF_DOCUMENT_LIMIT_MIB`)**: limite cumulativo apenas do arquivo no campo
+  `txtFile` (`BFF_DOCUMENT_FIELD`). O padrão é 25 MiB.
+
+O espaço adicional não autoriza um documento de 32 MiB: ele acomoda o layout XML e o overhead
+do multipart. Os limites são aplicados durante o streaming e o conteúdo TXT/XML não é escrito
+nos logs.
+
+### Desenvolvimento local
+
+Requer Node.js 20 ou superior.
+
+```powershell
+cd server
+Copy-Item .env.example .env
+npm install
+npm run dev
+```
+
+O arquivo de exemplo habilita explicitamente a autenticação local. Envie uma identidade apenas
+no ambiente não produtivo:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3100/api/session `
+  -Headers @{ 'X-Dev-User' = 'seu.usuario'; 'X-Dev-Roles' = 'Users' }
+```
+
+Não existe usuário, senha, token ou administrador padrão. Para testar rotas administrativas,
+configure valores reais e locais em `BFF_ADMIN_USERS` ou `BFF_ADMIN_ROLES` no `.env`, que é
+ignorado pelo Git.
+
+### Produção com IIS
+
+O processo falha antes de abrir a porta se a configuração não cumprir os requisitos de
+produção. É obrigatório:
+
+1. Publicar o site em HTTPS no IIS.
+2. Manter o BFF em `127.0.0.1` ou `::1`; bind externo é recusado em produção.
+3. Configurar ARR/URL Rewrite para encaminhar `/api/*` ao BFF.
+4. Remover do request público o header escolhido para identidade e fazer o IIS inserir esse
+   header novamente a partir da autenticação validada pelo servidor.
+5. Informar explicitamente `BFF_TRUSTED_PROXY_IPS`, `BFF_TRUSTED_USER_HEADER` e uma allowlist
+   administrativa.
+6. Usar HTTPS no upstream remoto. HTTP só é aceito para upstream de loopback.
+7. Manter `BFF_DEV_AUTH_ENABLED=false`.
+
+Exemplo sem credenciais ou identidades inventadas:
+
+```dotenv
+NODE_ENV=production
+BFF_HOST=127.0.0.1
+BFF_PORT=3100
+LAYOUTPARSER_API_URL=https://api.interna.exemplo
+BFF_TRUSTED_PROXY_IPS=127.0.0.1
+BFF_TRUSTED_USER_HEADER=X-IIS-User
+BFF_TRUSTED_ROLES_HEADER=X-IIS-Roles
+BFF_ADMIN_USERS=
+BFF_ADMIN_ROLES=
+BFF_DEV_AUTH_ENABLED=false
+```
+
+Preencha a allowlist antes de iniciar. O exemplo é propositalmente incompleto e falhará até que
+`BFF_ADMIN_USERS` ou `BFF_ADMIN_ROLES` tenha um valor real.
+
+> Um trusted header só é uma fronteira de autenticação quando clientes não conseguem alcançar
+> o BFF diretamente e o proxy remove qualquer valor enviado pelo navegador antes de inserir a
+> identidade autenticada. O bind local e a validação do IP do proxy reforçam essa fronteira.
+
+### Autorização administrativa
+
+Os padrões protegidos por default são:
+
+- `/api/monitoring/*`
+- `/api/ai-metrics/*`
+- `/api/layoutdatabase/refresh-cache`
+- `/api/metrics`
+
+`BFF_ADMIN_PATHS` permite atualizar essa lista quando o contrato da API evoluir. A comparação é
+case-insensitive, normaliza barras e URL encoding, e aceita somente caminhos exatos ou wildcard
+final `/*`. Um usuário precisa estar em `BFF_ADMIN_USERS` ou possuir uma role presente em
+`BFF_ADMIN_ROLES`.
+
+### Segurança e observabilidade
+
+- Helmet adiciona headers defensivos; HSTS é ativado somente em produção.
+- Rate limit em memória usa a identidade autenticada e recorre ao IP para anônimos.
+- `X-Correlation-ID` válido é preservado; valores inválidos são substituídos por UUID.
+- A identidade de desenvolvimento é removida antes do proxy. O BFF injeta somente os headers
+  normalizados que a API deve confiar.
+- Logs Pino são JSON estruturado e contêm método, path sem query, status, duração e estado de
+  autenticação. Headers sensíveis e corpos TXT/XML não são registrados.
+- URLs de upstream com credenciais são recusadas.
+
+Para múltiplas instâncias, substitua o rate limit em memória por um store compartilhado, como
+Redis. A proteção autoritativa dos endpoints deve continuar existindo também na API .NET; o BFF
+não substitui autorização em profundidade.
+
+### Verificações
+
+```powershell
+npm run typecheck
+npm test
+npm run test:coverage
+npm run build
+npm run audit
+# tudo em sequência
+npm run quality
+```
+
+Os testes exercitam configuração fail-fast, health, sessão, autenticação, allowlist admin,
+proxy transparente, correlation id, rate limit, os dois limites de payload e ausência de
+TXT/XML nos logs.
+
+---
+
+## English
+
+This folder contains an isolated Fastify + TypeScript Node.js BFF for `LayoutParserReact`.
+It transparently proxies `/api/*` to the configurable .NET API, except for the local
+`GET /api/session` route. It binds to `127.0.0.1` by default and refuses insecure production
+configuration.
+
+The total HTTP request limit defaults to **32 MiB**, while the `txtFile` document itself defaults
+to **25 MiB**. The difference reserves space for the XML layout, multipart boundaries and form
+metadata; it does not increase the allowed document size.
+
+Production authentication trusts an IIS-injected identity header only from explicitly allowed
+proxy IPs. Development impersonation must be explicitly enabled and cannot be enabled when
+`NODE_ENV=production`. Administrative API paths require a user or role allowlist. There are no
+built-in credentials.
+
+See the Portuguese sections above for the complete environment reference, IIS deployment
+checklist, security model and verification commands.

@@ -80,15 +80,8 @@ export const monitoringService = {
    * Busca análise completa de todos os layouts
    */
   async getLayoutsAnalysis(): Promise<MonitoringResponse> {
-    try {
-      const response = await apiClient.get<MonitoringResponse>('/api/monitoring/layouts-analysis');
-      return response.data;
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Erro ao buscar análise de layouts:', error);
-      }
-      throw error;
-    }
+    const response = await apiClient.get<MonitoringResponse>('/api/monitoring/layouts-analysis');
+    return response.data;
   },
 
   /**
@@ -97,19 +90,12 @@ export const monitoringService = {
   async getLayoutValidations(
     forceRevalidation: boolean = false
   ): Promise<LayoutValidationsResponse> {
-    try {
-      const response = await apiClient.get<LayoutValidationsResponse>(
-        '/api/monitoring/layout-validations',
-        {
-          params: { forceRevalidation },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Erro ao buscar validações de layouts:', error);
+    const response = await apiClient.get<LayoutValidationsResponse>(
+      '/api/monitoring/layout-validations',
+      {
+        params: { forceRevalidation },
       }
-      throw error;
-    }
+    );
+    return response.data;
   },
 };

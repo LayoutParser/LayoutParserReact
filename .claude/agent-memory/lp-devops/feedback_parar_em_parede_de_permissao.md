@@ -21,6 +21,7 @@ sensível: algo rodando persistente na máquina, não só um push pontual), o pr
 veio com esse limite explícito antes de eu começar a investigar.
 
 **How to apply:** distinguir dois tipos de ação:
+
 1. **Inspeção read-only no MEU próprio nível de privilégio** (`Get-Service`, `netstat`/
    `Get-NetTCPConnection`, `curl`/`Invoke-WebRequest` num endpoint HTTP, ler arquivo com
    permissão normal) — isso é investigação normal, não é "contornar parede", é só usar as

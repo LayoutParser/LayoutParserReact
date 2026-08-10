@@ -25,11 +25,13 @@ lado Windows (onde ele mesmo dá push manualmente às vezes).
 **How to apply:** para qualquer operação de rede (`fetch`/`push`/`ls-remote`) a partir deste
 agente, **não use o `git` do PATH do bash** — use os binários Windows via WSL interop, que
 funcionam direto porque herdam o ambiente/credenciais do usuário:
+
 ```bash
 git.exe fetch --all --prune     # em vez de `git fetch`
 git.exe push -u origin <branch> # em vez de `git push`
 git.exe ls-remote --heads origin
 ```
+
 Confirmados disponíveis via interop: `git.exe`
 (`/mnt/c/Users/<user>/AppData/Local/Programs/Git/cmd/git.exe`), `ssh.exe`
 (`/mnt/c/Windows/System32/OpenSSH/ssh.exe`), `powershell.exe` (útil para `Get-Service`/checar

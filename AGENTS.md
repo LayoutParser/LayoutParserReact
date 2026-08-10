@@ -11,18 +11,18 @@ focado no stack front-end (Vite + React + TypeScript)**.
 
 ## 1. O que é este projeto
 
-Front-end **Vite + React 18 + TypeScript** do ecossistema **LayoutParser**. O usuário sobe um
+Aplicação web **Vite + React 18 + TypeScript**, com BFF **Node.js + Fastify**, do ecossistema **LayoutParser**. O usuário sobe um
 arquivo **TXT** (+ opcionalmente um **layout XML**); a **API .NET** processa e devolve um
 **mapeamento do documento** (linhas, campos, posições e validações) que este app renderiza
-como **árvore de estrutura**. Este repo é **só apresentação** — nenhuma regra de parsing roda
-aqui. É o **front** de um ecossistema de 4 repos (a **API é o hub / fonte da verdade**):
+como **árvore de estrutura**. Nenhuma regra de parsing roda aqui: o BFF aplica a fronteira web
+(autenticação, autorização, limites e proxy), enquanto a API é o hub/fonte da verdade do domínio:
 
 | Repo                           | Papel                                                                     |
 | ------------------------------ | ------------------------------------------------------------------------- |
 | **LayoutParserApi**            | API .NET 10. Orquestra parse, cache, IA, transformação. Fonte da verdade. |
 | **LayoutParserLib**            | Criptografia Sysmiddle (DLL).                                             |
 | **LayoutParserDecrypt**        | `.exe` de descriptografia.                                                |
-| **LayoutParserReact** _(este)_ | Front-end Vite + React.                                                   |
+| **LayoutParserReact** _(este)_ | Front-end Vite + React e BFF Node/Fastify em `server/`.                   |
 
 Contexto completo: [`README.md`](README.md). Contrato consumido: [`src/types/api.ts`](src/types/api.ts).
 
@@ -30,7 +30,8 @@ Contexto completo: [`README.md`](README.md). Contrato consumido: [`src/types/api
 
 ## 2. Stack & estrutura (resumo)
 
-- **Vite 7** (porta 3000, proxy `/api`), **React 18**, **react-router-dom 6.30**, **Zustand 4.4**, **Axios 1.19**.
+- **Vite 7** (porta 3000, proxy `/api`), **React 18**, **react-router-dom 7.18**, **Zustand 4.4**, **Axios 1.19**.
+- **Node 20+ + Fastify 5** em `server/`; o BFF é a única fronteira do navegador com a API em produção.
 - **TS strict** com `noUnusedLocals`/`noUnusedParameters`; alias `@/*` → `src/*`.
 - Camadas: `components/` (por feature) · `store/` (Zustand) · `services/` (HTTP, **único lugar** que fala com a API) · `types/` · `utils/`.
 - Detalhe: [`.claude/rules/frontend-standards.md`](.claude/rules/frontend-standards.md).
@@ -41,18 +42,22 @@ Contexto completo: [`README.md`](README.md). Contrato consumido: [`src/types/api
 
 Ative com `@agent-name` ou via `Task` tool. Personas alinhadas ao harness da API.
 
-| Agente          | Persona   | Escopo principal                                                                                        |
-| --------------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| `@lp-front-dev` | **Remy**  | Implementação React/TS: componentes, stores, services, rotas, build.                                    |
-| `@lp-ui-ux`     | **Nina**  | Componentes reutilizáveis, CSS por componente, acessibilidade, fluxo UX.                                |
-| `@lp-qa`        | **Quinn** | Quality gates do front (lint/a11y, tipos, testes/cobertura, builds, format, audit), validação de fluxo. |
-| `@lp-doc`       | **Duda**  | Documentação bilíngue (README, comentários, material acadêmico).                                        |
-| `@lp-devops`    | **Gage**  | `git push` (EXCLUSIVO), build/deploy (Vite/IIS/CI), **conexão ao MCP** da API.                          |
+| Agente            | Persona   | Escopo principal                                                                                        |
+| ----------------- | --------- | ------------------------------------------------------------------------------------------------------- |
+| `@lp-front-dev`   | **Remy**  | Implementação React/TS: componentes, stores, services, rotas, build.                                    |
+| `@lp-ui-ux`       | **Nina**  | Componentes reutilizáveis, CSS por componente, acessibilidade, fluxo UX.                                |
+| `@lp-qa`          | **Quinn** | Quality gates do front (lint/a11y, tipos, testes/cobertura, builds, format, audit), validação de fluxo. |
+| `@lp-security`    | **Iris**  | Revisão read-only de segurança, dependências, dados, browser e supply chain; veredito priorizado.       |
+| `@lp-contract-qa` | **Cora**  | Validação read-only do contrato API ↔ types/services/consumidores; veredito PASS/DRIFT/UNVERIFIED.      |
+| `@lp-doc`         | **Duda**  | Documentação bilíngue (README, comentários, material acadêmico).                                        |
+| `@lp-devops`      | **Gage**  | `git push` (EXCLUSIVO), build/deploy (Vite/IIS/CI), **conexão ao MCP** da API.                          |
 
 ### Regra de autoridade (resumo)
 
 - **Apenas `@lp-devops` faz `git push`** e gerencia MCP/CI/deploy. Demais agentes: `git add/commit` local apenas.
 - `@lp-qa` **valida e dá veredito**; a correção volta para `@lp-front-dev` (QA não implementa fix de produção).
+- `@lp-security` e `@lp-contract-qa` são **revisores read-only**: não implementam correções;
+  entregam evidência ao dono e revalidam depois.
 - Detalhe: [`.claude/rules/agent-authority.md`](.claude/rules/agent-authority.md).
 
 ### Handoff entre agentes
@@ -84,9 +89,10 @@ Detalhe completo em [`.claude/rules/frontend-standards.md`](.claude/rules/fronte
 npm run lint            # ESLint, --max-warnings 0
 npm run typecheck       # TypeScript strict (o build também roda tsc)
 npm run test:coverage   # Vitest + relatório de cobertura
-npm run build           # deve compilar sem erros
+npm run test:e2e        # Playwright desktop/mobile (job próprio na CI)
+npm run contract:check  # manifesto local + OpenAPI opcional
 npm run format:check    # Prettier
-npm run audit           # bloqueia vulnerabilidades altas/críticas
+npm run audit           # bloqueia vulnerabilidades moderadas ou maiores
 # ou todos de uma vez: npm run quality
 ```
 

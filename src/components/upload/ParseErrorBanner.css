@@ -82,6 +82,19 @@
   word-break: break-all;
 }
 
+@media (max-width: 480px) {
+  .parse-error-banner {
+    padding: var(--spacing-sm);
+  }
+
+  .parse-error-banner-meta,
+  .parse-error-banner-meta-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
 /* --- Variantes por tipo de falha ---------------------------------------------------------- */
 
 .parse-error-banner--document {

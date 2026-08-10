@@ -1,31 +1,24 @@
 import apiClient from '../api';
 import type { ClientLogEntry, ClientLogLevel } from '../../types/clientLog';
+import { sanitizeLogContext, sanitizeLogMessage } from '../../utils/logSanitizer';
 
 /**
  * Envia eventos de diagnóstico do front-end para a API (POST /api/logs/client), em vez de
  * `console.log` solto — decisão do usuário para termos visibilidade centralizada dos erros
  * que hoje só apareciam no console do navegador.
  *
- * TODO: contrato exato do endpoint (nome dos campos, se aceita batch) ainda não foi
- * confirmado com @lp-backend-dev — payload abaixo é o mínimo razoável. Ajustar quando
- * confirmado.
- *
- * Nunca deve derrubar o fluxo do usuário: falha ao logar é engolida silenciosamente (só um
- * fallback em `console.error`, para não perder o evento por completo em dev).
+ * Nunca deve derrubar o fluxo do usuário: falha ao logar é engolida sem imprimir erro,
+ * entry ou payload no console.
  */
 const send = (level: ClientLogLevel, message: string, context?: Record<string, unknown>): void => {
   const entry: ClientLogEntry = {
     level,
-    message,
-    context,
+    message: sanitizeLogMessage(message),
+    context: sanitizeLogContext(context),
     timestamp: new Date().toISOString(),
   };
 
-  apiClient.post('/api/logs/client', entry).catch(error => {
-    if (import.meta.env.DEV) {
-      console.error('[logService] Falha ao enviar log ao back-end:', error, entry);
-    }
-  });
+  apiClient.post('/api/logs/client', entry).catch(() => undefined);
 };
 
 export const logService = {

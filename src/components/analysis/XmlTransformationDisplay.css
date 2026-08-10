@@ -49,6 +49,15 @@
   transform: translateY(-1px);
 }
 
+.xml-transformation-generate-btn:focus-visible,
+.xml-transformation-candidate-btn:focus-visible,
+.xml-transformation-copy-btn:focus-visible,
+.xml-transformation-download-btn:focus-visible,
+.xml-transformation-diagnose-btn:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 .xml-transformation-generate-btn:disabled,
 .xml-transformation-diagnose-btn:disabled {
   background: var(--color-pending-bg);
@@ -276,6 +285,10 @@
   .xml-transformation-download-btn,
   .xml-transformation-candidate-btn {
     width: 100%;
+  }
+
+  .xml-transformation-actions {
+    align-items: stretch;
   }
 
   .xml-transformation-delivery-actions,

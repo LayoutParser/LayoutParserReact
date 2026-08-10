@@ -8,9 +8,9 @@ description: Como o front LayoutParser React conecta e usa o MCP Server (que viv
 
 - O **MCP Server é da API** (`LayoutParserApi/mcp/LayoutParserMcp/`, C# / .NET 10). Este front
   **não cria** MCP — apenas **se conecta** a ele para que agentes possam parsear documentos e
-  consultar o catálogo via *tools*, sem hardcodar rotas HTTP.
+  consultar o catálogo via _tools_, sem hardcodar rotas HTTP.
 - Prefira **ferramentas nativas** do Claude Code (Read/Edit/Grep/Glob/Bash) para mexer no
-  código deste repo. As *tools* MCP servem para **operações de domínio** contra a API rodando.
+  código deste repo. As _tools_ MCP servem para **operações de domínio** contra a API rodando.
 - **Gestão de MCP é exclusiva do `@lp-devops`.**
 
 ## Arquitetura

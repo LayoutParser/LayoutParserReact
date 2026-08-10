@@ -64,6 +64,13 @@
   transform: translateY(-1px);
 }
 
+.ai-refresh-btn:focus-visible,
+.ai-generations-filters button:focus-visible,
+.ai-generations-pagination button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 .ai-metrics-notice,
 .ai-metrics-warning {
   margin-bottom: var(--spacing-lg);
@@ -226,6 +233,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  scrollbar-gutter: stable;
 }
 
 .ai-generations-table {
@@ -342,7 +350,7 @@
 
 @media (max-width: 480px) {
   .ai-summary-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .ai-summary-card-wide {
@@ -356,5 +364,9 @@
   .ai-generations-pagination {
     flex-wrap: wrap;
     gap: var(--spacing-sm);
+  }
+
+  .ai-generations-pagination button {
+    flex: 1 1 8rem;
   }
 }

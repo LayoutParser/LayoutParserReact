@@ -74,12 +74,10 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
           if (typeof childElementStr === 'string') {
             try {
               childElement = JSON.parse(childElementStr) as RawFieldElement;
-            } catch (parseError) {
-              console.warn(
-                'Erro ao parsear elemento filho como JSON:',
-                parseError,
-                childElementStr
-              );
+            } catch {
+              if (import.meta.env.DEV) {
+                console.warn('Elemento filho do layout contém JSON inválido.');
+              }
               return;
             }
           } else {
@@ -123,8 +121,10 @@ export const buildTreeFromLayout = (elements: LayoutElement[]): TreeNode[] => {
               node.children.push(childNode);
             }
           }
-        } catch (error) {
-          console.warn('Erro ao processar elemento filho:', error, childElementStr);
+        } catch {
+          if (import.meta.env.DEV) {
+            console.warn('Não foi possível processar um elemento filho do layout.');
+          }
         }
       });
     }

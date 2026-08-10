@@ -93,6 +93,20 @@
   transform: translateY(-1px);
 }
 
+.monitoring-container .refresh-btn:focus-visible,
+.monitoring-container .retry-btn:focus-visible,
+.monitoring-container .close-btn:focus-visible,
+.monitoring-container .layout-card:focus-visible,
+.monitoring-container .validation-header:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.monitoring-container .layout-card:focus-visible,
+.monitoring-container .validation-header:focus-visible {
+  border-color: var(--color-accent);
+}
+
 .monitoring-container .monitoring-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(120px, 1fr));

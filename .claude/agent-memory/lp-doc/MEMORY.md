@@ -1,25 +1,9 @@
 # Memória — @lp-doc (Duda)
 
-> Fatos duráveis do projeto + aprendizados acumulados. Atualize ao descobrir algo não óbvio.
-
-## Documentos
-
-- `README.md` (raiz) — doc principal, com índice. Manter sincronizado ao mudar seções.
-- `.claude/README.md` — doc do harness + análise de aderência ao trabalho da faculdade.
-- Produto = **bilíngue (PT/EN)**; prosa PT primeiro.
-
-## Verdade > marketing
-
-- Documentar o que o código faz. Marcar roadmap como roadmap.
-- Pendências a sempre sinalizar: destino de produção ainda configurado por IP e migração
-  incompatível React Router 6→7 para eliminar dois avisos moderados. A suite e o lint global
-  estão ativos desde 2026-08-10.
-
-## Contexto acadêmico
-
-- Front é base de trabalho de faculdade. Clareza importa tanto quanto o código.
-
-## Aprendizados
-
-- [Documentar divergências, não consertá-las](feedback_documentar_divergencias.md) — órfãos, endpoints sem back-end e configs conflitantes: documentar + reportar.
-- (adicione aqui: outras decisões de documentação, termos do domínio a padronizar.)
+- `README.md` é a documentação principal: PT-BR primeiro, resumo EN curto.
+- `.claude/README.md` documenta harness, agentes, comandos, hooks e handoff.
+- [Divergências](feedback_documentar_divergencias.md) — documentar estado verificável, não marketing.
+- Estado atual: Router 7, React same-origin, BFF Node/Fastify e API .NET como domínio.
+- O trabalho acadêmico atende com ressalva: usa Node e separa front/back, mas as regras mais
+  complexas permanecem na API .NET; a apresentação deve explicar essa arquitetura honestamente.
+- Nunca publicar nomes de máquina, caminhos pessoais, IPs privados, segredos ou conteúdo TXT/XML.

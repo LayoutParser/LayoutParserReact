@@ -1,302 +1,419 @@
-# LayoutParser React — Front-end
+# LayoutParser Web
 
-> **PT-BR** · Front-end (Vite + React + TypeScript) do ecossistema **LayoutParser**. O
-> usuário envia um arquivo **TXT** (e opcionalmente um **layout XML**), a API .NET processa
-> e devolve um **mapeamento do documento** (linhas, campos, posições e validações), que este
-> app renderiza como uma **árvore de estrutura** navegável.
->
-> **EN** · Front-end (Vite + React + TypeScript) of the **LayoutParser** ecosystem. The user
-> uploads a **TXT** file (and optionally an **XML layout**); the .NET API parses it and
-> returns a **document mapping** (lines, fields, positions and validations) that this app
-> renders as a navigable **structure tree**.
+Aplicação web do ecossistema **LayoutParser** para enviar documentos posicionais, visualizar o
+mapeamento produzido pela API e solicitar a transformação final para XML. Este repositório reúne
+um front-end React e um gateway Node.js; as regras de parsing e transformação continuam na API
+.NET, que é a fonte da verdade do domínio.
 
----
+> **English summary:** LayoutParser Web combines a Vite/React front-end with a secure
+> Node.js/Fastify gateway. Users upload positional text documents, inspect the mapping produced
+> by the .NET API, generate transformation candidates and download the resulting XML. Browser
+> traffic uses same-origin `/api`; domain parsing and transformation rules remain in the .NET
+> backend.
 
-## Índice
+## Conteúdo
 
-1. [Visão geral](#1-visão-geral)
-2. [Ecossistema](#2-ecossistema-de-projetos)
-3. [Stack](#3-stack)
-4. [Como rodar](#4-como-rodar)
-5. [Scripts](#5-scripts)
-6. [Configuração da API](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)
-7. [Arquitetura do front](#7-arquitetura-do-front)
-8. [Contrato com a API](#8-contrato-com-a-api-endpoints-consumidos)
-9. [Fluxo do usuário](#9-fluxo-do-usuário)
-10. [Deploy](#10-deploy)
-11. [Harness de IA (Claude Code)](#11-harness-de-ia-claude-code)
-12. [Contexto acadêmico](#12-contexto-acadêmico)
+- [O que o sistema faz](#o-que-o-sistema-faz)
+- [Arquitetura e ecossistema](#arquitetura-e-ecossistema)
+- [Tecnologias](#tecnologias)
+- [Segurança](#segurança)
+- [Desenvolvimento local](#desenvolvimento-local)
+- [Configuração do gateway](#configuração-do-gateway)
+- [Produção com IIS](#produção-com-iis)
+- [Qualidade, testes e contrato](#qualidade-testes-e-contrato)
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Harness de IA, agentes e MCP](#harness-de-ia-agentes-e-mcp)
+- [Avaliação para o trabalho acadêmico](#avaliação-para-o-trabalho-acadêmico)
 
----
+## O que o sistema faz
 
-## 1. Visão geral
+O fluxo principal é:
 
-Este repositório é a **camada de apresentação** do LayoutParser. Ele **não** parseia nada
-localmente: toda a regra de negócio (parsing posicional, detecção de tipo, validação de
-layout, descriptografia, geração de transformação) vive no **back-end .NET**. O front:
+1. O usuário escolhe um layout do catálogo ou fornece o conteúdo de layout aceito pelo fluxo.
+2. Seleciona um documento `.txt`, `.mq_series` ou `.idoc` de até **25 MiB**.
+3. O front envia o formulário para `POST /api/parse/upload`, com progresso e opção de cancelar.
+4. A API .NET identifica e processa a estrutura do documento.
+5. O front apresenta campos, posições, linhas, validações e a árvore estrutural retornada.
+6. Quando há mapeador disponível, o usuário solicita candidatos de transformação, incluindo os
+   caminhos Sysmiddle e TCL/XSL disponibilizados pelo back-end.
+7. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
 
-- recebe o **TXT** e o **layout** do usuário (upload), ou seleciona um layout do catálogo;
-- envia para a API (`POST /api/parse/upload`);
-- exibe o **mapeamento** retornado: resumo do documento, campos, propriedades de linha,
-  **árvore de estrutura** e **destaque de linhas inválidas (vermelho)**;
-- quando existe mapeador, solicita à API os candidatos de transformação, permite alternar
-  entre os pathways **Sysmiddle** e **TCL/XSL** e entrega o XML bruto por **cópia ou download**;
-- tem uma área **Admin** com quatro abas: processamento, monitoramento, validação de layouts
-  e **métricas de IA** (esta última consome endpoints que **ainda não existem no back-end** —
-  ver [seção 8](#8-contrato-com-a-api-endpoints-consumidos)).
+O navegador não executa parsing posicional nem transformação XSLT. O front valida apenas o
+arquivo para dar feedback imediato; a validação autoritativa e as regras de negócio pertencem
+ao gateway e à API.
 
-## 2. Ecossistema de projetos
+A rota `/admin` consulta a sessão do gateway e exige autorização administrativa. A proteção no
+React melhora a experiência, mas não substitui a autorização aplicada no servidor.
 
-O LayoutParser é dividido em 4 repositórios. **A API é o hub / fonte da verdade.**
+## Arquitetura e ecossistema
 
-| Repo                           | Papel                                                                                             |
-| ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **LayoutParserApi**            | API ASP.NET Core (.NET 10). Orquestra parse, cache (Redis), IA e transformação. Fonte da verdade. |
-| **LayoutParserLib**            | Criptografia Sysmiddle (DLL referenciada pela API).                                               |
-| **LayoutParserDecrypt**        | `.exe` de descriptografia (processo externo chamado pela API).                                    |
-| **LayoutParserReact** _(este)_ | Front-end Vite + React.                                                                           |
-
-```
-┌──────────────────┐   HTTP (axios)   ┌──────────────────┐   DLL / .exe   ┌────────────────────┐
-│ LayoutParserReact │ ───────────────► │  LayoutParserApi  │ ─────────────► │ Lib / Decrypt      │
-│  (este repo)      │   X-Correlation  │  (.NET 10, hub)   │                │ (cripto Sysmiddle) │
-└──────────────────┘                  └──────────────────┘                └────────────────────┘
-                                              │ Redis / SQL / Ollama
-                                              ▼
+```text
+Navegador
+  │ HTTPS, mesma origem: /api
+  ▼
+IIS — arquivos estáticos do React + autenticação integrada + URL Rewrite/ARR
+  │ trusted header, somente pela fronteira confiável
+  ▼
+Gateway Node.js/Fastify — server/ — loopback
+  │ autenticação, autorização, limites, rate limit, correlação e proxy
+  ▼
+LayoutParserApi — ASP.NET Core/.NET — hub e fonte da verdade
+  ├── LayoutParserLib — criptografia Sysmiddle
+  ├── LayoutParserDecrypt — descriptografia externa
+  └── serviços de cache, persistência, IA e transformação
 ```
 
-## 3. Stack
+O ecossistema é dividido em quatro projetos:
 
-| Camada    | Tecnologia                                                           |
-| --------- | -------------------------------------------------------------------- |
-| Build/dev | **Vite 7** (`type: module`)                                          |
-| UI        | **React 18** + **react-router-dom 6.30** (`createBrowserRouter`)     |
-| Linguagem | **TypeScript 5** (strict, `noUnusedLocals`/`noUnusedParameters`)     |
-| Estado    | **Zustand 4.4** (8 stores)                                           |
-| HTTP      | **Axios 1.19** (instância única + interceptor de `X-Correlation-ID`) |
-| Qualidade | **ESLint 8** + **Prettier 3** + **Vitest 4** + **Testing Library**   |
-| Aliases   | `@/*` → `src/*` (vite + tsconfig)                                    |
+| Projeto                 | Responsabilidade                                                                |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| **LayoutParserReact**   | Este repositório: interface React e gateway Node/Fastify.                       |
+| **LayoutParserApi**     | API .NET que orquestra parsing, validação, catálogo, cache, IA e transformação. |
+| **LayoutParserLib**     | Biblioteca usada na integração com criptografia Sysmiddle.                      |
+| **LayoutParserDecrypt** | Processo auxiliar de descriptografia.                                           |
 
-Os gates automatizados cobrem lint, tipos, testes com cobertura, três builds, formatação e
-auditoria de dependências altas/críticas. O mesmo comando é executado nos pull requests e
-antes dos deploys.
+O gateway é um **BFF** (Backend for Frontend): ele não duplica o parser da API. Sua função é
+criar uma fronteira web segura e estável entre o navegador e os serviços internos.
 
-## 4. Como rodar
+## Tecnologias
 
-Pré-requisitos: **Node 20.19+** (ou **22.12+**) e a **API rodando**. Em `npm run dev`, o front chama a URL
-definida em [`.env.development`](.env.development) — hoje `http://localhost:5100`
-(atenção: divergente do fallback do código; ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)).
+| Camada              | Tecnologia atual                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| Front-end           | React 18, React Router 7, Zustand 4 e Axios                                        |
+| Build               | Vite 7 e TypeScript em modo estrito                                                |
+| Gateway             | Node.js 20+, Fastify 5 e TypeScript                                                |
+| Testes do front     | Vitest, Testing Library, MSW e cobertura V8                                        |
+| Testes de navegador | Playwright, com Chromium desktop e perfil móvel                                    |
+| Segurança           | Helmet, rate limit, CSP/IIS, auditoria npm e validação de artefatos                |
+| CI                  | GitHub Actions com actions fixadas por SHA, CodeQL, Dependabot e dependency review |
 
-```bash
+As versões efetivamente instaladas e seus intervalos estão em [`package.json`](package.json) e
+[`server/package.json`](server/package.json).
+
+## Segurança
+
+As principais proteções existentes nesta branch são:
+
+- **Mesma origem:** por padrão, o Axios usa caminhos relativos. O navegador acessa `/api` sem
+  conhecer host ou porta internos e sem depender de CORS em produção.
+- **Upload em camadas:** o front rejeita arquivo vazio, extensão não permitida, nome excessivo
+  e documento acima de 25 MiB. O gateway limita o documento a 25 MiB e a requisição multipart
+  completa a 32 MiB; a API deve manter sua própria validação autoritativa.
+- **Autenticação integrada:** em produção, o gateway aceita identidade somente por trusted
+  header vindo de um endereço de proxy explicitamente permitido. Não há usuário, senha, token
+  ou administrador padrão.
+- **Autorização administrativa:** usuários e/ou grupos precisam estar nas allowlists do
+  gateway para acessar os caminhos administrativos protegidos.
+- **Restrição de rede:** o gateway usa loopback por padrão e recusa bind externo em produção.
+- **Abuso e rastreabilidade:** rate limit por identidade/IP e `X-Correlation-ID` ponta a ponta.
+- **Privacidade de logs:** payloads, headers sensíveis e conteúdo TXT/XML são omitidos ou
+  redigidos; erros enviados ao cliente não expõem detalhes internos.
+- **Headers defensivos:** Helmet no gateway e CSP, HSTS, `nosniff`, política de referência,
+  permissões e isolamento de origem no IIS.
+- **Build de produção:** source maps não são publicados e há uma checagem contra endereços
+  internos gravados no bundle.
+
+O limite do front é configurável entre 1 e 100 MiB para experiências locais, mas aumentar
+`VITE_MAX_UPLOAD_MB` não aumenta os limites autoritativos do gateway ou da API.
+
+## Desenvolvimento local
+
+### Pré-requisitos
+
+- Node.js **20.19+** ou **22.12+**;
+- npm compatível com os lockfiles;
+- `LayoutParserApi` disponível em ambiente local;
+- Chromium do Playwright, apenas para executar os testes E2E.
+
+### 1. Instalar as dependências
+
+O front e o gateway são projetos Node separados e possuem lockfiles próprios:
+
+```powershell
 npm ci
-npm run dev          # front em http://localhost:3000
+npm ci --prefix server
 ```
 
-## 5. Scripts
+### 2. Configurar o gateway
 
-| Script                               | O que faz                                                                                                                                                                          |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                        | Vite dev server na porta **3000** (o proxy `/api` existe no config, mas hoje não é o caminho usado — ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)). |
-| `npm run build`                      | `tsc` (type-check) **e** `vite build` → `dist/` (modo `production` por padrão).                                                                                                    |
-| `npm run build:prod`                 | `vite build --mode production` (sem o `tsc` prévio).                                                                                                                               |
-| `npm run preview`                    | Serve o `dist/` localmente.                                                                                                                                                        |
-| `npm run lint`                       | ESLint (`--max-warnings 0`).                                                                                                                                                       |
-| `npm run typecheck`                  | TypeScript estrito sem gerar arquivos.                                                                                                                                             |
-| `npm run test:run` / `test:coverage` | Executa a suite Vitest uma vez, com ou sem relatório de cobertura.                                                                                                                 |
-| `npm run audit`                      | Bloqueia vulnerabilidades de severidade alta ou crítica.                                                                                                                           |
-| `npm run quality`                    | Gate completo: lint, tipos, testes/cobertura, builds, formatação e auditoria.                                                                                                      |
-| `npm run format` / `format:check`    | Prettier write / check.                                                                                                                                                            |
-
-## 6. Configuração da API (base URL, variáveis de ambiente & proxy)
-
-A base URL do axios é resolvida uma única vez em
-[`src/services/api.ts`](src/services/api.ts) (`getApiBaseUrl`):
-
-1. **`VITE_API_BASE_URL`**, se definida — **vence sempre**; senão
-2. **fallback por hostname:** `172.25.32.42` → `http://172.25.32.42:5000`;
-   `localhost`/`127.0.0.1` → `http://localhost:5000`; qualquer outro → **mesma origem**
-   (`window.location.origin`).
-
-Este front expõe **uma única variável de ambiente**, tipada em
-[`src/vite-env.d.ts`](src/vite-env.d.ts). Os arquivos `.env` versionados no repo (o Vite
-carrega por modo; `.env.local` e `.env.*.local` estão no `.gitignore`):
-
-| Arquivo                                | Carregado em                                              | Valor de `VITE_API_BASE_URL` |
-| -------------------------------------- | --------------------------------------------------------- | ---------------------------- |
-| [`.env.example`](.env.example)         | **nunca** — é o modelo para copiar em `.env`/`.env.local` | `http://localhost:5000`      |
-| [`.env.development`](.env.development) | `npm run dev` e builds `--mode development`               | `http://localhost:5100`      |
-| [`.env.production`](.env.production)   | `npm run build` e `npm run build:prod`                    | `http://172.25.32.42:5000`   |
-
-> **Consequência prática do item 1:** como `.env.development` **define** a variável, no
-> `npm run dev` o axios chama a API por **URL absoluta** — ou seja, o **proxy `/api` do Vite
-> não é exercitado** nesse caminho. O proxy segue configurado em
-> [`vite.config.ts`](vite.config.ts) apontando para `http://172.25.32.42:5000`.
-
-> ⚠️ **Inconsistência conhecida (documentada, não resolvida):** há **três** destinos de API
-> circulando no repo — `.env.development` (`localhost:5100`), o fallback de `api.ts`
-> (`localhost:5000`) e o proxy do Vite / `.env.production` (`172.25.32.42:5000`). Definir a
-> porta canônica de dev e externalizar o IP de produção são pendências em aberto
-> (ver [roadmap](#roadmap-de-documentação--qualidade)).
-
-**CORS:** a API .NET (repo separado) precisa liberar a origin deste front — `http://localhost:3000`
-no `npm run dev` e `http://localhost:8081` quando o build estático é servido pelo IIS em dev.
-Detalhes nos comentários de [`.env.example`](.env.example).
-
-Todas as chamadas carregam o header **`X-Correlation-ID`**, gerado no front
-([`src/utils/correlation.ts`](src/utils/correlation.ts)) e injetado por um interceptor do
-`apiClient`, para rastreio ponta a ponta.
-
-## 7. Arquitetura do front
-
-```
-src/
-├── main.tsx                 # bootstrap: RouterProvider
-├── routes.tsx               # rotas: / (→ /upload), /upload, /analysis, /admin
-├── vite-env.d.ts            # tipagem de import.meta.env (VITE_API_BASE_URL)
-├── layouts/MainLayout.tsx   # shell: <Outlet/> + guarda (/analysis sem parse volta p/ /upload)
-├── components/
-│   ├── upload/              # LayoutCombobox, ParseErrorBanner
-│   ├── analysis/            # AnalysisModeTabs, DocumentSummary, StructureTree, FieldDisplay,
-│   │                        # FieldSearch, FieldProperties, LineProperties,
-│   │                        # XmlTransformationDisplay
-│   ├── admin/               # AdminPage (4 abas), MonitoringTab, LayoutValidationTab
-│   ├── aiMetrics/           # AiMetricsPanel (aba "Métricas IA" do Admin)
-│   ├── layout/              # LayoutParserPage — página em "L" (upload + análise); usada
-│   │                        # pelas rotas /upload e /analysis e pela aba Processamento
-│   └── shared/              # Button, Modal, Tabs
-├── store/                   # Zustand (ver tabela abaixo)
-├── services/
-│   ├── api.ts               # apiClient (axios) + parseService + base URL + ParseRequestError
-│   ├── api/layoutService.ts          # catálogo de layouts + refresh de cache
-│   ├── api/transformationService.ts  # disponibilidade de mapper e candidatos de transformação
-│   ├── api/xmlAnalysisService.ts     # diagnóstico de falha de validação via IA
-│   ├── api/monitoringService.ts      # análise/validação de layouts (Admin)
-│   ├── api/aiMetricsService.ts       # métricas de IA (Admin) — back-end ainda não implementou
-│   ├── api/logService.ts             # envia logs do front p/ a API (fire-and-forget)
-│   └── cache/layoutCache.ts          # cache de layouts em localStorage (TTL 1h)
-├── types/                   # api.ts, layout.ts, field.ts, structure.ts,
-│                            # transformation.ts, aiMetrics.ts, clientLog.ts
-└── utils/                   # correlation.ts, layoutGuid.ts, treeBuilder.ts
+```powershell
+Copy-Item server/.env.example server/.env
 ```
 
-> **Nota de estado real:** `shared/Button`, `shared/Modal`, `analysis/FieldProperties` e
-> `analysis/LineProperties` existem no repo mas **não são importados por nenhum componente
-> hoje** — estão listados por honestidade, não como parte do fluxo ativo. `shared/Tabs` é
-> usado por `AnalysisModeTabs`.
+No arquivo local `server/.env`, ajuste `LAYOUTPARSER_API_URL` para a origem da API .NET. O
+arquivo é ignorado pelo Git e não deve conter segredos versionados.
 
-**Stores Zustand:**
+### 3. Fazer o Vite encaminhar `/api` ao gateway
 
-| Store                    | Responsabilidade                                                                                                                               |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useAppStore`            | Upload (progresso, `uploadError` de validação local e `parseError` já classificado) + `parseResult`, `fields`, `txtContent`, `selectedLayout`. |
-| `useLayoutStore`         | Catálogo de layouts: lista completa, lista filtrada, índice selecionado e estado de busca.                                                     |
-| `useFieldStore`          | Campos e grupos de campos, campo selecionado e destaques.                                                                                      |
-| `useStructureStore`      | Árvore de estrutura: nós, expansão/colapso e nó selecionado.                                                                                   |
-| `usePropertiesStore`     | Painel de propriedades (campo **ou** linha selecionada).                                                                                       |
-| `useSearchStore`         | Busca de campos: resultados e navegação entre ocorrências.                                                                                     |
-| `useTransformationStore` | Modo de análise ativo, disponibilidade de mapper, candidatos de transformação e diagnóstico de IA.                                             |
-| `useAiMetricsStore`      | Métricas de IA do Admin (resumo + gerações). Enquanto o back-end não implementar os endpoints, estado de erro é o **esperado**.                |
+O arquivo versionado [`.env.development`](.env.development) já configura o gateway e uma
+identidade fictícia de demonstração. Para sobrescrever localmente, crie `.env.local`:
 
-**Convenções:** um componente por pasta com seu `.css` ao lado (`Foo.tsx` + `Foo.css`);
-imports via alias `@/`; tipos em `src/types`; chamadas HTTP só na camada `services`.
-
-## 8. Contrato com a API (endpoints consumidos)
-
-| Método | Endpoint                                               | Origem no front                                         | Retorno                                                                                                                         |
-| ------ | ------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/api/parse/upload`                                    | `parseService.parseFiles`                               | `ParseResponse` (campos, `lineValidations`, `documentStructure`, `validationErrors`)                                            |
-| `GET`  | `/api/layoutdatabase/mqseries-nfe`                     | `layoutService.searchLayouts`                           | `LayoutSearchResponse`                                                                                                          |
-| `POST` | `/api/layoutdatabase/refresh-cache`                    | `layoutService.refreshCache`                            | `{ success, message? }`                                                                                                         |
-| `GET`  | `/api/mapperdatabase/by-input/{layoutGuid}`            | `transformationService.checkMapperAvailability`         | Disponibilidade do mapeador                                                                                                     |
-| `POST` | `/api/transformationexecution/execute-candidates`      | `transformationService.executeTransformationCandidates` | Candidatos com o XML transformado                                                                                               |
-| `POST` | `/api/transformationexecution/execute`                 | `transformationService.executeTransformation`           | Transformação de candidato único — **existe no service, mas nenhum componente o chama hoje**                                    |
-| `POST` | `/api/xml-analysis/diagnose-validation-error`          | `xmlAnalysisService.diagnoseValidationError`            | Diagnóstico de falha via IA/Ollama                                                                                              |
-| `GET`  | `/api/monitoring/layouts-analysis`                     | `monitoringService.getLayoutsAnalysis`                  | `MonitoringResponse`                                                                                                            |
-| `GET`  | `/api/monitoring/layout-validations?forceRevalidation` | `monitoringService.getLayoutValidations`                | `LayoutValidationsResponse`                                                                                                     |
-| `POST` | `/api/logs/client`                                     | `logService.info/warn/error`                            | Logs do front. _Fire-and-forget_: falha é engolida para não derrubar o fluxo. **Contrato ainda não confirmado com o back-end.** |
-| `GET`  | `/api/ai-metrics/summary`                              | `aiMetricsService.getSummary`                           | `AiMetricsSummary` — **endpoint ainda não implementado no back-end**                                                            |
-| `GET`  | `/api/ai-metrics/generations`                          | `aiMetricsService.getGenerations`                       | `AiGenerationsResponse` — **endpoint ainda não implementado no back-end**                                                       |
-
-`POST /api/parse/upload` usa **`multipart/form-data`** com os campos: `layoutFile` (File),
-`txtFile` (File), e os opcionais `layoutName`, `layoutType`, `layoutConfig` (JSON). Os
-contratos completos estão em [`src/types/api.ts`](src/types/api.ts).
-
-**Conteúdo do layout (`decryptedContent` × `valueContent`):** a interface `Layout`
-([`src/types/layout.ts`](src/types/layout.ts)) declara os dois campos porque a API devolve o
-**mesmo conteúdo** sob nomes diferentes conforme a resposta do catálogo. O consumo real em
-[`src/components/layout/LayoutParserPage.tsx:131`](src/components/layout/LayoutParserPage.tsx)
-tenta `decryptedContent` primeiro e **cai em `valueContent`**; se nenhum dos dois vier, o
-layout completo é rebuscado na API. Um `layoutGuid` "zerado" no catálogo é tratado à parte por
-[`src/utils/layoutGuid.ts`](src/utils/layoutGuid.ts) — o GUID vindo do parse tem prioridade
-sobre o do catálogo.
-
-**Falhas de parse** são classificadas em `ParseRequestError` (`parse_error` para HTTP 422,
-`server_error` para os demais status, `network_error` quando não houve resposta), preservando
-`detectedType` e `X-Correlation-ID` para exibição em `ParseErrorBanner`.
-
-Na transformação multi-candidato, o front envia `inputContent`, `layoutName` e o
-`layoutGuid` devolvido pelo parse (com fallback para o catálogo). Também envia strings vazias
-nos campos de tipo/saída não aplicáveis, pois o model binding da API os exige. A rota sem hífen
-foi validada em runtime contra a API local; `/api/transformation-execution/...` retorna `404`.
-O XML exportado é sempre o conteúdo bruto retornado pela API — a indentação existe apenas para
-leitura em tela.
-
-## 9. Fluxo do usuário
-
-`/upload` e `/analysis` renderizam **a mesma página** (`LayoutParserPage`, layout em "L"):
-upload à esquerda, resultado à direita. `/analysis` é apenas um estado — sem `parseResult`
-bem-sucedido, `MainLayout` redireciona de volta para `/upload`.
-
-```
-/upload  ─ escolhe layout no catálogo (LayoutCombobox, cache localStorage 1h)
-         ─ anexa o TXT → parseService.parseFiles() → ParseResponse → useAppStore
-         └ falha? ParseErrorBanner (422 = documento x 5xx = servidor x rede)
-
-mesma página, após o parse:
-         ─ DocumentSummary (resumo do documento)
-         ─ AnalysisModeTabs
-             ├ "TXT Posicional"          → StructureTree (treeBuilder) + FieldDisplay
-             │                             linhas inválidas destacadas em vermelho
-             └ "XML Transformação Final" → só existe se houver Mapper para o layoutGuid
-                                           gerar candidatos → escolher → copiar/baixar XML
-                                           falhou a validação? → diagnóstico via IA
-
-/admin   ─ Processamento (a mesma LayoutParserPage)
-         ─ Monitoramento (MonitoringTab)
-         ─ Validação de Layouts (LayoutValidationTab — erros de tamanho de linha)
-         └ Métricas IA (AiMetricsPanel — back-end ainda não implementado)
+```dotenv
+VITE_API_BASE_URL=
+VITE_DEV_BFF_PROXY_TARGET=http://127.0.0.1:3100
+VITE_DEV_BFF_USER=layoutparser.local
+VITE_DEV_BFF_ROLES=LayoutParserAdmins
+VITE_MAX_UPLOAD_MB=25
 ```
 
-## 10. Deploy
+Manter `VITE_API_BASE_URL` vazio ativa o fluxo recomendado de mesma origem:
 
-`npm run build` gera `dist/`. Há artefatos para múltiplos hosts (todos com fallback SPA):
+```text
+React :3000 -> proxy /api do Vite -> gateway :3100 -> API .NET
+```
 
-- **IIS:** [`public/web.config`](public/web.config) (copiado para `dist/` no build).
-- **Apache:** [`.htaccess`](.htaccess).
-- **Static hosts (Netlify-like):** [`public/_redirects`](public/_redirects).
-- **CI de pull request:** [`.github/workflows/quality.yml`](.github/workflows/quality.yml) — executa todos os gates em runner GitHub hospedado.
-- **CI/deploy:** [`.github/workflows/ci-dev.yml`](.github/workflows/ci-dev.yml) e [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — um deploy só começa depois de todos os gates passarem; gestão é do `@lp-devops`.
+Uma URL absoluta em `VITE_API_BASE_URL` existe somente como override de diagnóstico e pula o
+gateway. Evite esse modo nos fluxos que precisam validar autenticação e segurança do BFF.
 
-## 11. Harness de IA (Claude Code)
+### 4. Iniciar os processos
 
-Este repo tem um harness enxuto em [`.claude/`](.claude/) — agentes, regras, comandos e a
-conexão com o **MCP Server** da API. Comece por [`.claude/CLAUDE.md`](.claude/CLAUDE.md) e
-[`.claude/README.md`](.claude/README.md).
+```powershell
+npm run dev
+```
 
-## 12. Contexto acadêmico
+O comando inicia Vite e BFF juntos. Para depuração em terminais separados, use
+`npm run dev:front` e `npm run dev:bff`.
 
-Este front é base para um **trabalho de faculdade** (sistema web com back e front separados,
-framework de lab e regras de negócio complexas). Veja a análise de aderência ao enunciado em
-[`.claude/README.md`](.claude/README.md#aderência-ao-trabalho-da-faculdade).
+Abra `http://localhost:3000`. A saúde local do gateway pode ser consultada em
+`http://127.0.0.1:3100/health`.
 
-### Roadmap de documentação & qualidade
+O proxy do Vite injeta somente em desenvolvimento a identidade fictícia declarada no `.env`.
+Ela não é uma credencial, não é aceita em produção e existe para tornar o fluxo acadêmico local
+reproduzível. O BFF continua recusando requests anônimos e proíbe esse mecanismo quando
+`NODE_ENV=production`. Consulte [`server/README.md`](server/README.md) para o modelo completo.
 
-- [x] Suite inicial de testes (Vitest + React Testing Library), cobertura e gate unificado.
-- [ ] Migrar React Router 6 para 7; a mudança é incompatível e elimina os dois avisos
-      moderados restantes de `npm audit`, por isso deve ser tratada em PR próprio.
-- [ ] Externalizar a base URL de produção (hoje há IP hardcoded em `api.ts`/`vite.config.ts`).
-- [ ] Unificar o destino da API em dev — hoje `.env.development` (`:5100`), fallback de
-      `api.ts` (`:5000`) e proxy do Vite (`172.25.32.42:5000`) discordam entre si
-      (ver [seção 6](#6-configuração-da-api-base-url-variáveis-de-ambiente--proxy)).
-- [x] `.env.example` documentando `VITE_API_BASE_URL` (e a origin que a API precisa liberar via CORS).
-- [ ] Diagrama de componentes da árvore de estrutura.
+As variáveis do front estão documentadas em [`.env.example`](.env.example); as do gateway, em
+[`server/.env.example`](server/.env.example).
+
+## Configuração do gateway
+
+As variáveis mais importantes são:
+
+| Variável                              | Finalidade                                | Padrão de desenvolvimento |
+| ------------------------------------- | ----------------------------------------- | ------------------------- |
+| `BFF_HOST` / `BFF_PORT`               | Bind local do Fastify                     | `127.0.0.1` / `3100`      |
+| `LAYOUTPARSER_API_URL`                | Origem da API .NET                        | loopback local            |
+| `BFF_REQUEST_LIMIT_MIB`               | Limite da requisição multipart completa   | `32`                      |
+| `BFF_DOCUMENT_LIMIT_MIB`              | Limite cumulativo do campo `txtFile`      | `25`                      |
+| `BFF_RATE_LIMIT_MAX`                  | Máximo por janela                         | `120`                     |
+| `BFF_TRUSTED_PROXY_IPS`               | Proxies autorizados a declarar identidade | obrigatório em produção   |
+| `BFF_TRUSTED_USER_HEADER`             | Header de usuário inserido pelo IIS       | obrigatório em produção   |
+| `BFF_TRUSTED_ROLES_HEADER`            | Header opcional de grupos/funções         | configurável              |
+| `BFF_ADMIN_USERS` / `BFF_ADMIN_ROLES` | Allowlists administrativas                | ao menos uma em produção  |
+| `BFF_DEV_AUTH_ENABLED`                | Habilita identidade simulada local        | proibido em produção      |
+
+Rotas próprias do gateway:
+
+| Método e rota      | Finalidade                                                                 |
+| ------------------ | -------------------------------------------------------------------------- |
+| `GET /health`      | Liveness local, sem revelar nem consultar o upstream.                      |
+| `GET /api/session` | Sessão normalizada para o front: autenticação, usuário, roles e `isAdmin`. |
+| `/api/*`           | Proxy transparente para a API .NET, após os controles do gateway.          |
+
+Os caminhos administrativos protegidos e todos os detalhes de fail-fast estão em
+[`server/README.md`](server/README.md).
+
+## Produção com IIS
+
+O desenho de produção esperado é:
+
+1. Publicar o conteúdo de `dist/` em um site **HTTPS** no IIS.
+2. Instalar e habilitar URL Rewrite e ARR com proxy.
+3. Executar o gateway compilado como processo/serviço Node separado, escutando somente em
+   loopback.
+4. Fazer o IIS encaminhar `/api/*` ao gateway.
+5. Habilitar a autenticação integrada adequada ao ambiente.
+6. Remover qualquer header de identidade recebido do navegador e inserir um novo valor a partir
+   da identidade já validada pelo IIS.
+7. Configurar no gateway o mesmo nome de header usado pelo IIS, os IPs confiáveis e a allowlist
+   administrativa.
+8. Manter a API .NET inacessível diretamente pelo navegador e protegida também em profundidade.
+
+O arquivo [`public/web.config`](public/web.config) é copiado para o build e já contém
+autenticação Windows, regra same-origin, limite total de 32 MiB e headers
+defensivos. A regra sobrescreve `X-IIS-User` com `{AUTH_USER}`; o BFF aceita esse header somente
+do proxy configurado. A administração pode ser controlada pela allowlist de usuários ou por uma
+regra equivalente de roles.
+
+```powershell
+npm ci
+npm ci --prefix server
+npm run quality
+```
+
+O workflow [`deploy.yml`](.github/workflows/deploy.yml) executa os gates, cria uma release
+versionada, publica o React, instala as dependências de produção do BFF, registra/reinicia seu
+processo em uma Scheduled Task do Windows, faz smoke tests e mantém rollback para a release
+anterior. O script [Deploy-Iis.ps1](scripts/Deploy-Iis.ps1) exige que o site IIS e seu binding
+HTTPS já existam e falha se URL Rewrite, ARR, allowlists ou variáveis obrigatórias estiverem
+ausentes. Configure `PUBLIC_HOST` em produção e `PUBLIC_HOST_DEV` em desenvolvimento com o
+hostname DNS coberto pelo certificado, sem protocolo ou porta; esse valor também é usado no
+smoke test HTTPS. Os environments `development` e `production` devem exigir aprovação e isolar
+seus secrets/runners.
+
+Nunca publique o front com `VITE_API_BASE_URL` apontando para uma origem interna. O build de
+produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma origem HTTPS.
+
+## Qualidade, testes e contrato
+
+### Front-end
+
+| Comando                  | Verificação                                             |
+| ------------------------ | ------------------------------------------------------- |
+| `npm run lint`           | ESLint, acessibilidade estática e zero warnings.        |
+| `npm run typecheck`      | TypeScript estrito sem emitir arquivos.                 |
+| `npm run test:run`       | Testes unitários e de integração do front.              |
+| `npm run test:coverage`  | Vitest com cobertura V8.                                |
+| `npm run build`          | Type-check e build Vite.                                |
+| `npm run build:dev`      | Build no modo development.                              |
+| `npm run build:prod`     | Build no modo production.                               |
+| `npm run format:check`   | Prettier nos arquivos do front.                         |
+| `npm run test:e2e`       | Fluxo Playwright em desktop e mobile.                   |
+| `npm run contract:check` | Contrato local e OpenAPI opcional.                      |
+| `npm run audit`          | Auditoria npm, bloqueando severidade moderada ou maior. |
+| `npm run quality`        | Gate agregado do front, BFF, artefatos e contrato.      |
+
+### Gateway Node
+
+```powershell
+npm run quality --prefix server
+```
+
+O gate próprio executa tipos, testes com cobertura, build e auditoria. A suíte cobre configuração
+fail-fast, sessão, trusted headers, allowlist administrativa, proxy, correlação, rate limit,
+limites de payload e privacidade dos logs.
+
+### E2E com Playwright
+
+```powershell
+npx playwright install chromium
+npm run typecheck:e2e
+npm run test:e2e
+```
+
+A suíte em [`e2e/`](e2e/) valida o fluxo TXT → transformação → download XML e a restrição da
+área administrativa em perfis desktop e móvel. As APIs são mockadas no navegador para tornar o
+teste determinístico; isso não substitui um teste de integração contra o gateway e a API reais.
+
+### Contrato da API
+
+```powershell
+npm run contract:check
+```
+
+O script cruza os endpoints usados pelos services com
+[`contracts/api-endpoints.json`](contracts/api-endpoints.json). Opcionalmente,
+`LAYOUTPARSER_OPENAPI_URL` permite comparar o manifesto com um OpenAPI acessível:
+
+```powershell
+$env:LAYOUTPARSER_OPENAPI_URL = 'https://api-de-teste.exemplo/openapi.json'
+node scripts/check-api-contract.mjs
+```
+
+Para conferir o artefato final:
+
+```powershell
+npm run build:prod
+npm run artifacts:validate
+```
+
+Essa checagem reprova source maps e referências internas indevidas no bundle e confirma os
+fragmentos de segurança esperados no `web.config`.
+
+Playwright roda em job próprio do workflow de qualidade. Os demais gates fazem parte de
+`npm run quality`, inclusive o BFF e a auditoria de ambos os lockfiles.
+
+Os workflows de qualidade e segurança estão em [`.github/workflows/`](.github/workflows/).
+
+## Estrutura do repositório
+
+```text
+LayoutParserReact/
+├── src/
+│   ├── components/       # upload, análise, XML, admin, autenticação e componentes compartilhados
+│   ├── layouts/          # shell e navegação
+│   ├── services/         # única camada que chama /api
+│   ├── store/            # estado Zustand por domínio
+│   ├── types/            # contratos TypeScript
+│   └── utils/            # correlação, validações, árvore, cache e sanitização
+├── server/               # BFF Node.js/Fastify independente
+├── e2e/                  # cenários Playwright
+├── contracts/            # manifesto versionado de endpoints
+├── scripts/              # validações de contrato e artefatos
+├── public/               # arquivos públicos e configuração IIS
+├── .claude/              # harness Claude Code: agentes, comandos, regras, hooks e memória
+├── .codex/               # definições de agentes do Codex
+└── .github/               # CI, segurança, ownership e atualização de dependências
+```
+
+Chamadas HTTP devem permanecer em `src/services`; payloads da API devem possuir tipos em
+[`src/types/`](src/types/). O contrato principal do parse está em
+[`src/types/api.ts`](src/types/api.ts).
+
+## Harness de IA, agentes e MCP
+
+O repositório possui um harness inspirado no AIOX, adaptado ao front e ao gateway:
+
+| Agente            | Papel                                               |
+| ----------------- | --------------------------------------------------- |
+| `@lp-front-dev`   | React, TypeScript, stores, services e rotas.        |
+| `@lp-ui-ux`       | UX, componentes, CSS e acessibilidade.              |
+| `@lp-qa`          | Gates, testes, cobertura e validação de fluxo.      |
+| `@lp-security`    | Revisão read-only de segurança e supply chain.      |
+| `@lp-contract-qa` | Revisão read-only do contrato front ↔ API.          |
+| `@lp-doc`         | Documentação PT-BR com resumo EN quando necessário. |
+| `@lp-devops`      | CI, deploy, push e integração MCP.                  |
+
+As regras operacionais estão em [`AGENTS.md`](AGENTS.md), e a visão do harness Claude em
+[`.claude/README.md`](.claude/README.md). O harness inclui comandos de revisão de segurança e
+sincronização de contrato, hooks de feedback rápido/proteção de caminhos sensíveis e memória por
+agente.
+
+O MCP **não é implementado neste front**. O servidor MCP pertence ao `LayoutParserApi`, pois a
+API é o hub e a fonte da verdade. Este repositório fornece apenas
+[`.mcp.json.example`](.mcp.json.example) para conectar o ambiente de IA ao MCP da API; copie para
+`.mcp.json`, ajuste o caminho local da DLL e não versione a configuração resultante. A autoridade
+e as regras estão em [`.claude/rules/mcp-usage.md`](.claude/rules/mcp-usage.md).
+
+## Avaliação para o trabalho acadêmico
+
+Requisito informado:
+
+> Desenvolver um sistema web com Node como base, front e back separados, usando um framework
+> trabalhado em laboratório, com regras complexas de negócio, código em Git e apresentação para
+> a turma.
+
+### Veredito: atende com ressalva
+
+| Critério                       | Estado atual                                                                    | Como demonstrar                                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Sistema web                    | **Atende**                                                                      | Fluxo completo no navegador, do upload ao XML.                                                                  |
+| Node como base                 | **Atende**                                                                      | O repositório tem toolchain Node e um backend Node/Fastify executável em `server/`.                             |
+| Front e back separados         | **Atende**                                                                      | React em `src/`; BFF Node em `server/`; API de domínio em projeto .NET separado.                                |
+| Framework de front             | **Atende**, se React/Vite estiver entre os frameworks permitidos no laboratório | Mostrar componentes, rotas, estado e services.                                                                  |
+| Regras complexas               | **Atende no sistema**, mas principalmente na API .NET                           | Parsing posicional, layout, validações e transformação são regras reais, porém não estão implementadas em Node. |
+| Repositório Git e apresentação | **Atende quando publicado/apresentado**                                         | Usar histórico, CI e demonstração ponta a ponta.                                                                |
+
+A ressalva é importante: o gateway Node contém controles relevantes — autenticação, autorização,
+limites multipart por streaming, rate limit e proxy seguro —, mas eles são predominantemente
+regras de infraestrutura. As regras complexas de **domínio** continuam concentradas no projeto
+.NET.
+
+Na apresentação, descreva o projeto como uma arquitetura web poliglota:
+
+1. **React** resolve interface, navegação, acessibilidade e estado.
+2. **Node/Fastify** cumpre o papel de backend web/BFF e fronteira de segurança.
+3. **.NET** concentra o domínio especializado de parsing e transformação.
+4. O usuário percorre as três camadas em uma demonstração única: upload, mapeamento, geração e
+   download do XML.
+
+Se a interpretação do professor for “as regras complexas precisam estar implementadas
+especificamente no backend Node”, o projeto ainda não atende integralmente esse ponto. Para
+eliminar a ambiguidade, seria necessário implementar no gateway Node ao menos uma regra de
+domínio substancial e testável — por exemplo, uma política versionada de pré-validação e seleção
+de estratégia de transformação — sem duplicar nem contradizer a API que continua sendo a fonte
+da verdade.
+
+---
+
+**LayoutParser Web** · Front React + gateway Node/Fastify + domínio .NET

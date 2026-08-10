@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">LayoutParser</title>
+  <rect width="64" height="64" rx="14" fill="#00263c"/>
+  <path d="M17 15h19l11 11v23H17z" fill="#fff" opacity=".96"/>
+  <path d="M36 15v12h11" fill="#d9edf8"/>
+  <path d="M24 34h16M24 40h16" stroke="#0f70ae" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 46h10" stroke="#009e7e" stroke-width="3" stroke-linecap="round"/>
+</svg>

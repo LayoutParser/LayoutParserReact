@@ -12,35 +12,13 @@ import { isParseFailureCause } from '../utils/parseFailure';
 
 // Configuração da API
 //
-// Caminho normal: `.env.development` e `.env.production` sempre definem VITE_API_BASE_URL, então
-// o que vem abaixo dela é apenas rede de segurança para o caso de a variável faltar no build.
+// Em produção, o caminho normal é a mesma origem do front (`/api`). O IIS encaminha esse
+// prefixo ao gateway Node, que aplica autenticação/limites e então fala com a API .NET. Além de
+// eliminar CORS, isso impede que IPs e portas internas sejam gravados no bundle do navegador.
+// Uma URL absoluta continua aceita apenas como override explícito para diagnóstico local.
 const getApiBaseUrl = (): string => {
-  // Usar variável de ambiente se disponível
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (envUrl) {
-    return envUrl;
-  }
-
-  // Em dev sem a variável: baseURL vazia = caminhos relativos (`/api/...`), que caem no proxy
-  // `/api` do servidor do Vite. Antes havia aqui um chute de porta (`http://localhost:5000`) que
-  // era um quarto destino de API divergente do proxy e do `.env.development`; delegar ao proxy
-  // deixa o vite.config.ts como fonte única do destino em desenvolvimento.
-  if (import.meta.env.DEV) {
-    return '';
-  }
-
-  const hostname = window.location.hostname;
-
-  // Servidor de produção. IP hardcoded é dívida conhecida (ver "Pendências conhecidas" em
-  // .claude/rules/frontend-standards.md), mantida de propósito: em produção o front é servido
-  // pelo IIS numa porta diferente da API, então `window.location.origin` (sem porta) apontaria
-  // para o lugar errado se VITE_API_BASE_URL faltasse.
-  if (hostname === '172.25.32.42') {
-    return 'http://172.25.32.42:5000';
-  }
-
-  // Fallback: mesma origem
-  return window.location.origin;
+  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  return envUrl || '';
 };
 
 const API_CONFIG: ApiConfig = {
@@ -128,6 +106,11 @@ export class ParseRequestError extends Error implements ParseErrorInfo {
   }
 }
 
+export interface ParseRequestOptions {
+  signal?: AbortSignal;
+  onUploadProgress?: (percentage: number) => void;
+}
+
 /** Campos que o back-end manda no corpo do 422/500 (ParseController). */
 interface ParseErrorBody {
   success?: boolean;
@@ -151,14 +134,9 @@ const readErrorBody = (data: unknown): ParseErrorBody => {
 
     // `failureCause` é validado contra o conjunto fechado da spec: um valor desconhecido
     // (contrato mudou / typo do back-end) vira `undefined` para a UI cair no fallback por
-    // status HTTP, em vez de sumir com o banner por causa de um `Record` sem a chave. O warn
-    // existe justamente para essa divergência não passar silenciosa.
+    // status HTTP, em vez de sumir com o banner por causa de um `Record` sem a chave.
     const rawCause: unknown = body.failureCause;
     const failureCause = isParseFailureCause(rawCause) ? rawCause : undefined;
-    if (rawCause !== undefined && failureCause === undefined) {
-      console.warn('⚠️ failureCause desconhecido no corpo do erro de parse:', rawCause);
-    }
-
     return {
       detectedType: typeof body.detectedType === 'string' ? body.detectedType : undefined,
       message: typeof body.message === 'string' && body.message.trim() ? body.message : undefined,
@@ -174,7 +152,10 @@ export const parseService = {
   /**
    * Envia arquivos para parsing na API
    */
-  async parseFiles(request: ParseRequest): Promise<ParseResponse> {
+  async parseFiles(
+    request: ParseRequest,
+    options: ParseRequestOptions = {}
+  ): Promise<ParseResponse> {
     const formData = new FormData();
     formData.append('layoutFile', request.layoutFile);
     formData.append('txtFile', request.txtFile);
@@ -192,7 +173,14 @@ export const parseService = {
     }
 
     try {
-      const response = await apiClient.post<ParseResponse>(API_CONFIG.endpoints.parse, formData);
+      const response = await apiClient.post<ParseResponse>(API_CONFIG.endpoints.parse, formData, {
+        signal: options.signal,
+        onUploadProgress: progress => {
+          if (!options.onUploadProgress || !progress.total) return;
+          const percentage = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+          options.onUploadProgress(percentage);
+        },
+      });
 
       return response.data;
     } catch (error) {
@@ -245,11 +233,9 @@ export const parseService = {
         const isServerFault = response.status >= 500;
         throw new ParseRequestError({
           kind: 'server_error',
-          message:
-            body.message ||
-            (isServerFault
-              ? 'O servidor encontrou uma falha ao processar o documento.'
-              : `A API recusou a requisição (HTTP ${response.status}).`),
+          message: isServerFault
+            ? 'O servidor encontrou uma falha ao processar o documento.'
+            : body.message || `A API recusou a requisição (HTTP ${response.status}).`,
           httpStatus: response.status,
           detectedType: body.detectedType,
           correlationId,
