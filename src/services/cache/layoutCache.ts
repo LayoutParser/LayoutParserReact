@@ -39,7 +39,6 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
     }
 
     localStorage.setItem(CACHE_KEY, cacheString);
-    console.log('✅ Layouts salvos no cache do navegador (metadados apenas):', layouts.length);
   } catch (error) {
     console.warn('⚠️ Erro ao salvar layouts no cache:', error);
     // Se o localStorage estiver cheio, limpar cache antigo e tentar novamente
@@ -66,7 +65,6 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(limitedCache));
-        console.log('✅ Cache limpo e salvos apenas 50 primeiros layouts (metadados)');
       } catch (retryError) {
         console.error('❌ Erro ao salvar layouts após limpar cache:', retryError);
         // Se ainda falhar, não salvar cache (não é crítico)
@@ -93,15 +91,10 @@ export const loadLayoutsFromCache = (): Layout[] | null => {
 
     // Verificar se o cache expirou
     if (age > CACHE_DURATION_MS) {
-      console.log('⚠️ Cache expirado, removendo...');
       clearLayoutsCache();
       return null;
     }
 
-    console.log(
-      `✅ Layouts carregados do cache do navegador (${Math.round(age / 1000)}s atrás):`,
-      parsed.layouts.length
-    );
     return parsed.layouts;
   } catch (error) {
     console.warn('⚠️ Erro ao carregar layouts do cache:', error);
@@ -117,7 +110,6 @@ export const clearLayoutsCache = (): void => {
   try {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_TIMESTAMP_KEY);
-    console.log('✅ Cache de layouts limpo');
   } catch (error) {
     console.warn('⚠️ Erro ao limpar cache:', error);
   }

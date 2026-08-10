@@ -5,8 +5,6 @@ import type {
   MapperInfo,
   TransformationCandidatesRequest,
   TransformationCandidatesResponse,
-  TransformationExecutionRequest,
-  TransformationExecutionResponse,
 } from '../../types/transformation';
 
 /**
@@ -51,41 +49,11 @@ export const transformationService = {
   },
 
   /**
-   * Executa a transformação (validação do input + geração do XML final) no back-end.
-   *
-   * Erros de NEGÓCIO (o back-end responde 400 com `{ success: false, errors, warnings }`
-   * quando não consegue transformar, ex.: mapeador sem arquivo gerado) são retornados
-   * normalmente como `TransformationExecutionResponse` — não lançam exception — para o
-   * componente tratar `result.success` sem precisar de try/catch para esse caso.
-   * Falhas de infraestrutura (rede, 5xx sem esse shape) lançam Error, como no resto do app.
-   */
-  async executeTransformation(
-    request: TransformationExecutionRequest
-  ): Promise<TransformationExecutionResponse> {
-    try {
-      const response = await apiClient.post<TransformationExecutionResponse>(
-        '/api/transformationexecution/execute',
-        request
-      );
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const data = error.response?.data;
-        if (data && typeof data === 'object' && data.success === false) {
-          return data as TransformationExecutionResponse;
-        }
-        throw new Error(data?.error || error.message || 'Erro ao executar transformação XML');
-      }
-      throw error;
-    }
-  },
-
-  /**
    * Executa a transformação e devolve TODOS os caminhos possíveis (multi-candidato), em vez
-   * de assumir um único resultado. Ao contrário de `executeTransformation`, esta rota sempre
-   * responde 200 em sucesso — mesmo com `candidates: []` (zero candidatos é estado válido,
-   * não falha), então não há um shape de "falha de negócio" paralelo aqui: qualquer exceção
-   * lançada é infraestrutura (rede, 5xx) e vira `Error`.
+   * de assumir um único resultado. Esta rota sempre responde 200 em sucesso — mesmo com
+   * `candidates: []` (zero candidatos é estado válido, não falha), então não há um shape de
+   * "falha de negócio" paralelo aqui: qualquer exceção lançada é infraestrutura (rede, 5xx)
+   * e vira `Error`.
    */
   async executeTransformationCandidates(
     request: TransformationCandidatesRequest

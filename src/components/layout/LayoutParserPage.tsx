@@ -133,8 +133,6 @@ const LayoutParserPage: React.FC = () => {
 
       // Se não tiver layoutContent, buscar da API
       if (!layoutContent) {
-        console.log('ℹ️ Layout sem decryptedContent, buscando da API...');
-
         try {
           const result = await layoutService.searchLayouts();
           if (result.success && result.layouts) {
@@ -146,7 +144,6 @@ const LayoutParserPage: React.FC = () => {
               layoutContent = fullLayout.decryptedContent || fullLayout.valueContent;
               layoutToUse = fullLayout;
               setSelectedLayout(fullLayout);
-              console.log('✅ Layout completo carregado da API');
             } else {
               throw new Error(
                 'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
@@ -181,17 +178,18 @@ const LayoutParserPage: React.FC = () => {
 
       const result = await parseService.parseFiles(request);
 
-      console.log('✅ Parsing concluído:', result);
-
       setParseResult(result);
       if (result.text) {
         setTxtContent(result.text);
       }
       if (result.fields && result.fields.length > 0) {
-        console.log('✅ Salvando campos no store:', result.fields.length);
         setFields(result.fields);
       } else {
-        console.warn('⚠️ Nenhum campo na resposta ou array vazio');
+        // Anomalia real: 200 sem nenhum campo. Fica só no dev server para não expor
+        // conteúdo do documento do cliente em nenhum artefato buildado.
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ Nenhum campo na resposta ou array vazio');
+        }
         setFields([]);
       }
     } catch (error) {
@@ -214,7 +212,11 @@ const LayoutParserPage: React.FC = () => {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         setUploadError(errorMessage);
       }
-      console.error('❌ Erro no parsing:', error);
+      // O erro já é apresentado ao usuário (parseError/uploadError) e o service carrega o
+      // correlationId; o console fica como apoio de dev, sem despejar o payload em produção.
+      if (import.meta.env.DEV) {
+        console.error('❌ Erro no parsing:', error);
+      }
     } finally {
       setUploading(false);
     }

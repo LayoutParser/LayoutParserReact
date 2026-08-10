@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import type {
   DiagnoseValidationErrorStatus,
   TransformationCandidate,
-  TransformationExecutionResponse,
   ValidationDiagnostic,
 } from '../types/transformation';
 
@@ -22,11 +21,6 @@ interface TransformationState {
   mapperAvailable: boolean | null;
   isCheckingMapper: boolean;
 
-  // Execução da transformação (POST /api/transformationexecution/execute)
-  isExecuting: boolean;
-  executionError: string | null;
-  transformationResult: TransformationExecutionResponse | null;
-
   // Multi-candidato (POST /api/transformationexecution/execute-candidates)
   isLoadingCandidates: boolean;
   candidatesError: string | null;
@@ -45,10 +39,6 @@ interface TransformationState {
   setActiveMode: (mode: AnalysisMode | null) => void;
   setMapperAvailable: (available: boolean | null) => void;
   setCheckingMapper: (checking: boolean) => void;
-  setExecuting: (executing: boolean) => void;
-  setExecutionError: (error: string | null) => void;
-  setTransformationResult: (result: TransformationExecutionResponse | null) => void;
-
   setLoadingCandidates: (loading: boolean) => void;
   setCandidatesError: (error: string | null) => void;
   setCandidatesResult: (candidates: TransformationCandidate[], warnings: string[]) => void;
@@ -65,10 +55,6 @@ const initialState = {
   activeMode: null,
   mapperAvailable: null,
   isCheckingMapper: false,
-  isExecuting: false,
-  executionError: null,
-  transformationResult: null,
-
   isLoadingCandidates: false,
   candidatesError: null,
   candidates: [] as TransformationCandidate[],
@@ -89,10 +75,6 @@ export const useTransformationStore = create<TransformationState>(set => ({
   setActiveMode: mode => set({ activeMode: mode }),
   setMapperAvailable: available => set({ mapperAvailable: available }),
   setCheckingMapper: checking => set({ isCheckingMapper: checking }),
-  setExecuting: executing => set({ isExecuting: executing }),
-  setExecutionError: error => set({ executionError: error }),
-  setTransformationResult: result => set({ transformationResult: result }),
-
   setLoadingCandidates: loading => set({ isLoadingCandidates: loading }),
   setCandidatesError: error => set({ candidatesError: error }),
   setCandidatesResult: (candidates, warnings) =>

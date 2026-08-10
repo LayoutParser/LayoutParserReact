@@ -37,52 +37,11 @@ export interface MapperAvailability {
   mapper?: MapperInfo;
 }
 
-/**
- * Request para POST /api/transformationexecution/execute.
- *
- * IMPORTANTE (confirmado batendo no endpoint real com corpo `{}`): o back-end valida via
- * model binding do ASP.NET Core que TODOS os campos abaixo estejam presentes no JSON —
- * inclusive os que a lógica de negócio trata como opcionais com fallback interno
- * (`sourceDocumentType`/`targetDocumentType` -> "NFe", `expectedOutput`). Omitir a chave
- * devolve 400 "The X field is required" antes de qualquer lógica rodar. Enviar string vazia
- * é aceito. Por isso aqui nenhum campo é opcional (`?`) — o service deve sempre enviar os 6.
- */
-export interface TransformationExecutionRequest {
-  inputContent: string;
-  layoutName: string;
-  sourceDocumentType: string; // enviar '' quando não aplicável (back-end usa fallback "NFe")
-  targetDocumentType: string; // enviar '' quando não aplicável (back-end usa fallback "NFe")
-  expectedOutput: string; // só relevante quando validate=true; enviar '' caso contrário
-  validate: boolean;
-}
-
-/**
- * Resposta de sucesso de POST /api/transformationexecution/execute.
- * Shape confirmado por leitura do controller — o caminho de SUCESSO não foi exercitado em
- * runtime nesta validação (exigiria um documento de negócio real e válido para o layout
- * testado); o caminho de ERRO abaixo (`TransformationExecutionFailure`) foi confirmado.
- */
-export interface TransformationExecutionSuccess {
-  success: true;
-  transformedXml: string;
-  segmentMappings?: Record<string, string>; // Dictionary<int,string> no C# -> chaves string em JSON
-  validation?: unknown; // shape de TransformationValidatorService não explorado; tratar como opaco por ora
-}
-
-/**
- * Resposta de erro de negócio (HTTP 400) — shape CONFIRMADO em runtime:
- * POST /api/transformationexecution/execute para um layout sem "arquivo MAP" gerado
- * devolveu exatamente `{ success: false, errors: [...], warnings: [] }`.
- */
-export interface TransformationExecutionFailure {
-  success: false;
-  errors: string[];
-  warnings: string[];
-}
-
-export type TransformationExecutionResponse =
-  | TransformationExecutionSuccess
-  | TransformationExecutionFailure;
+// Os tipos de POST /api/transformationexecution/execute (rota de candidato único) viviam
+// aqui — Request, Success, Failure e a união Response. Saíram junto com
+// `transformationService.executeTransformation` e com o slice de estado que o guardava: o
+// front usa exclusivamente a rota multi-candidato (`execute-candidates`), logo abaixo.
+// Se a rota de candidato único voltar a ser consumida, o contrato está no histórico do git.
 
 // ---------------------------------------------------------------------------------------
 // Multi-candidato de transformação (Gap 1) e diagnóstico de erro via IA (Gap 2).

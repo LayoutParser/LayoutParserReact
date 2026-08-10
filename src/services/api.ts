@@ -11,6 +11,9 @@ import { createCorrelationId } from '../utils/correlation';
 import { isParseFailureCause } from '../utils/parseFailure';
 
 // Configuração da API
+//
+// Caminho normal: `.env.development` e `.env.production` sempre definem VITE_API_BASE_URL, então
+// o que vem abaixo dela é apenas rede de segurança para o caso de a variável faltar no build.
 const getApiBaseUrl = (): string => {
   // Usar variável de ambiente se disponível
   const envUrl = import.meta.env.VITE_API_BASE_URL;
@@ -18,16 +21,22 @@ const getApiBaseUrl = (): string => {
     return envUrl;
   }
 
-  const hostname = window.location.hostname;
-
-  // Servidor de produção
-  if (hostname === '172.25.32.42') {
-    return 'http://172.25.32.42:5000';
+  // Em dev sem a variável: baseURL vazia = caminhos relativos (`/api/...`), que caem no proxy
+  // `/api` do servidor do Vite. Antes havia aqui um chute de porta (`http://localhost:5000`) que
+  // era um quarto destino de API divergente do proxy e do `.env.development`; delegar ao proxy
+  // deixa o vite.config.ts como fonte única do destino em desenvolvimento.
+  if (import.meta.env.DEV) {
+    return '';
   }
 
-  // Localhost
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:5000';
+  const hostname = window.location.hostname;
+
+  // Servidor de produção. IP hardcoded é dívida conhecida (ver "Pendências conhecidas" em
+  // .claude/rules/frontend-standards.md), mantida de propósito: em produção o front é servido
+  // pelo IIS numa porta diferente da API, então `window.location.origin` (sem porta) apontaria
+  // para o lugar errado se VITE_API_BASE_URL faltasse.
+  if (hostname === '172.25.32.42') {
+    return 'http://172.25.32.42:5000';
   }
 
   // Fallback: mesma origem
@@ -252,9 +261,22 @@ export const parseService = {
   },
 };
 
-// Log da configuração
-console.log('🔧 API Config:', API_CONFIG);
-console.log('📍 API URL:', API_CONFIG.baseUrl);
+// Log da configuração — só no servidor de dev do Vite (`npm run dev`).
+//
+// Sem a guarda, o bundle imprimia o objeto de configuração inteiro e a URL da API no console do
+// browser, expondo o IP interno do servidor (172.25.32.42:5000) e o catálogo de endpoints para
+// qualquer um que abrisse o DevTools em produção.
+//
+// `import.meta.env.DEV` é constante em tempo de build, então o bloco é eliminado na geração do
+// bundle. Atenção ao detalhe não óbvio: `DEV` deriva do NODE_ENV, que o `vite build` fixa em
+// `production` INDEPENDENTEMENTE do `--mode`. Logo estes logs também não aparecem no build
+// estático de dev (`npm run build:dev`, servido pelo IIS na 8081) — só em `npm run dev`. Isso é
+// intencional (nenhum artefato buildado loga configuração); se um dia for preciso o log no
+// build de dev, a condição a usar é `import.meta.env.MODE !== 'production'`.
+if (import.meta.env.DEV) {
+  console.log('🔧 API Config:', API_CONFIG);
+  console.log('📍 API URL:', API_CONFIG.baseUrl);
+}
 
 export default apiClient;
 export { apiClient };

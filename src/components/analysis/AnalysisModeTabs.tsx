@@ -49,8 +49,6 @@ const AnalysisModeTabs: React.FC = () => {
     setActiveMode,
     setMapperAvailable,
     setCheckingMapper,
-    setTransformationResult,
-    setExecutionError,
     setCandidatesResult,
     setCandidatesError,
     setDiagnostic,
@@ -81,8 +79,6 @@ const AnalysisModeTabs: React.FC = () => {
       return;
     }
 
-    setTransformationResult(null);
-    setExecutionError(null);
     setCandidatesResult([], []);
     setCandidatesError(null);
     setDiagnostic(null);
@@ -108,8 +104,6 @@ const AnalysisModeTabs: React.FC = () => {
     setActiveMode,
     setMapperAvailable,
     setCheckingMapper,
-    setTransformationResult,
-    setExecutionError,
     setCandidatesResult,
     setCandidatesError,
     setDiagnostic,
