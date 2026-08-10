@@ -4,6 +4,7 @@ import {
   type LayoutValidationsResponse,
   type LayoutValidation,
 } from '../../services/api/monitoringService';
+import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './LayoutValidationTab.css';
 
 const LayoutValidationTab: React.FC = () => {
@@ -149,7 +150,17 @@ const LayoutValidationTab: React.FC = () => {
                 <div
                   key={layout.layoutGuid}
                   className={`layout-card invalid ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Ver detalhes do layout ${layout.layoutName}`}
+                  aria-pressed={selectedLayout?.layoutGuid === layout.layoutGuid}
                   onClick={() => setSelectedLayout(layout)}
+                  onKeyDown={event => {
+                    if (isKeyboardActivationKey(event.key)) {
+                      event.preventDefault();
+                      setSelectedLayout(layout);
+                    }
+                  }}
                 >
                   <div className="layout-card-header">
                     <div className="layout-card-title">
@@ -199,7 +210,17 @@ const LayoutValidationTab: React.FC = () => {
                   <div
                     key={layout.layoutGuid}
                     className={`layout-card valid ${selectedLayout?.layoutGuid === layout.layoutGuid ? 'selected' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Ver detalhes do layout ${layout.layoutName}`}
+                    aria-pressed={selectedLayout?.layoutGuid === layout.layoutGuid}
                     onClick={() => setSelectedLayout(layout)}
+                    onKeyDown={event => {
+                      if (isKeyboardActivationKey(event.key)) {
+                        event.preventDefault();
+                        setSelectedLayout(layout);
+                      }
+                    }}
                   >
                     <div className="layout-card-header">
                       <div className="layout-card-title">
@@ -283,8 +304,11 @@ const LayoutValidationTab: React.FC = () => {
                       const isExpanded = expandedErrors.has(errorKey);
                       return (
                         <div key={index} className={`error-item ${isExpanded ? 'expanded' : ''}`}>
-                          <div
+                          <button
+                            type="button"
                             className="error-header"
+                            aria-expanded={isExpanded}
+                            aria-controls={`validation-error-${index}`}
                             onClick={() =>
                               toggleErrorExpansion(selectedLayout.layoutGuid, error.lineName)
                             }
@@ -295,9 +319,9 @@ const LayoutValidationTab: React.FC = () => {
                             <span className="error-summary">
                               {error.actualLength} chars (esperado: {error.expectedLength})
                             </span>
-                          </div>
+                          </button>
                           {isExpanded && (
-                            <div className="error-details">
+                            <div id={`validation-error-${index}`} className="error-details">
                               <div className="error-detail-row">
                                 <span className="error-detail-label">Tamanho Esperado:</span>
                                 <span className="error-detail-value">

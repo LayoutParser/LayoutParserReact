@@ -30,13 +30,13 @@ regra de negócio mora na API .NET; aqui você consome o contrato e renderiza o 
 
 ## 2. Missões (router)
 
-| Missão | O que fazer |
-|--------|-------------|
-| `feature` (default) | Implementar componente/store/serviço seguindo os padrões existentes. |
-| `wire-endpoint` | Ligar um endpoint novo da API: tipo em `src/types` → função em `services/` → store → componente. Ver `/wire-endpoint`. |
-| `new-component` | Scaffold de componente (pasta + `.tsx` + `.css`). Ver `/new-component`. |
-| `fix` | Corrigir bug; reproduza no `npm run dev` antes de fechar. |
-| `refactor` | Melhorar sem mudar comportamento; mantenha o type-check verde. |
+| Missão              | O que fazer                                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `feature` (default) | Implementar componente/store/serviço seguindo os padrões existentes.                                                   |
+| `wire-endpoint`     | Ligar um endpoint novo da API: tipo em `src/types` → função em `services/` → store → componente. Ver `/wire-endpoint`. |
+| `new-component`     | Scaffold de componente (pasta + `.tsx` + `.css`). Ver `/new-component`.                                                |
+| `fix`               | Corrigir bug; reproduza no `npm run dev` antes de fechar.                                                              |
+| `refactor`          | Melhorar sem mudar comportamento; mantenha o type-check verde.                                                         |
 
 ## 3. Regras de implementação (IDS — Investigar, Decidir, Seguir)
 
@@ -53,8 +53,9 @@ Para todo arquivo novo: **busque primeiro** (Glob/Grep) algo similar em `compone
 ## 4. Antes de concluir (quality gates)
 
 ```bash
-npm run lint && npx tsc --noEmit && npm run build
+npm run quality && git diff --check
 ```
+
 Mexeu em contrato da API? Avise `@lp-doc` (README/tipos). Fluxo crítico? Valide no `npm run dev`.
 
 ## 5. Restrições

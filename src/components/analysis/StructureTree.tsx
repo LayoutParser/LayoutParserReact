@@ -197,31 +197,91 @@ const StructureTree: React.FC = () => {
     }
   };
 
+  const moveTreeItemFocus = (
+    currentItem: HTMLButtonElement,
+    destination: 'previous' | 'next' | 'first' | 'last'
+  ) => {
+    const tree = currentItem.closest('[role="tree"]');
+    if (!tree) return;
+
+    const visibleItems = Array.from(tree.querySelectorAll<HTMLButtonElement>('[role="treeitem"]'));
+    const currentIndex = visibleItems.indexOf(currentItem);
+    if (currentIndex < 0) return;
+
+    const destinationIndex =
+      destination === 'first'
+        ? 0
+        : destination === 'last'
+          ? visibleItems.length - 1
+          : destination === 'previous'
+            ? Math.max(0, currentIndex - 1)
+            : Math.min(visibleItems.length - 1, currentIndex + 1);
+
+    visibleItems[destinationIndex]?.focus();
+  };
+
+  const handleTreeItemKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    node: TreeNode,
+    hasChildren: boolean,
+    expanded: boolean
+  ) => {
+    if (event.key === 'ArrowRight' && hasChildren && !expanded) {
+      event.preventDefault();
+      toggleNode(node.id);
+    } else if (event.key === 'ArrowLeft' && hasChildren && expanded) {
+      event.preventDefault();
+      toggleNode(node.id);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveTreeItemFocus(event.currentTarget, 'next');
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveTreeItemFocus(event.currentTarget, 'previous');
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      moveTreeItemFocus(event.currentTarget, 'first');
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      moveTreeItemFocus(event.currentTarget, 'last');
+    }
+  };
+
   const renderTreeNode = (node: TreeNode): React.ReactNode => {
     const hasChildren = node.children.length > 0;
     const expanded = isExpanded(node.id);
     const selected = selectedNodeId === node.id;
 
     return (
-      <li key={node.id} className={`tree-node ${selected ? 'selected' : ''}`}>
-        <div className="tree-node-header" onClick={() => handleNodeClick(node)}>
+      <li key={node.id} className={`tree-node ${selected ? 'selected' : ''}`} role="none">
+        <button
+          type="button"
+          role="treeitem"
+          className="tree-node-header"
+          aria-expanded={hasChildren ? expanded : undefined}
+          aria-selected={selected}
+          aria-level={node.level + 1}
+          onClick={() => {
+            handleNodeClick(node);
+            if (hasChildren) {
+              toggleNode(node.id);
+            }
+          }}
+          onKeyDown={event => handleTreeItemKeyDown(event, node, hasChildren, expanded)}
+        >
           {hasChildren && (
-            <button
-              className="tree-toggle"
-              onClick={e => {
-                e.stopPropagation();
-                toggleNode(node.id);
-              }}
-            >
+            <span className="tree-toggle" aria-hidden="true">
               {expanded ? '▼' : '▶'}
-            </button>
+            </span>
           )}
           {!hasChildren && <span className="tree-spacer" />}
           <span className="tree-node-name">{node.name}</span>
           <span className="tree-node-type">{node.type.replace('VO', '')}</span>
-        </div>
+        </button>
         {hasChildren && expanded && (
-          <ul className="tree-children">{node.children.map(child => renderTreeNode(child))}</ul>
+          <ul className="tree-children" role="group">
+            {node.children.map(child => renderTreeNode(child))}
+          </ul>
         )}
       </li>
     );
@@ -246,7 +306,9 @@ const StructureTree: React.FC = () => {
         </button>
       </div>
 
-      <ul className="tree-root">{treeData.map(node => renderTreeNode(node))}</ul>
+      <ul className="tree-root" role="tree" aria-label="Estrutura do documento">
+        {treeData.map(node => renderTreeNode(node))}
+      </ul>
     </div>
   );
 };

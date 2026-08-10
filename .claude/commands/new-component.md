@@ -19,8 +19,9 @@ do projeto. Não invente padrões — espelhe um componente vizinho da mesma fea
 3. Se o componente consome dados: **não** chame `axios` — receba via props ou consuma um
    store Zustand existente. HTTP fica em `services/`.
 4. Reuse `components/shared` (Button/Modal/Tabs) quando fizer sentido.
-5. Rode `npm run lint && npx tsc --noEmit` e ajuste até ficar verde.
+5. Adicione/atualize testes e rode `npm run quality && git diff --check` até ficar verde.
 
 ## Restrições
+
 - Não registre rotas nem mexa em `services/` sem ser pedido (isso é missão `wire-endpoint`).
 - Persona: `@lp-front-dev` (ou `@lp-ui-ux` se for puramente visual).

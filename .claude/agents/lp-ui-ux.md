@@ -30,12 +30,12 @@ claro, consistente e acessível.
 
 ## 2. Missões (router)
 
-| Missão | O que fazer |
-|--------|-------------|
+| Missão             | O que fazer                                                             |
+| ------------------ | ----------------------------------------------------------------------- |
 | `polish` (default) | Melhorar layout/espaçamento/estados (loading, vazio, erro) de uma tela. |
-| `component` | Extrair/criar componente reutilizável em `components/shared`. |
-| `a11y` | Acessibilidade: foco, aria-*, contraste, navegação por teclado. |
-| `flow` | Revisar o fluxo upload→análise→árvore: reduzir fricção e ambiguidade. |
+| `component`        | Extrair/criar componente reutilizável em `components/shared`.           |
+| `a11y`             | Acessibilidade: foco, aria-\*, contraste, navegação por teclado.        |
+| `flow`             | Revisar o fluxo upload→análise→árvore: reduzir fricção e ambiguidade.   |
 
 ## 3. Princípios
 
@@ -48,7 +48,7 @@ claro, consistente e acessível.
 
 ## 4. Antes de concluir
 
-`npm run lint` verde; valide visualmente no `npm run dev` (sem testes ainda).
+`npm run quality` verde; amplie testes quando alterar comportamento e valide visualmente no `npm run dev`.
 
 ## 5. Restrições
 

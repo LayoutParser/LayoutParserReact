@@ -1,46 +1,47 @@
 .document-summary {
   display: flex;
+  flex: 0 1 auto;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.4rem 0.75rem;
-  background: rgba(var(--color-accent-rgb), 0.05);
-  border-radius: 6px;
-  border: 1px solid rgba(var(--color-accent-rgb), 0.2);
-  flex-shrink: 0;
+  gap: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-sm) 0.75rem;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
 }
 
-.summary-item {
+.document-summary .summary-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
   min-width: 4rem;
+  flex-direction: column;
+  gap: 0.1rem;
 }
 
-.summary-label {
-  font-size: 0.7rem;
+.document-summary .summary-label {
   color: var(--color-text-muted);
-  font-weight: 500;
+  font-size: 0.68rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-.summary-value {
-  font-size: 0.85rem;
+.document-summary .summary-value {
   color: var(--color-text-strong);
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
-/* Saúde do documento (200 limpo x 200 com defeito). Warning, nunca danger: há documento na
-   tela e ele é utilizável — o vermelho fica para o que impede de ver o arquivo. */
-.summary-value--health {
+.document-summary .summary-value--health {
+  width: fit-content;
   padding: 0 var(--spacing-xs);
   border-radius: var(--radius-pill);
 }
 
-.summary-value--health-defects {
+.document-summary .summary-value--health-defects {
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
 }
 
-.summary-value--health-clean {
+.document-summary .summary-value--health-clean {
   background: var(--color-success-bg);
   color: var(--color-success-text);
 }
@@ -48,6 +49,5 @@
 @media (max-width: 768px) {
   .document-summary {
     width: 100%;
-    gap: var(--spacing-sm) var(--spacing-md);
   }
 }

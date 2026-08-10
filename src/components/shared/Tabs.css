@@ -5,58 +5,81 @@
 
 .tabs-header {
   display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--color-border);
-  background: var(--color-surface);
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
   overflow-x: auto;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   scrollbar-width: thin;
 }
 
 .tab-button {
-  min-height: 44px;
-  padding: 14px 24px;
-  border: none;
+  position: relative;
+  display: inline-flex;
+  min-height: var(--control-height);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem var(--spacing-md);
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-md) - 2px);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
   cursor: pointer;
   transition:
     color var(--transition-fast),
     background-color var(--transition-fast),
-    border-color var(--transition-fast);
-  border-bottom: 3px solid transparent;
-  position: relative;
-  top: 2px;
-  white-space: nowrap;
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .tab-button:hover:not(.active) {
   color: var(--color-accent);
-  background: var(--color-surface-alt);
+  background: rgba(var(--color-accent-rgb), 0.07);
 }
 
 .tab-button.active {
-  color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
+  color: var(--color-primary);
   background: var(--color-surface);
+  border-color: var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-button.active::before {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 24px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  content: '';
+  transform: translateX(-50%);
 }
 
 .tabs-content {
   min-width: 0;
-  padding: clamp(var(--spacing-md), 2vw, 20px);
-  background: var(--color-surface);
   min-height: 400px;
+  padding: var(--spacing-md) 0 0;
+  background: transparent;
 }
 
 @media (max-width: 600px) {
+  .tabs-header {
+    scroll-snap-type: x proximity;
+  }
+
   .tab-button {
-    flex: 1 0 auto;
-    padding: var(--spacing-sm) var(--spacing-md);
+    min-width: min(9rem, 45vw);
+    scroll-snap-align: start;
   }
 
   .tabs-content {
     min-height: 320px;
-    padding: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
   }
 }

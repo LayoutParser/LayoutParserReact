@@ -18,7 +18,7 @@
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid;
   border-left-width: 4px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-base);
 }
@@ -26,7 +26,7 @@
 .parse-error-banner-head {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
 
 .parse-error-banner-icon {
@@ -35,6 +35,7 @@
 
 .parse-error-banner-title {
   font-weight: var(--font-weight-semibold);
+  color: currentColor;
 }
 
 /* Mensagem vinda do back-end: é o texto que explica a causa, então tem o maior peso visual
@@ -63,6 +64,7 @@
   display: flex;
   align-items: baseline;
   gap: var(--spacing-xs);
+  min-width: 0;
 }
 
 .parse-error-banner-meta dt {

@@ -261,22 +261,5 @@ export const parseService = {
   },
 };
 
-// Log da configuração — só no servidor de dev do Vite (`npm run dev`).
-//
-// Sem a guarda, o bundle imprimia o objeto de configuração inteiro e a URL da API no console do
-// browser, expondo o IP interno do servidor (172.25.32.42:5000) e o catálogo de endpoints para
-// qualquer um que abrisse o DevTools em produção.
-//
-// `import.meta.env.DEV` é constante em tempo de build, então o bloco é eliminado na geração do
-// bundle. Atenção ao detalhe não óbvio: `DEV` deriva do NODE_ENV, que o `vite build` fixa em
-// `production` INDEPENDENTEMENTE do `--mode`. Logo estes logs também não aparecem no build
-// estático de dev (`npm run build:dev`, servido pelo IIS na 8081) — só em `npm run dev`. Isso é
-// intencional (nenhum artefato buildado loga configuração); se um dia for preciso o log no
-// build de dev, a condição a usar é `import.meta.env.MODE !== 'production'`.
-if (import.meta.env.DEV) {
-  console.log('🔧 API Config:', API_CONFIG);
-  console.log('📍 API URL:', API_CONFIG.baseUrl);
-}
-
 export default apiClient;
 export { apiClient };
