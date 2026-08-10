@@ -8,12 +8,43 @@ updates:
       day: monday
       time: '08:00'
       timezone: America/Sao_Paulo
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     rebase-strategy: auto
     versioning-strategy: increase-if-necessary
     commit-message:
       prefix: chore(deps)
     groups:
+      react-stack:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+          - '@testing-library/react'
+        update-types:
+          - minor
+          - patch
+      eslint-toolchain:
+        patterns:
+          - eslint
+          - '@eslint/*'
+          - '@typescript-eslint/*'
+          - eslint-config-prettier
+          - eslint-plugin-*
+          - globals
+          - typescript-eslint
+        update-types:
+          - minor
+          - patch
+      vite-toolchain:
+        patterns:
+          - vite
+          - '@vitejs/*'
+          - vitest
+          - '@vitest/*'
+        update-types:
+          - minor
+          - patch
       runtime-minor-patch:
         dependency-type: production
         update-types:
@@ -24,6 +55,30 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # Majors de framework/toolchain exigem migração conjunta e nunca devem abrir PR isolado.
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/react'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/react-dom'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint-plugin-react-hooks
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint-plugin-react-refresh
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

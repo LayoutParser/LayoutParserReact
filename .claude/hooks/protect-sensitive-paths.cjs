@@ -46,7 +46,7 @@ function resolvePhysicalPath(candidate) {
 
   try {
     return fs.realpathSync.native(absolute);
-  } catch (_) {
+  } catch {
     let existingParent = path.dirname(absolute);
     const missingSegments = [path.basename(absolute)];
 
@@ -57,7 +57,7 @@ function resolvePhysicalPath(candidate) {
 
     try {
       return path.join(fs.realpathSync.native(existingParent), ...missingSegments);
-    } catch (_) {
+    } catch {
       return absolute;
     }
   }
@@ -150,7 +150,7 @@ readStdin()
     let event;
     try {
       event = JSON.parse(rawInput || '{}');
-    } catch (_) {
+    } catch {
       process.exit(0);
       return;
     }

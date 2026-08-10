@@ -9,7 +9,7 @@ import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './LayoutValidationTab.css';
 
 const LayoutValidationTab: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<LayoutValidationsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<LayoutValidation | null>(null);
@@ -32,7 +32,27 @@ const LayoutValidationTab: React.FC = () => {
   };
 
   useEffect(() => {
-    loadValidations();
+    let active = true;
+
+    void monitoringService
+      .getLayoutValidations(false)
+      .then(result => {
+        if (active) setData(result);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Erro ao carregar validações');
+        logService.error('Falha ao carregar validações administrativas', {
+          errorName: err instanceof Error ? err.name : 'UnknownError',
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const toggleErrorExpansion = (layoutGuid: string, lineName: string) => {

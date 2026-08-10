@@ -21,8 +21,8 @@ const LayoutParserPage: React.FC = () => {
   const uploadAbortRef = React.useRef<AbortController | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [showSearchButton, setShowSearchButton] = useState(false);
-  const [allLayouts, setAllLayouts] = useState<Layout[]>([]);
+  const [allLayouts, setAllLayouts] = useState<Layout[]>(() => loadLayoutsFromCache() ?? []);
+  const [showSearchButton, setShowSearchButton] = useState(() => allLayouts.length === 0);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
 
   const {
@@ -52,17 +52,6 @@ const LayoutParserPage: React.FC = () => {
   // Só para saber qual aba de análise está ativa (ver AnalysisModeTabs) e decidir se a busca
   // de campos faz sentido na tela — não interfere no fluxo de upload/parse abaixo.
   const { activeMode } = useTransformationStore();
-
-  // Carregar layouts do cache ao montar
-  React.useEffect(() => {
-    const cachedLayouts = loadLayoutsFromCache();
-    if (cachedLayouts && cachedLayouts.length > 0) {
-      setAllLayouts(cachedLayouts);
-      setShowSearchButton(false);
-    } else {
-      setShowSearchButton(true);
-    }
-  }, []);
 
   const handleSearchLayouts = async () => {
     setIsSearching(true);

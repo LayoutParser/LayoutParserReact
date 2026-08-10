@@ -45,7 +45,7 @@ nos logs.
 
 ### Desenvolvimento local
 
-Requer Node.js 20 ou superior.
+Requer Node.js 24.15 ou superior dentro da linha LTS 24.x.
 
 ```powershell
 cd server

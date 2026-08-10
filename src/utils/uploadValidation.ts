@@ -9,10 +9,7 @@ const BYTES_PER_MEGABYTE = 1024 * 1024;
 const DECIMAL_NUMBER_PATTERN = /^\d+(?:\.\d+)?$/;
 
 export type UploadValidationErrorCode =
-  | 'empty_file'
-  | 'invalid_extension'
-  | 'name_too_long'
-  | 'file_too_large';
+  'empty_file' | 'invalid_extension' | 'name_too_long' | 'file_too_large';
 
 export type UploadValidationResult =
   | { isValid: true; maxUploadMb: number }

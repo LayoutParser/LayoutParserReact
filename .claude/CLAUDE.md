@@ -11,7 +11,7 @@ focado no stack front-end (Vite + React + TypeScript)**.
 
 ## 1. O que é este projeto
 
-Aplicação web **Vite + React 18 + TypeScript**, com BFF **Node.js + Fastify**, do ecossistema **LayoutParser**. O usuário sobe um
+Aplicação web **Vite + React 19 + TypeScript**, com BFF **Node.js + Fastify**, do ecossistema **LayoutParser**. O usuário sobe um
 arquivo **TXT** (+ opcionalmente um **layout XML**); a **API .NET** processa e devolve um
 **mapeamento do documento** (linhas, campos, posições e validações) que este app renderiza
 como **árvore de estrutura**. Nenhuma regra de parsing roda aqui: o BFF aplica a fronteira web
@@ -30,8 +30,8 @@ Contexto completo: [`README.md`](../README.md). Contrato consumido: [`src/types/
 
 ## 2. Stack & estrutura (resumo)
 
-- **Vite 7** (porta 3000, proxy `/api`), **React 18**, **react-router-dom 7.18**, **Zustand 4.4**, **Axios 1.19**.
-- **Node 20+ + Fastify 5** em `server/`; o BFF é a única fronteira do navegador com a API em produção.
+- **Vite 8** (porta 3000, proxy `/api`), **React 19**, **react-router-dom 7.18**, **Zustand 5**, **Axios 1.19**.
+- **Node 24 LTS + Fastify 5** em `server/`; o BFF é a única fronteira do navegador com a API em produção.
 - **TS strict** com `noUnusedLocals`/`noUnusedParameters`; alias `@/*` → `src/*`.
 - Camadas: `components/` (por feature) · `store/` (Zustand) · `services/` (HTTP, **único lugar** que fala com a API) · `types/` · `utils/`.
 - Detalhe: [`.claude/rules/frontend-standards.md`](rules/frontend-standards.md).
