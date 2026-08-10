@@ -54,6 +54,10 @@ jobs:
           npm run quality
           if ($LASTEXITCODE -ne 0) { throw 'Quality gates falharam.' }
 
+      - name: Garantir ARR 3 no IIS de desenvolvimento
+        shell: pwsh
+        run: ./scripts/Install-IisArr.ps1
+
       - name: Publicar ambiente de desenvolvimento
         shell: pwsh
         env:

@@ -251,6 +251,11 @@ hostname DNS coberto pelo certificado, sem protocolo ou porta; esse valor també
 smoke test HTTPS. Os environments `development` e `production` devem exigir aprovação e isolar
 seus secrets/runners.
 
+No runner de desenvolvimento, o workflow instala o ARR 3 quando ele estiver ausente usando o
+instalador x64 oficial da Microsoft, com assinatura Authenticode e SHA-256 fixado verificados por
+[`Install-IisArr.ps1`](scripts/Install-IisArr.ps1). O runner de produção continua exigindo ARR
+pré-provisionado para impedir alterações automáticas na infraestrutura produtiva.
+
 Nunca publique o front com `VITE_API_BASE_URL` apontando para uma origem interna. O build de
 produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma origem HTTPS.
 
