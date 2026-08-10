@@ -20,7 +20,7 @@ process.stdin.on('end', () => {
           ' Veja .claude/rules/agent-authority.md.\n'
       );
     }
-  } catch (_) {
+  } catch {
     /* nao-bloqueante: qualquer erro de parse e ignorado */
   }
   process.exit(0);

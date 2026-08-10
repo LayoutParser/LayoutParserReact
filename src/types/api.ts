@@ -179,11 +179,7 @@ export interface ParseResponse {
   // Motivo detalhado da ausência de transformação. ADITIVO E OPCIONAL: contrato antecipado da
   // Fase 3 do back-end (spec §1.6) — enquanto não for emitido, a UI cai no texto genérico.
   transformationsReason?:
-    | 'type_not_positional'
-    | 'no_mapper'
-    | 'empty_input'
-    | 'timeout_sync'
-    | 'structural_error';
+    'type_not_positional' | 'no_mapper' | 'empty_input' | 'timeout_sync' | 'structural_error';
 }
 
 /**

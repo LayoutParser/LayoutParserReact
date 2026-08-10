@@ -6,6 +6,7 @@
 - [Node no Windows](project_node_toolchain_wsl_interop.md) — validar env vars no shell nativo correto.
 - [Parede de permissão](feedback_parar_em_parede_de_permissao.md) — não contornar elevação ou credenciais.
 - [Verificação independente](feedback_verificar_diagnostico_independente.md) — reproduzir a evidência-chave.
+- [Dependabot](project_dependabot_compatibility_policy.md) — agrupar pares e migrar majors manualmente.
 
 Arquitetura vigente: front same-origin; IIS HTTPS/Windows Auth → BFF Node em loopback → API
 .NET. `Deploy-Iis.ps1` publica releases versionadas, mantém rollback e falha sem ARR, Rewrite,

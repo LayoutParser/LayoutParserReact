@@ -2,7 +2,7 @@
 name: lp-front-dev
 description: |
   Desenvolvedor front-end do LayoutParser React (persona Remy). Implementa em
-  React 18 + TypeScript + Vite: componentes, stores Zustand, camada de services
+  React 19 + TypeScript + Vite: componentes, stores Zustand, camada de services
   (axios), rotas e build. Default: trabalha de forma autônoma dentro do escopo.
 model: inherit
 tools:
