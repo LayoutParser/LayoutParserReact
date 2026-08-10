@@ -229,11 +229,12 @@ O desenho de produção esperado é:
    administrativa.
 8. Manter a API .NET inacessível diretamente pelo navegador e protegida também em profundidade.
 
-O arquivo [`public/web.config`](public/web.config) é copiado para o build e já contém
-autenticação Windows, regra same-origin, limite total de 32 MiB e headers
-defensivos. A regra sobrescreve `X-IIS-User` com `{AUTH_USER}`; o BFF aceita esse header somente
-do proxy configurado. A administração pode ser controlada pela allowlist de usuários ou por uma
-regra equivalente de roles.
+O arquivo [`public/web.config`](public/web.config) é copiado para o build e contém a regra
+same-origin, limite total de 32 MiB e headers defensivos. A regra sobrescreve `X-IIS-User` com
+`{AUTH_USER}`; o BFF aceita esse header somente do proxy configurado. O deploy configura
+autenticação Windows no `applicationHost.config` do site e mantém essas seções bloqueadas para o
+aplicativo. A administração pode ser controlada pela allowlist de usuários ou por uma regra
+equivalente de roles.
 
 ```powershell
 npm ci
@@ -261,7 +262,8 @@ automáticas na infraestrutura produtiva.
 Quando o certificado de desenvolvimento é autoassinado, o bootstrap adiciona somente sua parte
 pública à raiz confiável da máquina após validar hostname, período de validade e chave privada. O
 workflow também força e verifica o checkout em LF sem alterar permanentemente a configuração Git
-do runner.
+do runner. A exceção de `safe.directory` usada nessa verificação é limitada ao workspace exato do
+job e não é persistida na conta do serviço.
 
 As etapas que manipulam o provider `IIS:\` usam o Windows PowerShell nativo (`powershell.exe`).
 Isso evita a sessão de compatibilidade do PowerShell 7, que importa os cmdlets de
@@ -337,8 +339,9 @@ npm run build:prod
 npm run artifacts:validate
 ```
 
-Essa checagem reprova source maps e referências internas indevidas no bundle e confirma os
-fragmentos de segurança esperados no `web.config`.
+Essa checagem reprova source maps e referências internas indevidas no bundle, confirma os
+fragmentos de segurança esperados no `web.config` e valida que a autenticação está sob autoridade
+do script de deploy do IIS.
 
 Playwright roda em job próprio do workflow de qualidade. Os demais gates fazem parte de
 `npm run quality`, inclusive o BFF e a auditoria de ambos os lockfiles.
