@@ -79,9 +79,9 @@ criar uma fronteira web segura e estável entre o navegador e os serviços inter
 
 | Camada              | Tecnologia atual                                                                   |
 | ------------------- | ---------------------------------------------------------------------------------- |
-| Front-end           | React 19, React Router 7, Zustand 4 e Axios                                        |
+| Front-end           | React 19, React Router 7, Zustand 5 e Axios                                        |
 | Build               | Vite 8 e TypeScript em modo estrito                                                |
-| Gateway             | Node.js 20+, Fastify 5 e TypeScript                                                |
+| Gateway             | Node.js 24 LTS, Fastify 5 e TypeScript                                             |
 | Testes do front     | Vitest, Testing Library, MSW e cobertura V8                                        |
 | Testes de navegador | Playwright, com Chromium desktop e perfil móvel                                    |
 | Segurança           | Helmet, rate limit, CSP/IIS, auditoria npm e validação de artefatos                |
@@ -120,7 +120,7 @@ O limite do front é configurável entre 1 e 100 MiB para experiências locais, 
 
 ### Pré-requisitos
 
-- Node.js **20.19+** ou **22.12+**;
+- Node.js **24.15+** (linha LTS 24.x);
 - npm compatível com os lockfiles;
 - `LayoutParserApi` disponível em ambiente local;
 - Chromium do Playwright, apenas para executar os testes E2E.
