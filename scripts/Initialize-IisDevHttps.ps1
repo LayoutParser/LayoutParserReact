@@ -41,6 +41,44 @@ function Test-CertificateHost($Certificate, [string] $HostName) {
   return $Certificate.Subject -match "(?i)(?:^|,\s*)CN=$escapedHost(?:,|$)"
 }
 
+function Test-CertificateTrust($Certificate) {
+  $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain
+  $chain.ChainPolicy.RevocationMode =
+    [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+  try {
+    return $chain.Build($Certificate)
+  } finally {
+    $chain.Dispose()
+  }
+}
+
+function Add-SelfSignedCertificateToMachineRoot($Certificate) {
+  if (-not $Certificate.Subject.Equals(
+      $Certificate.Issuer,
+      [System.StringComparison]::OrdinalIgnoreCase
+    )) {
+    throw "A cadeia do certificado '$($Certificate.Subject)' não é confiável e ele não é autoassinado."
+  }
+
+  $rootStore = New-Object `
+    System.Security.Cryptography.X509Certificates.X509Store(
+      [System.Security.Cryptography.X509Certificates.StoreName]::Root,
+      [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine
+    )
+  try {
+    $rootStore.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+    $alreadyTrusted = @($rootStore.Certificates) | Where-Object {
+      $_.Thumbprint -eq $Certificate.Thumbprint
+    }
+    if (-not $alreadyTrusted) {
+      $rootStore.Add($Certificate)
+      Write-Host 'Certificado autoassinado adicionado à raiz confiável da máquina de desenvolvimento.'
+    }
+  } finally {
+    $rootStore.Close()
+  }
+}
+
 if (-not (Test-IsAdministrator)) {
   throw 'A configuração HTTPS do IIS exige execução como administrador ou pelo runner LocalSystem.'
 }
@@ -85,6 +123,13 @@ $certificate = Get-ChildItem Cert:\LocalMachine\My |
 
 if (-not $certificate) {
   throw "Nenhum certificado válido com chave privada para '$PublicHost' foi encontrado em Cert:\LocalMachine\My."
+}
+
+if (-not (Test-CertificateTrust $certificate)) {
+  Add-SelfSignedCertificateToMachineRoot $certificate
+  if (-not (Test-CertificateTrust $certificate)) {
+    throw "O certificado para '$PublicHost' continua sem uma cadeia confiável após o bootstrap."
+  }
 }
 
 $httpsBindings = @(Get-WebBinding -Name $SiteName -Protocol 'https')

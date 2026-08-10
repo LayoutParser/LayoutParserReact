@@ -258,6 +258,10 @@ certificado válido para `PUBLIC_HOST_DEV` já instalado em `Cert:\LocalMachine\
 produção continua exigindo ARR, site e binding HTTPS pré-provisionados para impedir alterações
 automáticas na infraestrutura produtiva.
 
+Quando o certificado de desenvolvimento é autoassinado, o bootstrap adiciona somente sua parte
+pública à raiz confiável da máquina após validar hostname, período de validade e chave privada. O
+workflow também força checkout em LF sem alterar permanentemente a configuração Git do runner.
+
 As etapas que manipulam o provider `IIS:\` usam o Windows PowerShell nativo (`powershell.exe`).
 Isso evita a sessão de compatibilidade do PowerShell 7, que importa os cmdlets de
 `WebAdministration`, mas não disponibiliza o drive `IIS:\` ao processo chamador.
