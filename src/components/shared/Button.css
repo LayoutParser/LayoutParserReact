@@ -29,6 +29,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+.btn:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 .btn:disabled {
   background: var(--color-pending-bg);
   border-color: var(--color-border);
@@ -71,4 +77,10 @@
 .btn-warning {
   background: var(--color-warning);
   color: var(--color-warning-text);
+}
+
+@media (max-width: 480px) {
+  .btn {
+    min-height: 48px;
+  }
 }

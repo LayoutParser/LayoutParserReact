@@ -9,6 +9,23 @@ interface CachedLayouts {
   timestamp: number;
 }
 
+const isCachedLayout = (value: unknown): value is Layout => {
+  if (typeof value !== 'object' || value === null) return false;
+  const layout = value as Record<string, unknown>;
+  return typeof layout.layoutGuid === 'string' && typeof layout.name === 'string';
+};
+
+const isCachedLayouts = (value: unknown): value is CachedLayouts => {
+  if (typeof value !== 'object' || value === null) return false;
+  const cache = value as Record<string, unknown>;
+  return (
+    typeof cache.timestamp === 'number' &&
+    Number.isFinite(cache.timestamp) &&
+    Array.isArray(cache.layouts) &&
+    cache.layouts.every(isCachedLayout)
+  );
+};
+
 /**
  * Salva layouts no cache do navegador (localStorage)
  * Remove decryptedContent para economizar espaço (pode ser muito grande)
@@ -35,12 +52,16 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
     // Verificar tamanho antes de salvar (localStorage geralmente tem limite de 5-10MB)
     if (cacheString.length > 4 * 1024 * 1024) {
       // 4MB
-      console.warn('⚠️ Cache muito grande, salvando apenas metadados');
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Cache de layouts acima do tamanho recomendado.');
+      }
     }
 
     localStorage.setItem(CACHE_KEY, cacheString);
   } catch (error) {
-    console.warn('⚠️ Erro ao salvar layouts no cache:', error);
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Não foi possível salvar o cache de layouts.');
+    }
     // Se o localStorage estiver cheio, limpar cache antigo e tentar novamente
     if (
       error instanceof DOMException &&
@@ -65,10 +86,11 @@ export const saveLayoutsToCache = (layouts: Layout[]): void => {
         };
 
         localStorage.setItem(CACHE_KEY, JSON.stringify(limitedCache));
-      } catch (retryError) {
-        console.error('❌ Erro ao salvar layouts após limpar cache:', retryError);
+      } catch {
         // Se ainda falhar, não salvar cache (não é crítico)
-        console.warn('⚠️ Cache desabilitado devido a limitações de armazenamento');
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ Cache desabilitado devido a limitações de armazenamento.');
+        }
       }
     }
   }
@@ -85,7 +107,11 @@ export const loadLayoutsFromCache = (): Layout[] | null => {
       return null;
     }
 
-    const parsed: CachedLayouts = JSON.parse(cachedData);
+    const parsed: unknown = JSON.parse(cachedData);
+    if (!isCachedLayouts(parsed)) {
+      clearLayoutsCache();
+      return null;
+    }
     const now = Date.now();
     const age = now - parsed.timestamp;
 
@@ -96,8 +122,10 @@ export const loadLayoutsFromCache = (): Layout[] | null => {
     }
 
     return parsed.layouts;
-  } catch (error) {
-    console.warn('⚠️ Erro ao carregar layouts do cache:', error);
+  } catch {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ O cache de layouts era inválido e foi limpo.');
+    }
     clearLayoutsCache();
     return null;
   }
@@ -110,8 +138,10 @@ export const clearLayoutsCache = (): void => {
   try {
     localStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_TIMESTAMP_KEY);
-  } catch (error) {
-    console.warn('⚠️ Erro ao limpar cache:', error);
+  } catch {
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ Não foi possível limpar o cache de layouts.');
+    }
   }
 };
 

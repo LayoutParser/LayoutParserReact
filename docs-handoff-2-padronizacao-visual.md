@@ -18,6 +18,7 @@ Raleway** e a paleta observada visualmente do portal rodando — sem virar um mi
 Angular (o app continua Vite+React, só copia a aparência).
 
 **Verificado nesta sessão que isso nunca foi aplicado:**
+
 - `grep -rn "font-family" src --include="*.css"` não retorna **nenhuma** ocorrência de
   `Raleway` no projeto inteiro — só `monospace`/`'Courier New'` em componentes de exibição de
   campo.
@@ -40,10 +41,10 @@ checkout — não há como extrair os valores exatos direto do source sem acesso
 da NDD. O que é visível e replicável sem essas dependências:
 
 - Fonte: **Raleway** — confirmada em `ndd-frontend/global-styles/client/src/raleway/_style.scss`
-  (esse repo, se disponível localmente em `C:\Users\elson.lopes\source\repos\ndd-frontend`, pode
+  (esse repo, se disponível localmente como repositório irmão `../ndd-frontend`, pode
   ser consultado só para essa fonte, não para os tokens).
 - Base: **Bootstrap 5.2.3** (grid/espaçamento geral) + **Kendo UI** para grids — não precisa
-  adotar essas libs aqui, só o *look* (cantos, sombras, densidade).
+  adotar essas libs aqui, só o _look_ (cantos, sombras, densidade).
 - Overrides de tema em `ndd-frontend/global-styles/client/src/themes/main-nigeria.scss`.
 
 **Se você tem acesso a rodar o portal `ndd-frontend` de verdade**, inspecionar via DevTools é o
@@ -71,8 +72,12 @@ Centralize em `src/index.css` (ou um novo `src/styles/tokens.css` importado por 
   --color-danger: /* estado erro/rejeição */;
   --color-pending: /* estado "não avaliado ainda" — IMPORTANTE, ver Item 2 */;
 
-  --radius-sm: ...; --radius-md: ...;
-  --spacing-xs: ...; --spacing-sm: ...; --spacing-md: ...; --spacing-lg: ...;
+  --radius-sm: ...;
+  --radius-md: ...;
+  --spacing-xs: ...;
+  --spacing-sm: ...;
+  --spacing-md: ...;
+  --spacing-lg: ...;
 }
 ```
 
@@ -111,8 +116,9 @@ de inventar um valor novo solto no componente — é assim que a padronização 
 ## Item 4 — Dívida técnica já documentada neste repo (não é nova, mas relevante)
 
 De `.claude/rules/frontend-standards.md`, seção "Pendências conhecidas":
+
 - IP de produção hardcoded em `src/services/api.ts` e `vite.config.ts`
-  (`172.25.32.42:5000`) — já existe `VITE_API_BASE_URL` em `.env.production`, mas confirme se
+  (ambiente interno da API) — use sempre same-origin `/api` e confirme se
   `api.ts`/`vite.config.ts` de fato leem a env var ou se ainda têm o IP como fallback/literal
   duro. Se for só fallback de dev, ok; se for o valor usado em produção mesmo com a env var
   presente, é bug — corrija para usar a env var de verdade.

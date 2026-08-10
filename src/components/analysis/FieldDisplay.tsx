@@ -212,11 +212,8 @@ const FieldDisplay: React.FC = () => {
         <DocumentHealthBanner />
         <p>Nenhum campo disponível. Processe um documento primeiro.</p>
         {parseResult && parseResult.success && (
-          <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
-            Debug: parseResult.success=true, mas nenhum campo encontrado.
-            {parseResult.fields
-              ? ` Campos na resposta: ${parseResult.fields.length}`
-              : ' Sem campo fields na resposta.'}
+          <p className="field-display-empty__details">
+            O documento foi processado, mas a resposta não contém campos para exibição.
           </p>
         )}
       </div>

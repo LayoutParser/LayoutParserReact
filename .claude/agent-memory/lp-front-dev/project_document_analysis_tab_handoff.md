@@ -19,6 +19,7 @@ iniciar qualquer "aba de análise" do zero, checar se não é retrabalho — gre
 
 **O que foi adicionado neste handoff** (commit `9ec563a` em `feat/document-analysis-tab`,
 não pushado):
+
 - `src/services/api/logService.ts` + `src/types/clientLog.ts`: POST `/api/logs/client`
   (contrato NÃO confirmado com backend, é rascunho razoável), usado para substituir
   `console.error` no fluxo de transformação (`AnalysisModeTabs.tsx`,
@@ -52,6 +53,7 @@ Commits `6311444` (feature) e `699788f` (memória) em `feat/document-analysis-ta
 pushado.
 
 Pontos de atenção que continuam válidos para qualquer trabalho futuro nesses dois fluxos:
+
 - `candidateId` **"tclxsl-1" é fixo** para o pathway TCL/XSL — não é gerado dinamicamente.
 - `score` do candidato existe no contrato mas **ainda não é usado para ordenação** na UI.
 - `validation` só vem preenchido no candidato `tcl-xsl` — os demais não trazem esse campo.

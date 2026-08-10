@@ -1,12 +1,14 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
-import LayoutParserPage from './components/layout/LayoutParserPage';
-import AdminPage from './components/admin/AdminPage';
+import RouteErrorPage from './components/shared/RouteErrorPage';
+import RouteLoading from './components/shared/RouteLoading';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteLoading />,
     children: [
       {
         index: true,
@@ -14,15 +16,21 @@ export const router = createBrowserRouter([
       },
       {
         path: 'upload',
-        element: <LayoutParserPage />,
+        lazy: async () => ({
+          Component: (await import('./components/layout/LayoutParserPage')).default,
+        }),
       },
       {
         path: 'analysis',
-        element: <LayoutParserPage />,
+        lazy: async () => ({
+          Component: (await import('./components/layout/LayoutParserPage')).default,
+        }),
       },
       {
         path: 'admin',
-        element: <AdminPage />,
+        lazy: async () => ({
+          Component: (await import('./components/auth/AdminRoute')).default,
+        }),
       },
     ],
   },

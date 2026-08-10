@@ -44,6 +44,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .file-visualization {
@@ -75,6 +76,10 @@
 }
 
 @media (max-width: 600px) {
+  .analysis-mode-tabs {
+    min-width: 0;
+  }
+
   .analysis-mode-tabs-notice,
   .analysis-mode-tabs-checking {
     margin-bottom: var(--spacing-sm);
@@ -82,5 +87,6 @@
 
   .file-visualization-content {
     min-height: 320px;
+    border-radius: var(--radius-md);
   }
 }

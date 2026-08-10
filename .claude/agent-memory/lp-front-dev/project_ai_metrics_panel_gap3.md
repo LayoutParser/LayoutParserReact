@@ -25,6 +25,7 @@ vermelho só quando `false` explícito) — ver `ValidationBadge` no componente.
 campo separado e não deve ser confundido com qualidade de validação.
 
 Pendente quando o back-end publicar de verdade:
+
 - Confirmar shape real da resposta bate 1:1 com `src/types/aiMetrics.ts` (especialmente
   `docType` já vindo derivado, sem exigir parsing de `layout` no front).
 - Validar paginação/filtros contra dados reais (paginação é client-driven via `page`/`pageSize`

@@ -17,6 +17,7 @@ da doc aqui é ser auditável contra o código, inclusive quando o código está
 Escolher um lado na doc esconde a dívida e cria uma terceira "verdade".
 
 **How to apply:**
+
 - Antes de listar componentes numa árvore de pastas, **cheque quem importa cada um**
   (`grep -rl "from '.*/Componente'" src`). Existir no disco ≠ estar no fluxo. Use uma
   "Nota de estado real" logo abaixo da árvore para os órfãos, em vez de omiti-los.

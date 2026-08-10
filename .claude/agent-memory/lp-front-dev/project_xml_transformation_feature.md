@@ -18,6 +18,7 @@ useTransformationStore.ts`, `src/components/analysis/AnalysisModeTabs.tsx(.css)`
 
 **Achados cross-repo (LayoutParserApi local, em `../LayoutParserApi`, só leitura) que
 fundamentam o plano:**
+
 - `Layout.LayoutType`/`LayoutRecord.LayoutType` é `string` livre, sem enum, tanto no front
   quanto no back. Valores literais confirmados em uso real
   (`Services/XmlAnalysis/AutoTransformationGeneratorService.cs:153-161,274-284`):
@@ -29,11 +30,11 @@ fundamentam o plano:**
 - Endpoints `xmlAnalysis`/`transformationExecution` já declarados em `src/types/api.ts:11-12`
   e `src/services/api.ts:37-38` apontam pra RAIZ do controller — incompletos, nenhum dos dois
   controllers expõe rota raiz. Rotas reais (via `LayoutParserApi/Controllers/
-  XmlAnalysisController.cs` e `TransformationExecutionController.cs`): candidato mais
+XmlAnalysisController.cs` e `TransformationExecutionController.cs`): candidato mais
   provável para o fluxo do usuário é `POST /api/transformationexecution/execute`
   (`TransformationRequest {InputContent, LayoutName, SourceDocumentType?, TargetDocumentType?,
-  Validate?, ExpectedOutput?}` → sucesso `{success, transformedXml, validation?,
-  segmentMappings}` / falha `{success:false, errors, warnings}`). `xmlAnalysis` tem 6
+Validate?, ExpectedOutput?}` → sucesso `{success, transformedXml, validation?,
+segmentMappings}` / falha `{success:false, errors, warnings}`). `xmlAnalysis` tem 6
   sub-rotas (`analyze`, `validate-file`, `validate-xsd`, `analyze-xsd-error-with-ai`,
   `transform-nfe`, `orientations`), nenhuma raiz.
 - `ParseController.cs` (~linha 89) tem branch aparentemente morto: se o arquivo de DADOS
@@ -47,7 +48,7 @@ fundamentam o plano:**
   decisão abaixo.
 
 **Decisão confirmada pelo usuário (2026-07-20) + validada em runtime contra a API real
-(`http://172.25.32.42:5000` — não `localhost:5000`, nada roda local neste ambiente; Swagger
+(ambiente de integração da API; Swagger
 está desabilitado, 404 em `/swagger/v1/swagger.json`):**
 
 - Critério do botão "XML Transformação Final" = **existe Mapper cadastrado para o
@@ -61,7 +62,7 @@ está desabilitado, 404 em `/swagger/v1/swagger.json`):**
   (guid puro, sem prefixo). Testado com guid real que tem mapper
   (`e339073e-32d1-492e-ae8a-dcf6337b21a1`, layout `LAY_CNHI_TXT_MQSERIES_ENVNFE_4.00_NFe`):
   200 com `{success, id, mapperGuid, name, description, inputLayoutGuid, targetLayoutGuid,
-  hasDecryptedContent, lastUpdateDate}`. Testado com guid inexistente: 404 com
+hasDecryptedContent, lastUpdateDate}`. Testado com guid inexistente: 404 com
   `{error: "Mapeador não encontrado"}` — front trata isso como "não disponível", não como
   erro. **Achado colateral:** `GET /api/mapperdatabase/by-layout/{guid}` (rota "irmã") NÃO
   funciona para esse propósito — retornou `count:0` pro mesmo guid que tem mapper confirmado

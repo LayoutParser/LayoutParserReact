@@ -11,10 +11,11 @@ antes de aceitar — não generalizar a partir de um exemplo (ex.: "App.tsx, nun
 
 **Como verificar:** comparar contagem de `\r` entre `git show HEAD:<arquivo> | grep -c $'\r'`
 e o arquivo no working tree (`grep -c $'\r' <arquivo>`), e comparar com a contagem de linhas.
+
 - Se a proporção CR/linhas já era ~100% no HEAD **e** continua ~100% no working tree → convenção
   pré-existente, o agente só continuou o padrão já quebrado (não é regressão nova).
 - Se HEAD estava limpo (0 CR) e o working tree virou 100% CR → é uma regressão nova introduzida
-  pelo edit desta tarefa nesse arquivo específico, mesmo que o *conteúdo* das linhas não tenha
+  pelo edit desta tarefa nesse arquivo específico, mesmo que o _conteúdo_ das linhas não tenha
   mudado (`git diff -b --ignore-space-at-eol` mostra 0 diff de conteúdo).
 
 **Why:** na validação de `feat/xml-transformation-toggle` (2026-07-20), o brief recebido dizia

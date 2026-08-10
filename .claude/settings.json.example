@@ -24,16 +24,43 @@
     ]
   },
 
-  "//hooks": "Hook NAO-BLOQUEANTE que lembra a autoridade de git push. Remova este bloco para desativar.",
+  "//hooks": "Guardas deterministicas de caminho + feedback rapido. Todos usam Node e funcionam no Windows.",
   "hooks": {
     "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('node:path').join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.claude', 'hooks', 'protect-sensitive-paths.cjs'))\"",
+            "timeout": 10
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/git-push-advisory.cjs\"",
+            "command": "node -e \"require(require('node:path').join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.claude', 'hooks', 'protect-sensitive-paths.cjs'))\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node -e \"require(require('node:path').join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.claude', 'hooks', 'git-push-advisory.cjs'))\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"require(require('node:path').join(process.env.CLAUDE_PROJECT_DIR || process.cwd(), '.claude', 'hooks', 'fast-feedback.cjs'))\"",
+            "timeout": 45
           }
         ]
       }

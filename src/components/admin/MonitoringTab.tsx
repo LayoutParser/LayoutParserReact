@@ -4,6 +4,7 @@ import {
   type MonitoringResponse,
   type LayoutAnalysis,
 } from '../../services/api/monitoringService';
+import { logService } from '../../services/api/logService';
 import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './MonitoringTab.css';
 
@@ -22,7 +23,9 @@ const MonitoringTab: React.FC = () => {
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar análise');
-      console.error('Erro ao carregar análise:', err);
+      logService.error('Falha ao carregar monitoramento administrativo', {
+        errorName: err instanceof Error ? err.name : 'UnknownError',
+      });
     } finally {
       setLoading(false);
     }

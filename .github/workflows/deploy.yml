@@ -1,261 +1,86 @@
-name: Deploy LayoutParserReact to Production Server
+name: Deploy LayoutParser Web
 
 on:
   push:
     branches:
       - main
-      - master
-    paths:
-      - '**'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: layoutparser-web-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    # Runner org LayoutParser no servidor de PRODUÇÃO (172.25.32.42 / WINSRV2022-LIB).
-    # A label 'production' garante que o deploy NUNCA rode no runner de dev (label 'dev-local').
+    if: github.ref == 'refs/heads/main'
+    name: Produção HTTPS (React + BFF)
     runs-on: [self-hosted, windows, production]
     timeout-minutes: 60
-    
+    environment:
+      name: production
+
     steps:
-    - name: Checkout LayoutParserReact
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: |
-        $ErrorActionPreference = "Stop"
-        $WORK_DIR = $PWD.Path
-        
-        Write-Host "Instalando dependencias do LayoutParserReact..."
-        Write-Host "Diretorio de trabalho: $WORK_DIR"
-        
-        # Verificar se package.json existe
-        $packageJson = Join-Path $WORK_DIR "package.json"
-        if (-not (Test-Path $packageJson)) {
-          Write-Error "package.json nao encontrado em: $packageJson"
-          Write-Host "Conteudo do diretorio de trabalho:"
-          Get-ChildItem -Path $WORK_DIR | Select-Object Name | Format-Table
-          exit 1
-        }
-        
-        Write-Host "Instalando dependencias npm a partir do lockfile..."
-        npm ci
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Falha ao instalar dependencias (npm ci)"
-          exit 1
-        }
-        
-        Write-Host "Dependencias instaladas com sucesso"
-    
-    - name: Quality gates e build do LayoutParserReact
-      run: |
-        $ErrorActionPreference = "Stop"
-        $WORK_DIR = $PWD.Path
-        
-        Write-Host "Compilando LayoutParserReact..."
-        Write-Host "Diretorio de trabalho: $WORK_DIR"
-        
-        # Verificar se node_modules existe
-        $nodeModules = Join-Path $WORK_DIR "node_modules"
-        if (-not (Test-Path $nodeModules)) {
-          Write-Error "node_modules nao encontrado. Execute 'npm ci' primeiro."
-          exit 1
-        }
-        
-        # O comando valida lint, tipos, testes/cobertura, builds de desenvolvimento e
-        # producao, formatacao e vulnerabilidades altas/criticas antes do deploy.
-        Write-Host "Executando quality gates completos..."
-        npm run quality
-        
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Quality gates ou build do LayoutParserReact falharam"
-          exit 1
-        }
-        
-        # Verificar se dist foi criado
-        $distPath = Join-Path $WORK_DIR "dist"
-        if (-not (Test-Path $distPath)) {
-          Write-Error "Diretorio dist nao foi criado apos o build"
-          exit 1
-        }
-        
-        # Verificar se index.html existe
-        $indexHtml = Join-Path $distPath "index.html"
-        if (-not (Test-Path $indexHtml)) {
-          Write-Error "index.html nao encontrado em: $indexHtml"
-          Write-Host "Conteudo do diretorio dist:"
-          Get-ChildItem -Path $distPath | Select-Object Name | Format-Table
-          exit 1
-        }
-        
-        Write-Host "Build concluido com sucesso"
-        Write-Host "Arquivos gerados em: $distPath"
-        $distFiles = Get-ChildItem -Path $distPath -Recurse -File
-        Write-Host "Total de arquivos gerados: $($distFiles.Count)"
-    
-    - name: Deploy to server
-      run: |
-        $ErrorActionPreference = "Stop"
-        $DEPLOY_PATH = "${{ secrets.DEPLOY_PATH }}"
-        
-        # Validar se DEPLOY_PATH está configurado
-        if ([string]::IsNullOrWhiteSpace($DEPLOY_PATH)) {
-          Write-Error "DEPLOY_PATH nao esta configurado! Configure o secret DEPLOY_PATH no GitHub."
-          Write-Host "Exemplo: C:\inetpub\wwwroot\layoutparser"
-          exit 1
-        }
-        
-        # Normalizar caminho
-        $DEPLOY_PATH = $DEPLOY_PATH.Trim('"', '''', ' ')
-        $WORK_DIR = $PWD.Path
-        
-        # Caminho do build (dist)
-        $BUILD_SOURCE = Join-Path $WORK_DIR "dist"
-        
-        # Caminho de destino: C:\inetpub\wwwroot\layoutparser\front-end
-        # Se DEPLOY_PATH já for o caminho completo do front-end, usar diretamente
-        # Caso contrário, assumir que DEPLOY_PATH é C:\inetpub\wwwroot\layoutparser
-        if ($DEPLOY_PATH.EndsWith('front-end') -or $DEPLOY_PATH.EndsWith('front-end\')) {
-          $DEPLOY_FRONTEND_PATH = $DEPLOY_PATH.TrimEnd('\')
-        } else {
-          $DEPLOY_FRONTEND_PATH = Join-Path $DEPLOY_PATH "front-end"
-        }
-        
-        $DEPLOY_BACKUPS_PATH = Join-Path $DEPLOY_PATH "backups"
-        
-        Write-Host "Iniciando deploy do LayoutParserReact..."
-        Write-Host "Caminho de deploy (DEPLOY_PATH): $DEPLOY_PATH"
-        Write-Host "Diretorio de trabalho: $WORK_DIR"
-        Write-Host "Origem (build): $BUILD_SOURCE"
-        Write-Host "Destino: $DEPLOY_FRONTEND_PATH"
-        
-        # Verificar se o diretório de build existe
-        if (-not (Test-Path $BUILD_SOURCE)) {
-          Write-Error "Diretorio de build nao encontrado: $BUILD_SOURCE"
-          Write-Host "Execute 'npm run quality' primeiro."
-          exit 1
-        }
-        
-        # Verificar se index.html existe no build
-        $indexHtml = Join-Path $BUILD_SOURCE "index.html"
-        if (-not (Test-Path $indexHtml)) {
-          Write-Error "index.html nao encontrado no build: $indexHtml"
-          Write-Host "Conteudo do diretorio dist:"
-          Get-ChildItem -Path $BUILD_SOURCE | Select-Object Name | Format-Table
-          exit 1
-        }
-        
-        # Criar diretórios se não existirem
-        if (-not (Test-Path $DEPLOY_PATH)) {
-          Write-Host "Criando diretorio base: $DEPLOY_PATH"
-          New-Item -ItemType Directory -Path $DEPLOY_PATH -Force | Out-Null
-        }
-        
-        if (-not (Test-Path $DEPLOY_FRONTEND_PATH)) {
-          Write-Host "Criando diretorio Front-end: $DEPLOY_FRONTEND_PATH"
-          New-Item -ItemType Directory -Path $DEPLOY_FRONTEND_PATH -Force | Out-Null
-        }
-        
-        if (-not (Test-Path $DEPLOY_BACKUPS_PATH)) {
-          Write-Host "Criando diretorio Backups: $DEPLOY_BACKUPS_PATH"
-          New-Item -ItemType Directory -Path $DEPLOY_BACKUPS_PATH -Force | Out-Null
-        }
-        
-        # Limpar arquivos antigos antes do deploy (importante após migração de tecnologia)
-        if (Test-Path $DEPLOY_FRONTEND_PATH) {
-          Write-Host "Limpando arquivos antigos do diretorio de deploy..."
-          $existingFiles = Get-ChildItem -Path $DEPLOY_FRONTEND_PATH -Recurse -File -ErrorAction SilentlyContinue
-          if ($existingFiles.Count -gt 0) {
-            Write-Host "Encontrados $($existingFiles.Count) arquivos antigos. Removendo..."
-            Remove-Item -Path "$DEPLOY_FRONTEND_PATH\*" -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Host "Limpeza concluida. Diretorio pronto para novo deploy."
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Instalar dependências reproduzíveis
+        shell: pwsh
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci do front falhou.' }
+          npm ci --prefix server
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci do BFF falhou.' }
+
+      - name: Quality gates e builds
+        shell: pwsh
+        env:
+          VITE_API_BASE_URL: ''
+        run: |
+          npm run quality
+          if ($LASTEXITCODE -ne 0) { throw 'Quality gates falharam.' }
+
+      - name: Publicar release e reiniciar o BFF
+        shell: pwsh
+        env:
+          DEPLOY_ROOT: ${{ secrets.DEPLOY_PATH }}
+          IIS_SITE_NAME: ${{ vars.IIS_SITE_NAME }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          LAYOUTPARSER_API_URL: ${{ vars.LAYOUTPARSER_API_URL }}
+          BFF_ADMIN_USERS: ${{ secrets.BFF_ADMIN_USERS }}
+          BFF_ADMIN_ROLES: ${{ secrets.BFF_ADMIN_ROLES }}
+          BFF_TRUSTED_PROXY_IPS: ${{ vars.BFF_TRUSTED_PROXY_IPS }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Secret DEPLOY_PATH ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variable PUBLIC_HOST ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:LAYOUTPARSER_API_URL)) { throw 'Variable LAYOUTPARSER_API_URL ausente.' }
+
+          $trustedProxies = if ([string]::IsNullOrWhiteSpace($env:BFF_TRUSTED_PROXY_IPS)) {
+            '127.0.0.1'
           } else {
-            Write-Host "Diretorio ja esta vazio."
+            $env:BFF_TRUSTED_PROXY_IPS
           }
-        }
-        
-        # Backup do index.html atual se existir (opcional - apenas se ainda houver algo após limpeza)
-        $currentIndexHtml = Join-Path $DEPLOY_FRONTEND_PATH "index.html"
-        if (Test-Path $currentIndexHtml) {
-          $backupName = "index-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
-          $backupPath = Join-Path $DEPLOY_BACKUPS_PATH $backupName
-          Write-Host "Fazendo backup do index.html atual: $backupName"
-          Copy-Item -Path $currentIndexHtml -Destination $backupPath -Force -ErrorAction SilentlyContinue
-        }
-        
-        # Copiar arquivos do build usando robocopy (muito mais rápido)
-        Write-Host "Copiando arquivos do build..."
-        Write-Host "Origem: $BUILD_SOURCE"
-        Write-Host "Destino: $DEPLOY_FRONTEND_PATH"
-        $startTime = Get-Date
-        
-        # Robocopy é muito mais rápido para muitos arquivos
-        # /E = Copiar subdiretórios incluindo vazios
-        # /IS = Incluir arquivos iguais (sobrescreve se necessário)
-        # /XD = Excluir diretórios (.github, .vscode, etc)
-        # /NP = No Progress (menos output)
-        # /NDL = No Directory List (menos output)
-        # /NFL = No File List (menos output)
-        # /R:3 = Retry 3 vezes em caso de erro
-        # /W:2 = Wait 2 segundos entre tentativas
-        # /PURGE = Remover arquivos no destino que não existem na origem (limpeza adicional)
-        & robocopy $BUILD_SOURCE $DEPLOY_FRONTEND_PATH /E /IS /PURGE /XD .github .vscode .git node_modules /NP /NDL /NFL /R:3 /W:2 | Out-Null
-        
-        $endTime = Get-Date
-        $duration = ($endTime - $startTime).TotalSeconds
-        $robocopyExitCode = $LASTEXITCODE
-        
-        # Resetar LASTEXITCODE para evitar que o exit code do robocopy cause falha no workflow
-        $LASTEXITCODE = 0
-        
-        Write-Host "Robocopy concluido com exit code: $robocopyExitCode"
-        
-        # Robocopy retorna códigos de saída especiais (bitflags)
-        # 0-7 = Sucesso ou avisos menores (aceitável)
-        # 8+ = Erros críticos
-        if ($robocopyExitCode -lt 8) {
-          # Verificar se arquivos foram copiados
-          $copiedFiles = Get-ChildItem -Path $DEPLOY_FRONTEND_PATH -File -Recurse -ErrorAction SilentlyContinue
-          Write-Host "Arquivos no destino: $($copiedFiles.Count) arquivos em $([math]::Round($duration, 2)) segundos"
-          
-          # Verificar se index.html existe (arquivo principal)
-          $indexPath = Join-Path $DEPLOY_FRONTEND_PATH "index.html"
-          if (Test-Path $indexPath) {
-            Write-Host "index.html encontrado no destino - deploy bem-sucedido"
-            
-            # Mostrar alguns arquivos copiados
-            Write-Host "`nArquivos principais copiados:"
-            $mainFiles = Get-ChildItem -Path $DEPLOY_FRONTEND_PATH -File | Select-Object -First 10 Name, Length
-            $mainFiles | Format-Table
-            
-            # Verificar assets
-            $assetsPath = Join-Path $DEPLOY_FRONTEND_PATH "assets"
-            if (Test-Path $assetsPath) {
-              $assetFiles = Get-ChildItem -Path $assetsPath -File
-              Write-Host "Assets copiados: $($assetFiles.Count) arquivos"
-            }
-          } else {
-            Write-Error "index.html nao encontrado no destino. Verifique se os arquivos foram copiados corretamente."
-            Write-Host "Conteudo do diretorio de destino:"
-            Get-ChildItem -Path $DEPLOY_FRONTEND_PATH | Select-Object Name, FullName | Format-Table
-            exit 1
-          }
-        } else {
-          Write-Error "Erro critico ao copiar arquivos (robocopy exit code: $robocopyExitCode)"
-          exit 1
-        }
-        
-        Write-Host "`nDeploy do LayoutParserReact concluido com sucesso!"
-        Write-Host "Front-end disponivel em: $DEPLOY_FRONTEND_PATH"
-        Write-Host "Acesse: http://172.25.32.42:81/ (ou porta configurada no IIS)"
-        
-        # Garantir que o script termina com sucesso
-        exit 0
+
+          & ./scripts/Deploy-Iis.ps1 `
+            -DeployRoot $env:DEPLOY_ROOT `
+            -SiteName $env:IIS_SITE_NAME `
+            -PublicHost $env:PUBLIC_HOST `
+            -UpstreamUrl $env:LAYOUTPARSER_API_URL `
+            -AdminUsers $env:BFF_ADMIN_USERS `
+            -AdminRoles $env:BFF_ADMIN_ROLES `
+            -TrustedProxyIps $trustedProxies

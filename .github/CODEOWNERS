@@ -1,0 +1,7 @@
+# Proprietario padrao do repositorio.
+* @elson-vinicius-lopes
+
+# Superficies sensiveis da cadeia de fornecimento.
+/.github/ @elson-vinicius-lopes
+/package.json @elson-vinicius-lopes
+/package-lock.json @elson-vinicius-lopes

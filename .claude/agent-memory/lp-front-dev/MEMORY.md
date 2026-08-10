@@ -1,49 +1,13 @@
 # Memória — @lp-front-dev (Remy)
 
-> Fatos duráveis do projeto + aprendizados acumulados. Atualize ao descobrir algo não óbvio.
+- [Arquitetura web segura](project_secure_web_architecture.md) — React same-origin, BFF Node e API .NET como fonte da verdade.
+- [Transformação XML](project_xml_transformation_feature.md) — XML bruto da API, geração manual e download.
+- [Taxonomia de falha](project_taxonomia_falha_parse.md) — `failureCause` e saúde documental são contratos aditivos.
+- [Análise multi-candidato](project_document_analysis_tab_handoff.md) — candidatos e diagnóstico por IA já integrados.
+- [Métricas de IA](project_ai_metrics_panel_gap3.md) — contrato antecipado; reconfirmar no manifesto/OpenAPI.
+- [Adoção de shared](project_divida_adocao_shared.md) — não apagar componentes só porque a adoção ainda é parcial.
+- [Convenções reais](feedback_convencoes_reais_vs_doc.md) — confirmar no código antes de ampliar padrões.
+- [Baseline moderno](project_modern_front_quality_baseline.md) — stack, testes e gates atuais.
 
-## Ecossistema (fixo)
-
-- Front Vite+React+TS. **Regra de negócio mora na API .NET** (`LayoutParserApi`, hub). Aqui é só apresentação.
-- Repos: Api (hub) · Lib (cripto) · Decrypt (.exe) · React (este).
-
-## Stack & convenções
-
-- React 18, react-router-dom 6.30 (`createBrowserRouter`), Zustand 4, Axios 1.19, TS 5 strict e Vite 7.
-- Doc diz alias `@/` → `src/` e "componente = pasta própria", mas **o código real 100% usa path relativo e nunca usa subpasta por componente** — ver [Convenções reais vs. doc](feedback_convencoes_reais_vs_doc.md), seguir o código.
-- HTTP **só** em `services/`. Tipos em `src/types`. Não introduzir `any` novo.
-- 7 stores: `useAppStore` (upload/parse), `useLayoutStore`, `useFieldStore`, `usePropertiesStore`, `useSearchStore`, `useStructureStore`, `useTransformationStore` (mapper/transformação XML).
-- `apiClient` (axios) injeta `X-Correlation-ID` — **não remover** o interceptor.
-
-## Endpoints consumidos
-
-- `POST /api/parse/upload` (FormData: layoutFile, txtFile, layoutName?, layoutType?, layoutConfig?) → `ParseResponse`. **422** quando não parseia: `application/json` `{success:false, detectedType, message}` + header `X-Correlation-ID` (validado em runtime 2026-08-03). **400** (falta arquivo) vem como `application/problem+json`, **sem** campo `message`. Contrato antecipado de `failureCause`/`documentHealth`/identidade de campo já consumido no front — ver [Taxonomia de falha do parse](project_taxonomia_falha_parse.md).
-- `GET /api/layoutdatabase/mqseries-nfe`, `POST /api/layoutdatabase/refresh-cache`.
-- `GET /api/monitoring/layouts-analysis`, `GET /api/monitoring/layout-validations`.
-- `GET /api/mapperdatabase/by-input/{layoutGuid}` (200 com mapper | 404 "não encontrado"), `POST /api/transformationexecution/execute` — ver detalhe em [Feature XML Transformação](project_xml_transformation_feature.md).
-- `POST /api/transformationexecution/execute-candidates` (multi-candidato; **sem hífen**, validado em runtime em 2026-08-05) e `POST /api/xml-analysis/diagnose-validation-error` (diagnóstico IA/Ollama) — integrados, ver [Handoff aba de análise](project_document_analysis_tab_handoff.md). O request deve mandar `layoutGuid` do parse e strings vazias, não `null`, nos campos não anuláveis de tipo/saída.
-- `GET /api/ai-metrics/generations` e `GET /api/ai-metrics/summary` — contrato antecipado (back-end ainda não implementou), ver [Painel de métricas de IA (Gap 3)](project_ai_metrics_panel_gap3.md).
-
-## Gates
-
-O gate canônico é `npm run quality`; baseline e decisões em [Baseline moderno de front e qualidade](project_modern_front_quality_baseline.md).
-**Os 4 gates ficaram VERDES em 2026-08-10**, incluindo `npm run lint` com `--max-warnings 0`: a dívida histórica de 30 warnings (29 `no-explicit-any` + 1 `react-hooks/exhaustive-deps`) foi zerada. Se o lint voltar a acusar `any`, é regressão nova — não dívida herdada. Antes de reintroduzir um `as any`, ver a causa raiz das interfaces concorrentes nos Aprendizados.
-`node_modules` pode não estar instalado (rodar `npm ci` primeiro). Os ~12 erros de `tsc` (`noUnusedLocals`/TS7006) de 6 arquivos antigos foram **corrigidos em 2026-07-20** — se reaparecerem, é regressão nova.
-
-## Aprendizados
-
-- [Ambiente local de dev](reference_ambiente_local_dev.md) — API em **:5100**, Vite em **:3000**; sonde antes de assumir "sem backend". Catálogo cai por timeout de pool SQL, **mas isso não impede validar com payload real**: o parse aceita o layout como arquivo (par real versionado no repo da API).
-- [Gates: piso de 30 warnings](gates_crlf_divida.md) — dívida de CRLF resolvida; o que sobrou e como não acrescentar warning novo.
-- [Taxonomia de falha do parse](project_taxonomia_falha_parse.md) — `failureCause`/`documentHealth`/identidade de campo consumidos contra contrato antecipado; back-end ainda não emite nenhum dos três.
-- **Duas fontes concorrentes de identificador/estado da transformação** (padrão de defeito recorrente): (a) o `layoutGuid` do **catálogo** pode vir **zerado**, enquanto o do **parse** vem correto — consultar mapper com o zerado esconde a aba de XML para sempre (resolvido em `utils/layoutGuid.ts`, priorizando o do parse); (b) a aba é decidida por `mapperAvailable` (2ª chamada HTTP) e não por `transformationsStatus` (que já vem no parse) — isso é **critério de negócio confirmado com o usuário**, não "simplifique" sem aprovação.
-- `transformationsStatus: 'not_applicable'` é **ambíguo na origem**: o back-end emite a mesma string para "o gate barrou o documento" e para "rodou e nenhum mapper serviu". Não invente distinção na UI; quem resolve é o campo `transformationsReason` (aditivo, ainda não emitido).
-- `transformationsStatus: 'processing'` **nunca resolve**: não há polling no front nem endpoint que leia o resultado persistido em background. Qualquer rótulo de "processando..." fica preso para sempre.
-- [Painel de métricas de IA (Gap 3)](project_ai_metrics_panel_gap3.md) — implementado em `feat/document-analysis-tab` contra contrato antecipado; 404 esperado até o back-end publicar de verdade.
-- [Handoff aba de análise (multi-candidato/diagnóstico IA)](project_document_analysis_tab_handoff.md) — antes de "criar a aba de análise" checar se já não existe via `AnalysisModeTabs`/`useTransformationStore`; Gaps 1 (multi-candidato) e 2 (diagnóstico IA) já integrados em `feat/document-analysis-tab`, faltando validação end-to-end contra Ollama real.
-- [Feature TXT Posicional vs XML Transformação Final](project_xml_transformation_feature.md) — achados cross-repo + contrato validado em runtime (mapper é o critério certo, layoutType é sempre "2" nos dados reais) + implementação já feita em `feat/xml-transformation-toggle`.
-- [Dívida de adoção do shared/](project_divida_adocao_shared.md) — `shared/Button`/`Modal` não são código morto; 29 botões à mão deveriam reusá-los. Inverta a pergunta antes de apagar algo de `shared/`.
-- [Convenções reais vs. doc escrita](feedback_convencoes_reais_vs_doc.md) — código real não usa alias `@/` nem pasta própria por componente; seguir o código, não a doc.
-- Havia uma árvore inteira de código morto não alcançável a partir de `routes.tsx` — fluxo real é o layout em "L" de `LayoutParserPage.tsx`, que usa `LayoutCombobox` diretamente. Já **removidos**: `AnalysisSection`, `UploadSection`, `LayoutSearch` (2026-08-09) e `FieldProperties`, `LineProperties`, `transformationService.executeTransformation`, `layoutService.hasLayoutsInRedis` (2026-08-10). `LayoutCombobox` e `executeTransformationCandidates` são vivos — não confundir com os homônimos removidos. Em 2026-08-10 saíram também `usePropertiesStore` e o slice de "execução única" do `useTransformationStore` (+ tipos `TransformationExecution*`). **`shared/Button` e `shared/Modal` NÃO são código morto — não apague**: ver [Dívida de adoção do shared/](project_divida_adocao_shared.md).
-- **Causa raiz da maior parte dos `as any` do projeto: interfaces homônimas concorrentes.** `src/types/api.ts` e `src/types/field.ts` declaram, cada um, um `Field` diferente (o de `field.ts` tem `lineSequence`/`occurrence`, o de `api.ts` não tinha); `types/api.ts` e `types/layout.ts` declaram dois `Layout` distintos (o de `layout.ts` é o do catálogo, com `decryptedContent`/`valueContent`; o de `api.ts` é o layout parseado, com `elements`). `useAppStore` tipa por `api.ts` e `useFieldStore` por `field.ts`, então o mesmo dado ganhava tipo diferente conforme a origem e os componentes "resolviam" com cast. Antes de castar, **cheque se o campo já existe na interface irmã**. **CONSOLIDADO em 2026-08-10**: `types/api.ts` não declara mais `Field`/`LayoutElement`/`Layout` — reexporta de `field.ts` e `structure.ts` (`Layout` virou alias de `ParsedLayout`). Foi mudança só de tipos, sem tocar em consumidor. **Atenção ao que NÃO foi unificado de propósito**: o `Layout` de `types/layout.ts` é o registro do CATÁLOGO (`decryptedContent`/`valueContent`) e continua separado do layout parseado — mesmo nome, entidades diferentes.
-- Ao tipar um campo que era `any`, o `tsc` passa a cobrar guardas que antes não existiam (ex.: `position?: number` revelou `groupData.position >= 0` sem checagem). Preservar o comportamento exige lembrar que `undefined >= 0` já era `false` em JS — o equivalente tipado é `?? -1`, não adicionar um `if` que muda o fluxo.
-- `Array.prototype.reduce()` sobre um array `any[]` "contamina" a inferência do acumulador para `any` mesmo com `{} as Record<...>` no valor inicial — dispara TS7006 em callbacks encadeados (`.map()` dentro do resultado). Fix sem introduzir `any` novo: mover a anotação pro argumento de tipo genérico explícito, `fields.reduce<Record<string, any[]>>((acc, field) => ..., {})`, em vez de `fields.reduce((acc, field) => ..., {} as Record<string, any[]>)` — mesmo tipo, só preserva a inferência corretamente.
+Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
+`X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

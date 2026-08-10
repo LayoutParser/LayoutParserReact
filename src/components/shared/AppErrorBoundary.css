@@ -1,0 +1,68 @@
+.app-fatal-error {
+  align-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(var(--color-accent-rgb), 0.14), transparent 38%),
+    var(--color-canvas);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.app-fatal-error__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  max-width: 42rem;
+  padding: clamp(1.5rem, 5vw, 3rem);
+}
+
+.app-fatal-error__card h1 {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-2xl);
+  margin: 0.35rem 0 1rem;
+}
+
+.app-fatal-error__card p {
+  color: var(--color-text-muted);
+  line-height: 1.65;
+}
+
+.app-fatal-error__eyebrow {
+  color: var(--color-danger-text) !important;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.app-fatal-error__correlation code {
+  background: var(--color-code-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+  padding: 0.2rem 0.4rem;
+}
+
+.app-fatal-error__card button {
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-primary-contrast);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  margin-top: 0.75rem;
+  padding: 0.8rem 1.1rem;
+}
+
+.app-fatal-error__card button:hover {
+  background: var(--color-primary-hover);
+}
+
+.app-fatal-error__card button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}

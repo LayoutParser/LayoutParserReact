@@ -2,7 +2,8 @@
 
 - **Branch:** `codex/frontend-refinement-gates-ux`
 - **Estado:** implementação e QA local concluídos; ainda sem commit/push/PR.
-- **Decisões:** manter React 18/Router 6 neste PR; migrar Router 7 separadamente. Altas/críticas
+- **Decisão histórica (superada em 2026-08-10):** React 18 foi mantido e Router 7 foi migrado
+  no hardening da plataforma. Na época, altas/críticas
   bloqueiam CI; as 2 moderadas restantes estão documentadas. Cobertura conta todos os TS/TSX
   e tem piso honesto 25/19/29/25.
 - **Produto:** visual corporativo/responsivo; foco e teclado; combobox/tabs/tree/modal acessíveis;

@@ -50,6 +50,13 @@
   border-color: var(--color-accent);
 }
 
+.tree-control-btn:focus-visible,
+.tree-node-header:focus-visible,
+.tree-toggle:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 .tree-root,
 .tree-node,
 .tree-children {
@@ -75,6 +82,11 @@
 
 .tree-node-header:hover {
   background: var(--color-accent-soft);
+}
+
+.tree-node-header:focus-visible {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
 }
 
 .tree-node.selected > .tree-node-header {
@@ -139,6 +151,25 @@
   }
 
   .tree-children {
-    padding-left: var(--spacing-md);
+    padding-left: var(--spacing-sm);
+  }
+
+  .tree-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tree-control-btn {
+    min-height: 48px;
+  }
+
+  .tree-node-header {
+    align-items: flex-start;
+  }
+
+  .tree-node-type {
+    max-width: 38%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

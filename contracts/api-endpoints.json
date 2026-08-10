@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sourceOfTruth": "LayoutParserApi",
+  "endpoints": [
+    { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
+    { "method": "POST", "path": "/api/parse/upload", "owner": "LayoutParserApi" },
+    { "method": "GET", "path": "/api/layoutdatabase/mqseries-nfe", "owner": "LayoutParserApi" },
+    { "method": "POST", "path": "/api/layoutdatabase/refresh-cache", "owner": "LayoutParserApi" },
+    { "method": "GET", "path": "/api/monitoring/layouts-analysis", "owner": "LayoutParserApi" },
+    { "method": "GET", "path": "/api/monitoring/layout-validations", "owner": "LayoutParserApi" },
+    { "method": "GET", "path": "/api/ai-metrics/generations", "owner": "LayoutParserApi" },
+    { "method": "GET", "path": "/api/ai-metrics/summary", "owner": "LayoutParserApi" },
+    {
+      "method": "GET",
+      "path": "/api/mapperdatabase/by-input/:layoutGuid",
+      "owner": "LayoutParserApi"
+    },
+    {
+      "method": "POST",
+      "path": "/api/transformationexecution/execute-candidates",
+      "owner": "LayoutParserApi"
+    },
+    {
+      "method": "POST",
+      "path": "/api/xml-analysis/diagnose-validation-error",
+      "owner": "LayoutParserApi"
+    },
+    { "method": "POST", "path": "/api/logs/client", "owner": "LayoutParserApi" }
+  ]
+}

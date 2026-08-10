@@ -1,0 +1,45 @@
+.route-error {
+  display: grid;
+  min-height: 100vh;
+  padding: 2rem;
+  place-items: center;
+}
+
+.route-error__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  max-width: 38rem;
+  padding: 2rem;
+}
+
+.route-error__status {
+  color: var(--color-danger-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.route-error__card a {
+  color: var(--color-accent);
+  display: inline-block;
+  font-weight: var(--font-weight-semibold);
+  margin-top: 0.75rem;
+}
+
+.route-error__card a:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+@media (max-width: 480px) {
+  .route-error {
+    min-height: 100dvh;
+    padding: var(--spacing-md);
+  }
+
+  .route-error__card {
+    width: 100%;
+    padding: var(--spacing-lg);
+  }
+}

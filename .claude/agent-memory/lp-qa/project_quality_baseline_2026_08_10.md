@@ -1,11 +1,10 @@
 # Baseline de QA automatizado — 2026-08-10
 
-- Comando único: `npm ci && npm run quality && git diff --check`.
-- Verificado: 54/54 testes em 11 arquivos; cobertura global real de 25,62% statements,
-  19,56% branches, 29,16% functions e 25,64% lines. Thresholds: 25/19/29/25.
-- Lint inclui `eslint-plugin-jsx-a11y` e mantém `--max-warnings 0`.
-- Builds default, development e production passaram sem warnings de chunk vazio.
-- `npm audit --audit-level=high` passa. Restam 2 moderadas no React Router 6; a correção exige
-  migração incompatível para v7 e deve ser feita em PR próprio.
-- Smoke HTTP do Vite: `/`, `/upload`, `/admin` e `/analysis` responderam 200.
-- API local 5000/5100 indisponível: E2E real de parse/transformação segue pendente de ambiente.
+- Front: 112 testes em 20 arquivos.
+- Cobertura front: 40,98% statements, 32,14% branches, 42,60% functions e 41,29% lines.
+- Pisos globais: 40% statements/lines, 31% branches e 42% functions.
+- BFF: 70 testes; 92,35% statements, 85,42% branches, 95,31% functions e 92,17% lines.
+- Playwright: 4 cenários aprovados (TXT → XML/download e admin negado, desktop + mobile).
+- `npm audit --audit-level=moderate`: zero vulnerabilidades nos dois lockfiles.
+- Builds dev/prod, artifact validation sem source maps/endereço interno e contrato local passam.
+- Gate agregado: `npm run quality`; E2E permanece em job próprio da CI.

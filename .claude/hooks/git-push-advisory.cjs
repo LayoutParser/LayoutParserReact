@@ -7,7 +7,9 @@
  * apenas escreve um lembrete em stderr e sai com codigo 0.
  */
 let input = '';
-process.stdin.on('data', (chunk) => { input += chunk; });
+process.stdin.on('data', chunk => {
+  input += chunk;
+});
 process.stdin.on('end', () => {
   try {
     const evt = JSON.parse(input || '{}');
@@ -15,7 +17,7 @@ process.stdin.on('end', () => {
     if (/\bgit\s+push\b/.test(cmd) || /\bgh\s+pr\s+(create|merge)\b/.test(cmd)) {
       process.stderr.write(
         '\n[harness] Lembrete: git push / PR e EXCLUSIVO do @lp-devops (Gage).' +
-        ' Veja .claude/rules/agent-authority.md.\n'
+          ' Veja .claude/rules/agent-authority.md.\n'
       );
     }
   } catch (_) {

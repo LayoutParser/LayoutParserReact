@@ -8,7 +8,7 @@ Padrões **derivados do código existente** — siga o que já está lá, não r
 
 ## Stack & tooling
 
-- **Vite 7** (`type: module`), **React 18**, **react-router-dom 6.30** (`createBrowserRouter`),
+- **Vite 7** (`type: module`), **React 18**, **react-router-dom 7.18** (`createBrowserRouter`),
   **Zustand 4.4**, **Axios 1.19**. **TS 5 strict** (`noUnusedLocals`, `noUnusedParameters`,
   `noFallthroughCasesInSwitch`).
 - Alias **`@/`** → `src/` (configurado em `vite.config.ts` e `tsconfig.json`). Use-o.
@@ -53,8 +53,9 @@ btca ask --resource zustand --question "como tipar o create() com middleware?"
 btca ask --resource react-router --question "data router: como tratar errorElement?"
 ```
 
-## Pendências conhecidas (não esconder)
+## Fronteira web segura
 
-- IP de produção **hardcoded** em `api.ts` e `vite.config.ts` (`172.25.32.42:5000`) — externalizar via `VITE_API_BASE_URL`.
-- React Router 6 mantém dois avisos moderados de segurança; a correção exige migração
-  incompatível para v7 e deve ocorrer em PR próprio. Altas/críticas bloqueiam o gate.
+- Produção usa sempre same-origin `/api`; não grave host/porta interna no bundle.
+- O BFF Node em `server/` autentica, autoriza, limita payload/rate e encaminha à API .NET.
+- Uploads: 25 MiB para `txtFile`, 32 MiB para a requisição completa; mantenha validação em camadas.
+- Vulnerabilidades moderadas ou maiores bloqueiam o gate; exceções exigem risco aceito documentado.

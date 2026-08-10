@@ -11,11 +11,8 @@ import type {
  * Serviço para o fluxo "XML Transformação Final": checa se um layout tem transformação
  * disponível (via Mapper cadastrado) e executa a transformação (validação + geração de XML).
  *
- * Rotas validadas em 2026-07-20 contra a API real (ambiente 172.25.32.42:5000):
+ * Rotas validadas em 2026-07-20 contra um ambiente de integração da API:
  * - GET  /api/mapperdatabase/by-input/{layoutGuid} -> 200 com o mapper | 404 se não existe
- * - POST /api/transformationexecution/execute      -> ver types/transformation.ts
- *
- * Rota multi-candidato confirmada por handoff @lp-architect (Aria) em 2026-07-29:
  * - POST /api/transformationexecution/execute-candidates -> ver types/transformation.ts
  */
 export const transformationService = {
