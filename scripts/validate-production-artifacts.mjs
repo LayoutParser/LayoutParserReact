@@ -40,8 +40,6 @@ for (const requiredFragment of [
   'Content-Security-Policy',
   'Strict-Transport-Security',
   'X-Content-Type-Options',
-  'windowsAuthentication enabled="true"',
-  'anonymousAuthentication enabled="false"',
   'HTTP_X_IIS_USER',
   "style-src 'self'",
 ]) {
@@ -52,6 +50,23 @@ for (const requiredFragment of [
 
 if (/unsafe-inline|unsafe-eval/i.test(webConfig)) {
   throw new Error('web.config de produção permite execução inline insegura na CSP.');
+}
+
+if (/<(?:anonymous|windows)Authentication\b/i.test(webConfig)) {
+  throw new Error(
+    'Autenticação IIS deve ser configurada no applicationHost.config, não no web.config.'
+  );
+}
+
+const deployScript = await readFile(path.join(repositoryRoot, 'scripts', 'Deploy-Iis.ps1'), 'utf8');
+for (const requiredFragment of [
+  'system.webServer/security/authentication/windowsAuthentication',
+  'system.webServer/security/authentication/anonymousAuthentication',
+  "'/commit:apphost'",
+]) {
+  if (!deployScript.includes(requiredFragment)) {
+    throw new Error(`Deploy IIS não contém configuração obrigatória: ${requiredFragment}`);
+  }
 }
 
 console.log(
