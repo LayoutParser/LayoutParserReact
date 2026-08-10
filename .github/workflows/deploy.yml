@@ -38,18 +38,51 @@ jobs:
       - name: Normalizar fim de linha do workspace
         shell: powershell
         run: |
-          git -c "safe.directory=$env:GITHUB_WORKSPACE" checkout-index --all --force
-          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível normalizar o workspace do runner.' }
-
           $lineEndingViolations = @(
             git -c "safe.directory=$env:GITHUB_WORKSPACE" ls-files --eol |
               Where-Object { $_ -match '\bw/crlf\b.*\beol=lf\b' }
           )
           if ($LASTEXITCODE -ne 0) { throw 'Não foi possível validar os finais de linha do workspace.' }
-          if ($lineEndingViolations.Count -gt 0) {
-            $lineEndingViolations | Write-Host
-            throw 'O checkout contém arquivos CRLF que deveriam estar em LF.'
+
+          $workspaceRoot = [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE)
+          $workspacePrefix = $workspaceRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+            [System.IO.Path]::DirectorySeparatorChar
+          foreach ($violation in $lineEndingViolations) {
+            $columns = $violation -split "`t", 2
+            if ($columns.Count -ne 2) { throw "Saída inesperada de git ls-files --eol: $violation" }
+
+            $relativePath = $columns[1]
+            $fullPath = [System.IO.Path]::GetFullPath((Join-Path $workspaceRoot $relativePath))
+            if (
+              -not $fullPath.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
+              -not (Test-Path -LiteralPath $fullPath -PathType Leaf)
+            ) {
+              throw "Arquivo de normalização fora do workspace: $relativePath"
+            }
+
+            $bytes = [System.IO.File]::ReadAllBytes($fullPath)
+            $normalizedBytes = New-Object System.Collections.Generic.List[byte]
+            for ($index = 0; $index -lt $bytes.Length; $index++) {
+              if ($bytes[$index] -eq 13 -and $index + 1 -lt $bytes.Length -and $bytes[$index + 1] -eq 10) {
+                continue
+              }
+              $normalizedBytes.Add($bytes[$index])
+            }
+            [System.IO.File]::WriteAllBytes($fullPath, $normalizedBytes.ToArray())
           }
+
+          $remainingViolations = @(
+            git -c "safe.directory=$env:GITHUB_WORKSPACE" ls-files --eol |
+              Where-Object { $_ -match '\bw/crlf\b.*\beol=lf\b' }
+          )
+          if ($LASTEXITCODE -ne 0) { throw 'Não foi possível verificar a normalização do workspace.' }
+          if ($remainingViolations.Count -gt 0) {
+            $remainingViolations | Write-Host
+            throw 'O checkout ainda contém arquivos CRLF que deveriam estar em LF.'
+          }
+
+          git -c "safe.directory=$env:GITHUB_WORKSPACE" diff --exit-code --
+          if ($LASTEXITCODE -ne 0) { throw 'A normalização alterou o conteúdo versionado.' }
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
