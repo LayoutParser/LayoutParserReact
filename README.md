@@ -244,17 +244,19 @@ npm run quality
 O workflow [`deploy.yml`](.github/workflows/deploy.yml) executa os gates, cria uma release
 versionada, publica o React, instala as dependências de produção do BFF, registra/reinicia seu
 processo em uma Scheduled Task do Windows, faz smoke tests e mantém rollback para a release
-anterior. O script [Deploy-Iis.ps1](scripts/Deploy-Iis.ps1) exige que o site IIS e seu binding
-HTTPS já existam e falha se URL Rewrite, ARR, allowlists ou variáveis obrigatórias estiverem
-ausentes. Configure `PUBLIC_HOST` em produção e `PUBLIC_HOST_DEV` em desenvolvimento com o
-hostname DNS coberto pelo certificado, sem protocolo ou porta; esse valor também é usado no
-smoke test HTTPS. Os environments `development` e `production` devem exigir aprovação e isolar
-seus secrets/runners.
+anterior. O script [Deploy-Iis.ps1](scripts/Deploy-Iis.ps1) exige HTTPS e falha se URL Rewrite,
+ARR, allowlists ou variáveis obrigatórias estiverem ausentes. Configure `PUBLIC_HOST` em produção
+e `PUBLIC_HOST_DEV` em desenvolvimento com o hostname DNS coberto pelo certificado, sem protocolo
+ou porta; esse valor também é usado no smoke test HTTPS. Os environments `development` e
+`production` devem exigir aprovação e isolar seus secrets/runners.
 
 No runner de desenvolvimento, o workflow instala o ARR 3 quando ele estiver ausente usando o
 instalador x64 oficial da Microsoft, com assinatura Authenticode e SHA-256 fixado verificados por
-[`Install-IisArr.ps1`](scripts/Install-IisArr.ps1). O runner de produção continua exigindo ARR
-pré-provisionado para impedir alterações automáticas na infraestrutura produtiva.
+[`Install-IisArr.ps1`](scripts/Install-IisArr.ps1). Ele também migra o site de HTTP para HTTPS de
+forma idempotente com [`Initialize-IisDevHttps.ps1`](scripts/Initialize-IisDevHttps.ps1), usando um
+certificado válido para `PUBLIC_HOST_DEV` já instalado em `Cert:\LocalMachine\My`. O runner de
+produção continua exigindo ARR, site e binding HTTPS pré-provisionados para impedir alterações
+automáticas na infraestrutura produtiva.
 
 Nunca publique o front com `VITE_API_BASE_URL` apontando para uma origem interna. O build de
 produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma origem HTTPS.
