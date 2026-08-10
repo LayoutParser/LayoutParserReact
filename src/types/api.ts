@@ -111,6 +111,18 @@ export interface ValidationSuggestion {
   confidence: string;
 }
 
+/**
+ * Saúde do documento num parse BEM-SUCEDIDO (HTTP 200).
+ *
+ * Spec "Taxonomia de falha do parse" §2.1: defeito localizável NÃO é 422 — é 200 com o
+ * documento renderizável e o erro anotado por cima. `clean` x `has_defects` é o terceiro
+ * estado que faltava (antes só existiam "200 limpo" e "erro").
+ *
+ * ADITIVO E OPCIONAL: enquanto o back-end não emitir o campo, a UI deriva de
+ * `validationErrors` (ver `resolveDocumentHealth` em utils/documentHealth.ts).
+ */
+export type DocumentHealth = 'clean' | 'has_defects';
+
 export interface ParseResponse {
   success: boolean;
   detectedType?: string;

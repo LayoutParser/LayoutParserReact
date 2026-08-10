@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
-import type { Field } from '../../types/field';
+import type { DisplayGroup, Field } from '../../types/field';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import DocumentHealthBanner from './DocumentHealthBanner';
 import './FieldDisplay.css';
