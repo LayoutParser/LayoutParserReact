@@ -72,7 +72,7 @@ jobs:
             -PublicHost $env:PUBLIC_HOST
 
       - name: Publicar ambiente de desenvolvimento
-        shell: pwsh
+        shell: powershell
         env:
           DEPLOY_ROOT: ${{ vars.DEPLOY_PATH_DEV }}
           IIS_SITE_NAME: ${{ vars.IIS_SITE_NAME_DEV }}

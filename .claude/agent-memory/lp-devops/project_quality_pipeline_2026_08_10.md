@@ -13,4 +13,6 @@
   o certificado local compatível com `PUBLIC_HOST_DEV`; ambos são idempotentes. Produção continua
   totalmente pré-provisionada. O deploy exige URL Rewrite, autenticação Windows, allowed server
   variable, allowlist e BFF em loopback.
+- Scripts que usam o provider `IIS:\` rodam em `powershell.exe`; o PowerShell 7 pode carregar
+  `WebAdministration` via compatibilidade sem expor esse drive ao processo chamador.
 - Dependabot, dependency review, CodeQL e CODEOWNERS fazem parte da supply chain.
