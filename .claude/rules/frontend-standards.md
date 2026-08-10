@@ -8,7 +8,7 @@ Padrões **derivados do código existente** — siga o que já está lá, não r
 
 ## Stack & tooling
 
-- **Vite 7** (`type: module`), **React 18**, **react-router-dom 7.18** (`createBrowserRouter`),
+- **Vite 8** (`type: module`), **React 19**, **react-router-dom 7.18** (`createBrowserRouter`),
   **Zustand 4.4**, **Axios 1.19**. **TS 5 strict** (`noUnusedLocals`, `noUnusedParameters`,
   `noFallthroughCasesInSwitch`).
 - Alias **`@/`** → `src/` (configurado em `vite.config.ts` e `tsconfig.json`). Use-o.

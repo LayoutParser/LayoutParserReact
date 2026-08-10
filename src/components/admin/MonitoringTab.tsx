@@ -9,7 +9,7 @@ import { isKeyboardActivationKey } from '../../utils/keyboard';
 import './MonitoringTab.css';
 
 const MonitoringTab: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState<MonitoringResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<LayoutAnalysis | null>(null);
@@ -32,7 +32,27 @@ const MonitoringTab: React.FC = () => {
   };
 
   useEffect(() => {
-    loadAnalysis();
+    let active = true;
+
+    void monitoringService
+      .getLayoutsAnalysis()
+      .then(result => {
+        if (active) setData(result);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Erro ao carregar análise');
+        logService.error('Falha ao carregar monitoramento administrativo', {
+          errorName: err instanceof Error ? err.name : 'UnknownError',
+        });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const toggleLineExpansion = (lineName: string) => {
