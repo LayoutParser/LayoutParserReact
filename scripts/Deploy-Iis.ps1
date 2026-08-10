@@ -105,6 +105,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $serverSourcePath 'dist/src/index.js
 }
 
 Import-Module WebAdministration -ErrorAction Stop
+if (-not (Get-PSDrive -Name 'IIS' -ErrorAction SilentlyContinue)) {
+  throw 'O provider IIS não está disponível. Execute o deploy com o Windows PowerShell (powershell.exe).'
+}
 if (-not (Get-WebGlobalModule -Name 'RewriteModule' -ErrorAction SilentlyContinue)) {
   throw 'IIS URL Rewrite não está instalado.'
 }

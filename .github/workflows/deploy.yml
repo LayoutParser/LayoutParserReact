@@ -39,7 +39,7 @@ jobs:
             server/package-lock.json
 
       - name: Instalar dependências reproduzíveis
-        shell: pwsh
+        shell: powershell
         run: |
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'npm ci do front falhou.' }
@@ -47,7 +47,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'npm ci do BFF falhou.' }
 
       - name: Quality gates e builds
-        shell: pwsh
+        shell: powershell
         env:
           VITE_API_BASE_URL: ''
         run: |
@@ -55,7 +55,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Quality gates falharam.' }
 
       - name: Publicar release e reiniciar o BFF
-        shell: pwsh
+        shell: powershell
         env:
           DEPLOY_ROOT: ${{ secrets.DEPLOY_PATH }}
           IIS_SITE_NAME: ${{ vars.IIS_SITE_NAME }}

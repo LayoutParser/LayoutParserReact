@@ -258,6 +258,10 @@ certificado válido para `PUBLIC_HOST_DEV` já instalado em `Cert:\LocalMachine\
 produção continua exigindo ARR, site e binding HTTPS pré-provisionados para impedir alterações
 automáticas na infraestrutura produtiva.
 
+As etapas que manipulam o provider `IIS:\` usam o Windows PowerShell nativo (`powershell.exe`).
+Isso evita a sessão de compatibilidade do PowerShell 7, que importa os cmdlets de
+`WebAdministration`, mas não disponibiliza o drive `IIS:\` ao processo chamador.
+
 Nunca publique o front com `VITE_API_BASE_URL` apontando para uma origem interna. O build de
 produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma origem HTTPS.
 
