@@ -15,4 +15,5 @@
 - Front é base de trabalho de faculdade. Clareza importa tanto quanto o código.
 
 ## Aprendizados
-- (adicione aqui: decisões de documentação, termos do domínio a padronizar.)
+- [Documentar divergências, não consertá-las](feedback_documentar_divergencias.md) — órfãos, endpoints sem back-end e configs conflitantes: documentar + reportar.
+- (adicione aqui: outras decisões de documentação, termos do domínio a padronizar.)

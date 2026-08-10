@@ -80,11 +80,11 @@ está desabilitado, 404 em `/swagger/v1/swagger.json`):**
   ainda é baseado em leitura de código C#, não confirmado em runtime; validar quando houver
   um documento de teste real.
 
-**Achado interno (dívida pré-existente, não relacionado à feature em si):**
-`src/components/analysis/AnalysisSection.tsx` existe mas é código morto — não importado em
-`routes.tsx` nem em nenhum outro componente (`grep -rn "AnalysisSection" src/` só acha o
-próprio arquivo). O fluxo real e ativo hoje é o layout em "L" dentro de
-`src/components/layout/LayoutParserPage.tsx`. Não confundir os dois ao plugar UI nova.
+**Achado interno (dívida pré-existente, não relacionado à feature em si) — RESOLVIDO:**
+`src/components/analysis/AnalysisSection.tsx` era código morto (não importado em `routes.tsx`
+nem em nenhum outro componente) e foi **removido em 2026-08-09**, junto com `UploadSection`.
+O fluxo real e ativo é o layout em "L" dentro de `src/components/layout/LayoutParserPage.tsx`.
+Ainda sobra `src/components/upload/LayoutSearch.tsx`, órfão em cascata.
 
 **Convenções reais do código contrariam a doc escrita (segui o código, não a doc, ao
 implementar) — ver [[feedback-convencoes-reais-vs-doc]]:** nenhum dos ~14 componentes do

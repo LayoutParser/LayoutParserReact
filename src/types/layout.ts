@@ -5,6 +5,9 @@ export interface Layout {
   name: string;
   description?: string;
   decryptedContent?: string; // Conteúdo descriptografado (se estiver no Redis)
+  // Nome alternativo que a API usa para o mesmo conteúdo em algumas respostas do catálogo.
+  // O consumo real (LayoutParserPage) sempre tenta `decryptedContent` primeiro e cai aqui.
+  valueContent?: string;
   version?: string;
   layoutType?: string;
 }

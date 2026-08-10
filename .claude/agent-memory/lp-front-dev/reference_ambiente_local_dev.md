@@ -12,9 +12,16 @@ e eu quase fechar a tarefa só com mock.
 
 ## Portas
 
-- **API .NET: `http://localhost:5100`** — é onde ela sobe de fato. O `getApiBaseUrl()` do front
-  aponta para `:5000`/`172.25.32.42:5000`, que costumam estar **mortos**. Não confie no default
-  do front para descobrir onde a API está.
+- **API .NET: `http://localhost:5100`** — é onde ela sobe de fato. Os *fallbacks* hardcoded do
+  `getApiBaseUrl()` apontam para `:5000`/`172.25.32.42:5000`, que costumam estar **mortos**.
+- **Mas a env var vence o fallback** (verificado em 2026-08-09): existem `.env.development`
+  (`VITE_API_BASE_URL=http://localhost:5100`), `.env.production` (IP `172.25.32.42:5000`) e
+  `.env.example`, e `api.ts` lê `VITE_API_BASE_URL` **antes** de cair no hostname. Ou seja, em
+  `npm run dev` o front já acerta o `:5100` sozinho; o `:5000` só aparece se alguém apagar/ignorar
+  o `.env.development`.
+- Corolário sutil: como o axios usa **baseURL absoluta** vinda da env, o **proxy `/api` do
+  `vite.config.ts` nunca é exercitado** — ele continua apontando para `172.25.32.42:5000` e é
+  efetivamente inerte. Não perca tempo depurando o proxy achando que ele está no caminho.
 - Vite dev server: **`http://localhost:3000`** (configurado no `vite.config`), **não** o 5173
   padrão do Vite.
 

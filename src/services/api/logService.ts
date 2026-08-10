@@ -22,7 +22,7 @@ const send = (level: ClientLogLevel, message: string, context?: Record<string, u
   };
 
   apiClient.post('/api/logs/client', entry).catch(error => {
-    if ((import.meta as any).env?.DEV) {
+    if (import.meta.env.DEV) {
       console.error('[logService] Falha ao enviar log ao back-end:', error, entry);
     }
   });

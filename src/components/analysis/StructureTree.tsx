@@ -58,7 +58,7 @@ const StructureTree: React.FC = () => {
     const fieldsForTree =
       isTruncated && allowedLineSequences.size > 0
         ? actualFields.filter(f => {
-            const seq = String((f as any).lineSequence || '').trim();
+            const seq = String(f.lineSequence || '').trim();
             return allowedLineSequences.has(seq);
           })
         : actualFields;

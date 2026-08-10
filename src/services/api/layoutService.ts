@@ -1,6 +1,6 @@
 import axios from 'axios';
 import apiClient from '../api';
-import type { LayoutSearchResponse } from '../../types/layout';
+import type { Layout, LayoutSearchResponse } from '../../types/layout';
 
 /**
  * Serviço para buscar layouts do banco de dados
@@ -29,7 +29,7 @@ export const layoutService = {
    * Verifica se há layouts no Redis
    * Layouts no Redis têm decryptedContent preenchido
    */
-  hasLayoutsInRedis(layouts: any[]): boolean {
+  hasLayoutsInRedis(layouts: Layout[]): boolean {
     if (!layouts || layouts.length === 0) {
       return false;
     }

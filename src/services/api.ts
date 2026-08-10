@@ -13,7 +13,7 @@ import { isParseFailureCause } from '../utils/parseFailure';
 // Configuração da API
 const getApiBaseUrl = (): string => {
   // Usar variável de ambiente se disponível
-  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl) {
     return envUrl;
   }
@@ -69,11 +69,11 @@ const apiClient = axios.create({
 
 // ✅ CorrelationId nasce no front-end e é enviado em TODAS as chamadas
 apiClient.interceptors.request.use(config => {
-  const headers = (config.headers ?? {}) as any;
-  if (!headers['X-Correlation-ID']) {
-    headers['X-Correlation-ID'] = createCorrelationId();
+  // `config.headers` é obrigatório em InternalAxiosRequestConfig (axios 1.x) e aceita acesso
+  // indexado pelo index signature de RawAxiosHeaders — não precisa do cast que havia aqui.
+  if (!config.headers['X-Correlation-ID']) {
+    config.headers['X-Correlation-ID'] = createCorrelationId();
   }
-  config.headers = headers;
   return config;
 });
 
