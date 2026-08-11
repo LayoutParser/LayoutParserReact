@@ -360,6 +360,8 @@ Os workflows de qualidade e segurança estão em [`.github/workflows/`](.github/
 O Dependabot agrupa atualizações compatíveis de React, ESLint e Vite, enquanto upgrades major
 dessas famílias ficam bloqueados para migração manual conjunta. Isso evita PRs isolados com
 peer dependencies incompatíveis sem enfraquecer as atualizações minor, patch ou de segurança.
+Todos os PRs automáticos do Dependabot também têm `develop` como destino; eles nunca promovem
+dependências diretamente para `main`.
 
 ### Política de promoção para produção
 
