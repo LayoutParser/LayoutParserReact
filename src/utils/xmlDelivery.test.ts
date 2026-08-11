@@ -16,6 +16,20 @@ describe('xmlDelivery', () => {
     expect(formatXmlForDisplay(rawXml)).toBe(rawXml);
   });
 
+  it('mantém a indentação depois de um comentário XML multilinha', () => {
+    const rawXml = '<root><!-- primeira linha\nsegunda linha --><item>valor</item></root>';
+
+    expect(formatXmlForDisplay(rawXml)).toBe(
+      [
+        '<root>',
+        '  <!-- primeira linha',
+        '  segunda linha -->',
+        '  <item>valor</item>',
+        '</root>',
+      ].join('\n')
+    );
+  });
+
   it('preserva entrada vazia', () => {
     expect(formatXmlForDisplay('')).toBe('');
   });
