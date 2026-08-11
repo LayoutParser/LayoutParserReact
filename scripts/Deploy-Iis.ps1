@@ -262,7 +262,11 @@ try {
   $binding = $matchingBinding.bindingInformation.Split(':')
   $httpsPort = if ($binding.Count -ge 2 -and $binding[1]) { $binding[1] } else { '443' }
   $smokeUrl = "https://$PublicHost`:$httpsPort/"
-  $response = Invoke-WebRequest -Uri $smokeUrl -UseDefaultCredentials -TimeoutSec 15
+  $response = Invoke-WebRequest `
+    -Uri $smokeUrl `
+    -UseDefaultCredentials `
+    -UseBasicParsing `
+    -TimeoutSec 15
   if ($response.StatusCode -ne 200) { throw "Smoke test retornou HTTP $($response.StatusCode)." }
 
   [pscustomobject]@{
