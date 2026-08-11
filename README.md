@@ -361,6 +361,21 @@ O Dependabot agrupa atualizações compatíveis de React, ESLint e Vite, enquant
 dessas famílias ficam bloqueados para migração manual conjunta. Isso evita PRs isolados com
 peer dependencies incompatíveis sem enfraquecer as atualizações minor, patch ou de segurança.
 
+### Política de promoção para produção
+
+O fluxo obrigatório é `feature/fix → develop → main`: toda mudança entra primeiro em `develop`,
+passa pelos quality gates e pelo deploy HTTPS no environment `development` e somente depois pode
+ser promovida para produção por um PR cuja origem seja exatamente `develop` e o destino seja
+`main`. A ruleset da `main` exige esse deploy de desenvolvimento bem-sucedido e os checks de
+qualidade, segurança, dependências e origem definidos em
+[`main-promotion-guard.yml`](.github/workflows/main-promotion-guard.yml). Push direto, force-push e
+exclusão da `main` permanecem bloqueados, sem bypass administrativo.
+
+> **EN:** Production promotion follows `feature/fix → develop → main`. The `main` ruleset only
+> accepts pull requests from `develop` after a successful `development` deployment and all
+> required quality and security checks. Direct pushes, force pushes, deletion and administrator
+> bypass are disabled.
+
 ## Estrutura do repositório
 
 ```text
