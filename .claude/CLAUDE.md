@@ -105,7 +105,10 @@ npm run audit           # bloqueia vulnerabilidades moderadas ou maiores
 ## 6. Git & Commits
 
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`.
-- Trabalhe em branch (`feat/*`, `fix/*`); **não** comite direto na `main` sem pedido.
+- Trabalhe em branch (`feat/*`, `fix/*`); não faça push direto em `develop` ou `main`.
+- Fluxo de promoção obrigatório: `feature/fix → develop → main`.
+- Todo PR para `main` deve ter `develop` como origem, após gates e deploy no environment
+  `development`; a ruleset da `main` bloqueia qualquer outro caminho.
 - **Push só por `@lp-devops`** e só quando o usuário pedir.
 
 ---
