@@ -11,6 +11,7 @@ export const formatXmlForDisplay = (xml: string): string => {
     const withLineBreaks = xml.replace(/>\s*</g, '><').replace(/></g, '>\n<');
     const indentUnit = '  ';
     let indentLevel = 0;
+    let isInsideComment = false;
 
     return withLineBreaks
       .split('\n')
@@ -19,8 +20,19 @@ export const formatXmlForDisplay = (xml: string): string => {
         if (!line) return '';
 
         const isClosingTag = /^<\/[^>]+>$/.test(line);
+        const startsComment = line.startsWith('<!--');
+        const isCommentLine = isInsideComment || startsComment;
+
+        if (startsComment && !line.endsWith('-->')) {
+          isInsideComment = true;
+        }
+
+        if (isCommentLine && line.endsWith('-->')) {
+          isInsideComment = false;
+        }
+
         const isSelfClosingOrDirective =
-          /\/>$/.test(line) || /^<\?.*\?>$/.test(line) || /^<!--.*-->$/.test(line);
+          line.endsWith('/>') || (line.startsWith('<?') && line.endsWith('?>')) || isCommentLine;
         const isOpenAndCloseSameLine = /^<([^\s/>]+)[^>]*>.*<\/\1>$/.test(line);
 
         if (isClosingTag && indentLevel > 0) {
