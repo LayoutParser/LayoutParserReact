@@ -11,11 +11,6 @@
     { "method": "GET", "path": "/api/ai-metrics/generations", "owner": "LayoutParserApi" },
     { "method": "GET", "path": "/api/ai-metrics/summary", "owner": "LayoutParserApi" },
     {
-      "method": "GET",
-      "path": "/api/mapperdatabase/by-input/:layoutGuid",
-      "owner": "LayoutParserApi"
-    },
-    {
       "method": "POST",
       "path": "/api/transformationexecution/execute-candidates",
       "owner": "LayoutParserApi"

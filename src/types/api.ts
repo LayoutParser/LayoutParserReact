@@ -167,17 +167,16 @@ export interface ParseResponse {
   validationErrors?: DocumentValidationError[]; // Erros de validação de tamanho de linha
   validationWarning?: string; // Aviso se houver erros de validação
   // Estado assíncrono da transformação XML (Sysmiddle/TCL-XSL) associada a este parse.
-  // 'not_applicable' quando o layout não tem Mapper cadastrado (ver transformationService).
-  // Usado por AnalysisModeTabs para refletir loading/erro sem precisar de polling manual.
+  // 'not_applicable' quando a tentativa automática do parse não se aplica. Esse status descreve
+  // o pathway low-code/Sysmiddle e NÃO decide se a aba multi-candidato será exibida: TCL/XSL é
+  // independente e continua sendo avaliado sob demanda.
   //
-  // ⚠️ ATENÇÃO — 'not_applicable' é AMBÍGUO NA ORIGEM: o back-end emite a mesma string em dois
-  // pontos distintos do ParseController — quando o gate `detectedType == "mqseries"` barra o
-  // documento (nem chegou a rodar) e quando o pathway rodou mas nenhum mapper serviu. O front
-  // NÃO tem como distinguir os dois casos hoje; `transformationsReason` abaixo é o campo que
-  // resolveria isso, mas ele ainda não é emitido. Não invente distinção que o dado não suporta.
+  // ⚠️ `not_applicable` sozinho é ambíguo: use `transformationsReason` quando presente. O campo
+  // continua opcional para compatibilidade com versões antigas da API; sem ele, não invente uma
+  // distinção que o payload não suporta.
   transformationsStatus?: 'completed' | 'processing' | 'not_applicable' | 'error';
   // Motivo detalhado da ausência de transformação. ADITIVO E OPCIONAL: contrato antecipado da
-  // Fase 3 do back-end (spec §1.6) — enquanto não for emitido, a UI cai no texto genérico.
+  // Fase 3 do back-end (spec §1.6) — versões antigas podem omiti-lo e a UI cai no texto genérico.
   transformationsReason?:
     'type_not_positional' | 'no_mapper' | 'empty_input' | 'timeout_sync' | 'structural_error';
 }

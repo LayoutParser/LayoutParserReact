@@ -1,41 +1,9 @@
 // Tipos para o fluxo de "XML Transformação Final" (mapper + execução de transformação).
 //
-// Contrato validado em 2026-07-20 contra um ambiente de integração da LayoutParserApi,
-// não apenas por leitura do código C#. Fontes:
-// - LayoutParserApi/Controllers/MapperDatabaseController.cs (GetMapperByInputLayoutGuid)
-// - LayoutParserApi/Controllers/TransformationExecutionController.cs (ExecuteTransformation)
-//
-// O critério de negócio para exibir o botão "XML Transformação Final" é a EXISTÊNCIA de um
-// Mapper cadastrado para o layoutGuid selecionado (não o campo `layoutType`, que na prática
-// hoje vem sempre como código numérico string, ex.: "2", em todos os layouts reais testados).
-
-/**
- * Mapeador encontrado para um layout de entrada.
- * GET /api/mapperdatabase/by-input/{layoutGuid} -> 200 com este shape quando existe
- * (confirmado em runtime). Quando não existe, a API responde 404 com { error: string }
- * (ver `MapperAvailability`, que já trata esse caso).
- */
-export interface MapperInfo {
-  success: boolean;
-  id: number;
-  mapperGuid: string;
-  name: string;
-  description: string;
-  inputLayoutGuid: string;
-  targetLayoutGuid: string;
-  hasDecryptedContent: boolean;
-  lastUpdateDate: string;
-}
-
-/**
- * Resultado (já tratado pelo front) da checagem "este layout tem transformação XML
- * disponível?". Não é o payload bruto da API: encapsula o 404 (mapeador não encontrado)
- * como `available: false`, em vez de propagar como erro.
- */
-export interface MapperAvailability {
-  available: boolean;
-  mapper?: MapperInfo;
-}
+// Contrato validado contra um ambiente de integração da LayoutParserApi,
+// não apenas por leitura do código C#. Fonte:
+// - LayoutParserApi/Controllers/TransformationExecutionController.cs
+//   (ExecuteTransformationCandidates)
 
 // Os tipos de POST /api/transformationexecution/execute (rota de candidato único) viviam
 // aqui — Request, Success, Failure e a união Response. Saíram junto com

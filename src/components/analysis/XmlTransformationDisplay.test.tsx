@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { transformationService } from '../../services/api/transformationService';
 import { useAppStore } from '../../store/useAppStore';
@@ -8,7 +8,6 @@ import XmlTransformationDisplay from './XmlTransformationDisplay';
 
 vi.mock('../../services/api/transformationService', () => ({
   transformationService: {
-    checkMapperAvailability: vi.fn(),
     executeTransformationCandidates: vi.fn(),
   },
 }));
@@ -205,5 +204,39 @@ describe('XmlTransformationDisplay', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('API indisponível');
     expect(screen.getByRole('button', { name: 'Gerar Transformação XML' })).toBeEnabled();
     expect(useTransformationStore.getState().isLoadingCandidates).toBe(false);
+  });
+
+  it('explica separadamente por que Sysmiddle e TCL/XSL não geraram candidatos', async () => {
+    vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue({
+      success: true,
+      candidates: [],
+      recommendedCandidateId: null,
+      warnings: [
+        'Nenhum mapeador low-code encontrado para o layout Layout NFe (pathway sysmiddle)',
+        'Candidato tcl-xsl falhou: XSL não encontrado para o layout',
+        'Nenhum candidato de transformação encontrado para o layout Layout NFe',
+      ],
+    });
+
+    render(<XmlTransformationDisplay />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+    const diagnostic = await screen.findByRole('region', {
+      name: 'Nenhum candidato foi encontrado',
+    });
+    const sysmiddle = within(diagnostic).getByRole('region', {
+      name: 'Diagnóstico Sysmiddle',
+    });
+    const tclXsl = within(diagnostic).getByRole('region', {
+      name: 'Diagnóstico TCL/XSL',
+    });
+
+    expect(sysmiddle).toHaveTextContent(
+      'Nenhum mapeador low-code encontrado para o layout Layout NFe'
+    );
+    expect(tclXsl).toHaveTextContent('Candidato tcl-xsl falhou: XSL não encontrado');
+    expect(diagnostic).not.toHaveTextContent(
+      'Nenhum candidato de transformação encontrado para o layout Layout NFe'
+    );
   });
 });
