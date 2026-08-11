@@ -20,7 +20,14 @@ function Test-GlobalIisModule([string] $Name) {
     throw "Não foi possível consultar os módulos globais do IIS: $($moduleConfig | Out-String)"
   }
 
-  return ($moduleConfig | Out-String).Contains($Name, [System.StringComparison]::OrdinalIgnoreCase)
+  # Windows PowerShell 5.1 usa o .NET Framework, que não oferece a sobrecarga
+  # String.Contains(string, StringComparison) disponível no PowerShell 7.
+  return (
+    ($moduleConfig | Out-String).IndexOf(
+      $Name,
+      [System.StringComparison]::OrdinalIgnoreCase
+    ) -ge 0
+  )
 }
 
 if (-not (Test-IsAdministrator)) {
