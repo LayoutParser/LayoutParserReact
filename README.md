@@ -262,7 +262,8 @@ ou porta; esse valor também é usado no smoke test HTTPS. Os environments `deve
 
 No runner de desenvolvimento, o workflow instala o ARR 3 quando ele estiver ausente usando o
 instalador x64 oficial da Microsoft, com assinatura Authenticode e SHA-256 fixado verificados por
-[`Install-IisArr.ps1`](scripts/Install-IisArr.ps1). Ele também migra o site de HTTP para HTTPS de
+[`Install-IisArr.ps1`](scripts/Install-IisArr.ps1). O instalador é compatível tanto com o Windows
+PowerShell 5.1 (`powershell.exe`) quanto com o PowerShell 7 (`pwsh`). Ele também migra o site de HTTP para HTTPS de
 forma idempotente com [`Initialize-IisDevHttps.ps1`](scripts/Initialize-IisDevHttps.ps1), usando um
 certificado válido para `PUBLIC_HOST_DEV` já instalado em `Cert:\LocalMachine\My`. O runner de
 produção continua exigindo ARR, site e binding HTTPS pré-provisionados para impedir alterações
