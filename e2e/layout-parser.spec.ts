@@ -15,7 +15,7 @@ const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
   );
 };
 
-const mockProcessingApis = async (page: Page) => {
+const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
   await page.route('**/api/layoutdatabase/mqseries-nfe', route =>
     route.fulfill({
       json: {
@@ -59,23 +59,8 @@ const mockProcessingApis = async (page: Page) => {
             isValid: true,
           },
         ],
-        transformationsStatus: 'completed',
-      },
-    })
-  );
-
-  await page.route('**/api/mapperdatabase/by-input/*', route =>
-    route.fulfill({
-      json: {
-        success: true,
-        id: 1,
-        mapperGuid: 'mapper-1',
-        name: 'Mapper E2E',
-        description: 'Fixture sintética',
-        inputLayoutGuid: layoutGuid,
-        targetLayoutGuid: 'target-1',
-        hasDecryptedContent: true,
-        lastUpdateDate: '2026-08-10T00:00:00Z',
+        transformationsStatus: withoutCandidates ? 'processing' : 'completed',
+        transformationsReason: withoutCandidates ? 'timeout_sync' : undefined,
       },
     })
   );
@@ -84,27 +69,33 @@ const mockProcessingApis = async (page: Page) => {
     route.fulfill({
       json: {
         success: true,
-        candidates: [
-          {
-            candidateId: 'sysmiddle-mapper-1',
-            pathway: 'sysmiddle',
-            transformedXml: '<documento><codigo>ABC</codigo></documento>',
-            score: null,
-            segmentMappings: {},
-            validation: null,
-            failureReason: null,
-          },
-        ],
-        recommendedCandidateId: 'sysmiddle-mapper-1',
-        warnings: [],
+        candidates: withoutCandidates
+          ? []
+          : [
+              {
+                candidateId: 'sysmiddle-mapper-1',
+                pathway: 'sysmiddle',
+                transformedXml: '<documento><codigo>ABC</codigo></documento>',
+                score: null,
+                segmentMappings: {},
+                validation: null,
+                failureReason: null,
+              },
+            ],
+        recommendedCandidateId: withoutCandidates ? null : 'sysmiddle-mapper-1',
+        warnings: withoutCandidates
+          ? [
+              'Nenhum mapeador low-code encontrado para o layout Layout Demonstração (pathway sysmiddle)',
+              'Candidato tcl-xsl falhou: XSL não encontrado para o layout',
+              'Nenhum candidato de transformação encontrado para o layout Layout Demonstração',
+            ]
+          : [],
       },
     })
   );
 };
 
-test('processa TXT e entrega o XML transformado para download', async ({ page }) => {
-  await mockAuthenticatedGateway(page);
-  await mockProcessingApis(page);
+const processSyntheticDocument = async (page: Page) => {
   await page.goto('/upload');
 
   await page.getByRole('button', { name: 'Buscar Layout' }).click();
@@ -116,6 +107,12 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
     buffer: Buffer.from('001ABC'),
   });
   await page.getByRole('button', { name: 'Processar Documento' }).click();
+};
+
+test('processa TXT e entrega o XML transformado para download', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page);
+  await processSyntheticDocument(page);
 
   await expect(page.getByRole('tab', { name: 'XML Transformação Final' })).toBeVisible();
   await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
@@ -128,6 +125,27 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
   await page.getByRole('button', { name: 'Baixar XML' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.xml$/);
+});
+
+test('explica a ausência de candidatos Sysmiddle e TCL/XSL sem mensagem de background', async ({
+  page,
+}) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page, true);
+  await processSyntheticDocument(page);
+
+  await expect(page.getByText(/continua sendo processada em segundo plano/i)).toHaveCount(0);
+  await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
+  await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
+
+  const diagnostic = page.getByRole('region', { name: 'Nenhum candidato foi encontrado' });
+  await expect(diagnostic).toBeVisible();
+  await expect(diagnostic.getByRole('region', { name: 'Diagnóstico Sysmiddle' })).toContainText(
+    'Nenhum mapeador low-code encontrado'
+  );
+  await expect(diagnostic.getByRole('region', { name: 'Diagnóstico TCL/XSL' })).toContainText(
+    'Candidato tcl-xsl falhou: XSL não encontrado'
+  );
 });
 
 test('não renderiza o painel administrativo sem a função admin', async ({ page }) => {

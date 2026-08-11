@@ -13,6 +13,7 @@ import {
   createXmlFileName,
   formatXmlForDisplay,
 } from '../../utils/xmlDelivery';
+import { buildTransformationDiagnostics } from '../../utils/transformationDiagnostics';
 import './XmlTransformationDisplay.css';
 
 const PATHWAY_LABEL: Record<string, string> = {
@@ -39,6 +40,7 @@ const XmlTransformationDisplay: React.FC = () => {
   const [deliveryFeedback, setDeliveryFeedback] = useState<XmlDeliveryFeedback | null>(null);
   const {
     isLoadingCandidates,
+    hasEvaluatedCandidates,
     candidatesError,
     candidates,
     candidatesWarnings,
@@ -68,6 +70,11 @@ const XmlTransformationDisplay: React.FC = () => {
     }
     return '';
   }, [activeCandidate]);
+
+  const transformationDiagnostics = useMemo(
+    () => buildTransformationDiagnostics(candidatesWarnings),
+    [candidatesWarnings]
+  );
 
   const handleGenerate = async () => {
     if (!selectedLayout || !txtContent) {
@@ -229,15 +236,58 @@ const XmlTransformationDisplay: React.FC = () => {
 
       {!isLoadingCandidates &&
         !candidatesError &&
-        candidates.length === 0 &&
-        candidatesWarnings.length > 0 && (
-          <div className="xml-transformation-empty" role="status">
-            <p>Nenhum candidato de transformação foi gerado para este documento.</p>
-            <ul>
-              {candidatesWarnings.map((warning, index) => (
-                <li key={index}>{warning}</li>
+        hasEvaluatedCandidates &&
+        candidates.length === 0 && (
+          <div
+            className="xml-transformation-empty"
+            role="region"
+            aria-labelledby="transformation-empty-title"
+            aria-live="polite"
+          >
+            <p className="xml-transformation-empty-eyebrow">Diagnóstico de transformação</p>
+            <h3 id="transformation-empty-title">Nenhum candidato foi encontrado</h3>
+            <p className="xml-transformation-empty-summary">
+              A API avaliou os dois caminhos disponíveis. Veja abaixo o motivo informado para cada
+              um.
+            </p>
+
+            <div className="xml-transformation-pathway-grid">
+              {transformationDiagnostics.pathways.map(pathway => (
+                <section
+                  key={pathway.pathway}
+                  className="xml-transformation-pathway-diagnostic"
+                  aria-label={`Diagnóstico ${pathway.label}`}
+                >
+                  <div className="xml-transformation-pathway-heading">
+                    <h4>{pathway.label}</h4>
+                    <span>Não gerado</span>
+                  </div>
+                  {pathway.reasons.length > 0 ? (
+                    <ul>
+                      {pathway.reasons.map(reason => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>
+                      O back-end não informou uma causa específica para este caminho. Esse dado
+                      precisa ser detalhado pela API para permitir um diagnóstico conclusivo.
+                    </p>
+                  )}
+                </section>
               ))}
-            </ul>
+            </div>
+
+            {transformationDiagnostics.generalWarnings.length > 0 && (
+              <div className="xml-transformation-general-warnings">
+                <h4>Contexto adicional da API</h4>
+                <ul>
+                  {transformationDiagnostics.generalWarnings.map(warning => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -389,8 +439,8 @@ const XmlTransformationDisplay: React.FC = () => {
 
       {!isLoadingCandidates &&
         !candidatesError &&
-        candidates.length === 0 &&
-        candidatesWarnings.length === 0 && (
+        !hasEvaluatedCandidates &&
+        candidates.length === 0 && (
           <p className="xml-transformation-placeholder">
             Clique em &quot;Gerar Transformação XML&quot; para validar o documento e gerar a
             transformação final.
