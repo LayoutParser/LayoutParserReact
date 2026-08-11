@@ -34,9 +34,18 @@ O fluxo principal é:
 3. O front envia o formulário para `POST /api/parse/upload`, com progresso e opção de cancelar.
 4. A API .NET identifica e processa a estrutura do documento.
 5. O front apresenta campos, posições, linhas, validações e a árvore estrutural retornada.
-6. Quando há mapeador disponível, o usuário solicita candidatos de transformação, incluindo os
-   caminhos Sysmiddle e TCL/XSL disponibilizados pelo back-end.
+6. Após um parse bem-sucedido, o usuário solicita a avaliação dos candidatos Sysmiddle e TCL/XSL.
+   A ausência de mapper Sysmiddle não bloqueia a avaliação TCL/XSL.
 7. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
+
+Quando nenhum candidato é produzido, a interface separa os avisos devolvidos pela API por pathway.
+Assim, falhas de mapper/runner Sysmiddle não são confundidas com falhas do pipeline TCL/XSL. Se a
+API devolver apenas um aviso genérico, a tela informa explicitamente que a causa específica não foi
+fornecida, em vez de presumir um diagnóstico.
+
+> **EN:** After a successful parse, the transformation tab evaluates Sysmiddle and TCL/XSL
+> independently. Missing Sysmiddle mapping no longer blocks TCL/XSL. When both paths return no
+> candidate, the UI groups the API warnings by pathway and clearly flags missing diagnostic data.
 
 O navegador não executa parsing posicional nem transformação XSLT. O front valida apenas o
 arquivo para dar feedback imediato; a validação autoritativa e as regras de negócio pertencem

@@ -16,13 +16,9 @@ interface TransformationState {
   // Modo de análise ativo (aba selecionada em AnalysisModeTabs)
   activeMode: AnalysisMode | null;
 
-  // Disponibilidade de transformação XML para o layout atual (via Mapper cadastrado).
-  // null = ainda não verificado.
-  mapperAvailable: boolean | null;
-  isCheckingMapper: boolean;
-
   // Multi-candidato (POST /api/transformationexecution/execute-candidates)
   isLoadingCandidates: boolean;
+  hasEvaluatedCandidates: boolean;
   candidatesError: string | null;
   candidates: TransformationCandidate[];
   candidatesWarnings: string[];
@@ -37,11 +33,10 @@ interface TransformationState {
   diagnostic: ValidationDiagnostic | null;
 
   setActiveMode: (mode: AnalysisMode | null) => void;
-  setMapperAvailable: (available: boolean | null) => void;
-  setCheckingMapper: (checking: boolean) => void;
   setLoadingCandidates: (loading: boolean) => void;
   setCandidatesError: (error: string | null) => void;
   setCandidatesResult: (candidates: TransformationCandidate[], warnings: string[]) => void;
+  clearCandidates: () => void;
   setActiveCandidateId: (candidateId: string | null) => void;
 
   setDiagnosing: (diagnosing: boolean) => void;
@@ -53,9 +48,8 @@ interface TransformationState {
 
 const initialState = {
   activeMode: null,
-  mapperAvailable: null,
-  isCheckingMapper: false,
   isLoadingCandidates: false,
+  hasEvaluatedCandidates: false,
   candidatesError: null,
   candidates: [] as TransformationCandidate[],
   candidatesWarnings: [] as string[],
@@ -73,17 +67,24 @@ export const useTransformationStore = create<TransformationState>(set => ({
   ...initialState,
 
   setActiveMode: mode => set({ activeMode: mode }),
-  setMapperAvailable: available => set({ mapperAvailable: available }),
-  setCheckingMapper: checking => set({ isCheckingMapper: checking }),
   setLoadingCandidates: loading => set({ isLoadingCandidates: loading }),
   setCandidatesError: error => set({ candidatesError: error }),
   setCandidatesResult: (candidates, warnings) =>
     set({
+      hasEvaluatedCandidates: true,
       candidates,
       candidatesWarnings: warnings,
       // Sem ordenação por score (back-end ainda não preenche de verdade) — seleção padrão é
       // sempre o primeiro item do array, conforme handoff.
       activeCandidateId: candidates[0]?.candidateId ?? null,
+    }),
+  clearCandidates: () =>
+    set({
+      hasEvaluatedCandidates: false,
+      candidatesError: null,
+      candidates: [],
+      candidatesWarnings: [],
+      activeCandidateId: null,
     }),
   setActiveCandidateId: candidateId => set({ activeCandidateId: candidateId }),
 
