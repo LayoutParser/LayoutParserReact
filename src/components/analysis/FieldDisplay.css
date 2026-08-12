@@ -53,6 +53,53 @@
   line-height: var(--line-height-base);
 }
 
+.field-display-edit-help,
+.field-display-edit-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin: 0 0 var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(var(--color-accent-rgb), 0.07);
+  color: var(--color-text-strong);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+}
+
+.field-display-edit-help {
+  justify-content: flex-start;
+}
+
+.field-display-edit-feedback {
+  border-color: rgba(var(--color-success-rgb), 0.3);
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.field-display-edit-feedback button {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.field-display-edit-feedback button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
 /* Visualização: todas as linhas no mesmo formato - apenas campos inline */
 .field-line-container {
   /* Documentos extensos podem ter milhares de linhas. O navegador posterga layout/pintura das

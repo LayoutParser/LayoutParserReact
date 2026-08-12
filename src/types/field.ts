@@ -24,6 +24,8 @@ export interface FieldGroup {
   lineGuid?: string;
   fields: Field[];
   sequence: number;
+  lineSequence?: string;
+  occurrence?: number;
 }
 
 /**

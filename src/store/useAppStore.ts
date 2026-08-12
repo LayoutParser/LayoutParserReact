@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import type { ParseErrorInfo, ParseResponse, Field } from '../types/api';
 import type { Layout } from '../types/layout';
+import {
+  applyPositionalFieldEdit,
+  type PositionalFieldEditResult,
+  type PositionalFieldTarget,
+} from '../utils/positionalFieldEdit';
 
 interface AppState {
   // Estado de upload
@@ -29,6 +34,10 @@ interface AppState {
   setTxtContent: (content: string) => void;
   setFields: (fields: Field[]) => void;
   setSelectedLayout: (layout: Layout | null) => void;
+  editPositionalField: (
+    target: PositionalFieldTarget,
+    nextValue: string
+  ) => PositionalFieldEditResult;
   reset: () => void;
 }
 
@@ -43,7 +52,7 @@ const initialState = {
   selectedLayout: null,
 };
 
-export const useAppStore = create<AppState>(set => ({
+export const useAppStore = create<AppState>((set, get) => ({
   ...initialState,
 
   setUploading: uploading => set({ isUploading: uploading }),
@@ -54,6 +63,28 @@ export const useAppStore = create<AppState>(set => ({
   setTxtContent: content => set({ txtContent: content }),
   setFields: fields => set({ fields }),
   setSelectedLayout: layout => set({ selectedLayout: layout }),
+  editPositionalField: (target, nextValue) => {
+    const state = get();
+    const sourceFields = state.fields.length > 0 ? state.fields : (state.parseResult?.fields ?? []);
+    const sourceField = sourceFields[target.fieldIndex];
+    if (sourceField !== target.field) {
+      throw new Error('O campo selecionado mudou. Selecione-o novamente antes de editar.');
+    }
+
+    const result = applyPositionalFieldEdit(state.txtContent, target, nextValue);
+    const updatedFields = sourceFields.map((field, index) =>
+      index === target.fieldIndex ? result.field : field
+    );
+
+    set({
+      txtContent: result.content,
+      fields: updatedFields,
+      parseResult: state.parseResult
+        ? { ...state.parseResult, text: result.content, fields: updatedFields }
+        : state.parseResult,
+    });
+    return result;
+  },
 
   reset: () => set(initialState),
 }));
