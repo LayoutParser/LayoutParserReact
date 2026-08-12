@@ -42,19 +42,22 @@ Contexto completo: [`README.md`](README.md). Contrato consumido: [`src/types/api
 
 Ative com `@agent-name` ou via `Task` tool. Personas alinhadas ao harness da API.
 
-| Agente            | Persona   | Escopo principal                                                                                        |
-| ----------------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| `@lp-front-dev`   | **Remy**  | Implementação React/TS: componentes, stores, services, rotas, build.                                    |
-| `@lp-ui-ux`       | **Nina**  | Componentes reutilizáveis, CSS por componente, acessibilidade, fluxo UX.                                |
-| `@lp-qa`          | **Quinn** | Quality gates do front (lint/a11y, tipos, testes/cobertura, builds, format, audit), validação de fluxo. |
-| `@lp-security`    | **Iris**  | Revisão read-only de segurança, dependências, dados, browser e supply chain; veredito priorizado.       |
-| `@lp-contract-qa` | **Cora**  | Validação read-only do contrato API ↔ types/services/consumidores; veredito PASS/DRIFT/UNVERIFIED.      |
-| `@lp-doc`         | **Duda**  | Documentação bilíngue (README, comentários, material acadêmico).                                        |
-| `@lp-devops`      | **Gage**  | `git push` (EXCLUSIVO), build/deploy (Vite/IIS/CI), **conexão ao MCP** da API.                          |
+| Agente                | Persona   | Escopo principal                                                                                        |
+| --------------------- | --------- | ------------------------------------------------------------------------------------------------------- |
+| `@lp-product-manager` | **Maya**  | GitHub Projects, Epics, PBIs, Stories, Bugs, Tasks, Gates, sprints e rastreabilidade.                   |
+| `@lp-front-dev`       | **Remy**  | Implementação React/TS: componentes, stores, services, rotas, build.                                    |
+| `@lp-ui-ux`           | **Nina**  | Componentes reutilizáveis, CSS por componente, acessibilidade, fluxo UX.                                |
+| `@lp-qa`              | **Quinn** | Quality gates do front (lint/a11y, tipos, testes/cobertura, builds, format, audit), validação de fluxo. |
+| `@lp-security`        | **Iris**  | Revisão read-only de segurança, dependências, dados, browser e supply chain; veredito priorizado.       |
+| `@lp-contract-qa`     | **Cora**  | Validação read-only do contrato API ↔ types/services/consumidores; veredito PASS/DRIFT/UNVERIFIED.      |
+| `@lp-doc`             | **Duda**  | Documentação bilíngue (README, comentários, material acadêmico).                                        |
+| `@lp-devops`          | **Gage**  | `git push` (EXCLUSIVO), build/deploy (Vite/IIS/CI), **conexão ao MCP** da API.                          |
 
 ### Regra de autoridade (resumo)
 
 - **Apenas `@lp-devops` faz `git push`** e gerencia MCP/CI/deploy. Demais agentes: `git add/commit` local apenas.
+- `@lp-product-manager` governa Project/Issues/milestones, mas não implementa, aprova risco,
+  faz push, merge ou deploy; detalhes em [`.claude/rules/product-management.md`](.claude/rules/product-management.md).
 - `@lp-qa` **valida e dá veredito**; a correção volta para `@lp-front-dev` (QA não implementa fix de produção).
 - `@lp-security` e `@lp-contract-qa` são **revisores read-only**: não implementam correções;
   entregam evidência ao dono e revalidam depois.

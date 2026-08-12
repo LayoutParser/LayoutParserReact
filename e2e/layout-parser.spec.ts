@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const layoutGuid = '11111111-1111-1111-1111-111111111111';
+const syntheticTxt = `000001001ABC${' '.repeat(588)}`;
 
 const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
   await page.route('**/api/session', route =>
@@ -38,13 +39,13 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
       json: {
         success: true,
         detectedType: 'mqseries',
-        text: '001ABC',
+        text: syntheticTxt,
         layout: {
           layoutGuid,
           layoutType: '2',
           name: 'Layout Demonstração',
           description: 'Fixture sintética',
-          limitOfCaracters: 6,
+          limitOfCaracters: 600,
           elements: [],
         },
         fields: [
@@ -52,10 +53,20 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
             lineName: 'LINHA001',
             fieldName: 'Código',
             value: 'ABC',
-            startPosition: 4,
+            startPosition: 10,
             length: 3,
-            lineSequence: '001',
+            lineSequence: '000001',
             sequence: 1,
+            isValid: true,
+          },
+          {
+            lineName: 'LINHA001',
+            fieldName: 'Filler',
+            value: ' '.repeat(588),
+            startPosition: 13,
+            length: 588,
+            lineSequence: '000001',
+            sequence: 2,
             isValid: true,
           },
         ],
@@ -65,8 +76,10 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
     })
   );
 
-  await page.route('**/api/transformationexecution/execute-candidates', route =>
-    route.fulfill({
+  await page.route('**/api/transformationexecution/execute-candidates', route => {
+    const request = route.request().postDataJSON() as { inputContent?: string } | null;
+    const code = request?.inputContent?.slice(9, 12) || 'ABC';
+    return route.fulfill({
       json: {
         success: true,
         candidates: withoutCandidates
@@ -75,7 +88,7 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
               {
                 candidateId: 'sysmiddle-mapper-1',
                 pathway: 'sysmiddle',
-                transformedXml: '<documento><codigo>ABC</codigo></documento>',
+                transformedXml: `<documento><codigo>${code}</codigo></documento>`,
                 score: null,
                 segmentMappings: {},
                 validation: null,
@@ -91,8 +104,8 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
             ]
           : [],
       },
-    })
-  );
+    });
+  });
 };
 
 const processSyntheticDocument = async (page: Page) => {
@@ -104,7 +117,7 @@ const processSyntheticDocument = async (page: Page) => {
   await page.locator('#txtFile').setInputFiles({
     name: 'documento.txt',
     mimeType: 'text/plain',
-    buffer: Buffer.from('001ABC'),
+    buffer: Buffer.from(syntheticTxt),
   });
   await page.getByRole('button', { name: 'Processar Documento' }).click();
 };
@@ -125,6 +138,33 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
   await page.getByRole('button', { name: 'Baixar XML' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.xml$/);
+});
+
+test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page);
+  await processSyntheticDocument(page);
+
+  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  const input = page.getByLabel('Novo valor');
+  const save = page.getByRole('button', { name: 'Aplicar no TXT' });
+
+  await input.fill('XY');
+  await expect(save).toBeDisabled();
+  await expect(page.getByText('2/3')).toBeVisible();
+
+  await input.fill('XYZ');
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(
+    page.getByRole('tabpanel', { name: 'TXT Posicional' }).getByRole('status')
+  ).toContainText('Código atualizado');
+
+  await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
+  await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
+  await expect(page.getByRole('textbox', { name: 'Conteúdo XML transformado' })).toHaveValue(
+    /<codigo>XYZ<\/codigo>/
+  );
 });
 
 test('explica a ausência de candidatos Sysmiddle e TCL/XSL sem mensagem de background', async ({

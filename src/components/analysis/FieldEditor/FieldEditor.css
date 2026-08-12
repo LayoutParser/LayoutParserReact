@@ -1,0 +1,104 @@
+.field-editor {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.field-editor__metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  font-family: var(--font-family-base);
+}
+
+.field-editor__metadata span {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.field-editor__label {
+  color: var(--color-text-strong);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.field-editor__input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-base);
+  letter-spacing: 0.02em;
+}
+
+.field-editor__input:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.field-editor__input--invalid {
+  border-color: var(--color-danger);
+}
+
+.field-editor__length {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+}
+
+.field-editor__length strong {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-editor__length .is-valid {
+  color: var(--color-success-text);
+}
+
+.field-editor__length .is-invalid,
+.field-editor__error {
+  color: var(--color-danger-text);
+}
+
+.field-editor__error {
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-left: 3px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+}
+
+.field-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 600px) {
+  .field-editor__length,
+  .field-editor__actions {
+    flex-direction: column;
+  }
+
+  .field-editor__actions .btn {
+    width: 100%;
+  }
+}

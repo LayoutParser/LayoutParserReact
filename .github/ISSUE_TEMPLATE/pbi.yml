@@ -1,0 +1,30 @@
+name: Product Backlog Item
+description: Capacidade de produto que entrega valor dentro de um Epic.
+title: '[PBI] '
+labels: ['type: pbi', 'area: product']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou oportunidade
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Hipótese de valor
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      placeholder: '- [ ] Given ... When ... Then ...'
+    validations:
+      required: true
+  - type: textarea
+    id: children
+    attributes:
+      label: Stories, Tasks, Gates e evidências
+    validations:
+      required: true

@@ -2,7 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  timeout: 60_000,
+  // Há uma única spec que sobe a SPA e executa fluxos pesados em duas viewports. Navegadores
+  // simultâneos saturavam o runner Windows e faziam até o carregamento inicial expirar.
+  // Serializar a matriz mantém o gate determinístico no mesmo perfil do self-hosted da CI.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',

@@ -1,0 +1,24 @@
+name: Sprint Task
+description: Entrega técnica verificável vinculada a uma Story, PBI ou Bug.
+title: '[TASK] '
+labels: ['type: task']
+body:
+  - type: textarea
+    id: delivery
+    attributes:
+      label: Entrega verificável
+    validations:
+      required: true
+  - type: textarea
+    id: parent
+    attributes:
+      label: Item pai, dependências e agente responsável
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of Done
+      placeholder: '- [ ] Código/teste/documentação/evidência...'
+    validations:
+      required: true
