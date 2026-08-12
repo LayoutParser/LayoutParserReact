@@ -6,6 +6,16 @@ description: Matriz de autoridade e delegação entre os agentes do LayoutParser
 
 ## Matriz de delegação
 
+### @lp-product-manager (Maya) — Governança do produto
+
+| Permitido                                                                | Bloqueado                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------ |
+| Criar/editar/organizar Project, Issues e milestones; priorizar e refinar | Código, aceite técnico, `git push`, merge/deploy |
+
+- Fecha item apenas com critérios de aceite e evidência técnica/deploy aplicável.
+- Não publica TXT/XML real, segredo, identidade nem log bruto no GitHub.
+- Demanda técnica é entregue ao agente dono; dependência de outro repo permanece explícita.
+
 ### @lp-devops (Gage) — Autoridade EXCLUSIVA
 
 | Operação                                                       | Exclusivo? | Outros agentes |
@@ -68,6 +78,9 @@ description: Matriz de autoridade e delegação entre os agentes do LayoutParser
 ```
 Feature:   @lp-front-dev (implementa) → @lp-ui-ux (refina UI) → @lp-qa (valida)
            → @lp-doc (documenta) → @lp-devops (push)
+
+Produto:   @lp-product-manager (captura/refina/prioriza) → agente dono (executa)
+           → revisores/QA (validam) → @lp-product-manager (sincroniza evidência/status)
 
 Contrato:  @lp-contract-qa (detecta drift) → @lp-front-dev/equipe API (corrige)
            → @lp-contract-qa (revalida) → @lp-qa

@@ -1,0 +1,23 @@
+name: Quality Gate
+description: Verificação objetiva que bloqueia ou libera uma entrega.
+title: '[GATE] '
+labels: ['type: gate']
+body:
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo e risco protegido
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Comando, check ou deployment
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado e evidência exigida
+    validations:
+      required: true

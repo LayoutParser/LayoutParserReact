@@ -1,0 +1,37 @@
+name: User Story
+description: Necessidade de uma persona com valor e critérios observáveis.
+title: '[STORY] '
+labels: ['type: user-story']
+body:
+  - type: input
+    id: persona
+    attributes:
+      label: Como
+      placeholder: analista de suporte
+    validations:
+      required: true
+  - type: input
+    id: capability
+    attributes:
+      label: Quero
+    validations:
+      required: true
+  - type: input
+    id: benefit
+    attributes:
+      label: Para
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios Given / When / Then
+      placeholder: '- [ ] Given ... When ... Then ...'
+    validations:
+      required: true
+  - type: textarea
+    id: quality
+    attributes:
+      label: UX, acessibilidade, segurança e observabilidade
+    validations:
+      required: true

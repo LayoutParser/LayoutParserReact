@@ -11,7 +11,8 @@ autoridade e handoff), porém reduzido ao que faz sentido para um app Vite/React
 ├── CLAUDE.md                 # guia principal (sempre carregado pelo Claude Code)
 ├── README.md                 # este arquivo
 ├── settings.json.example     # template: idioma + permissões + hooks (copie p/ settings.json)
-├── agents/                   # 7 agentes sob medida
+├── agents/                   # 8 agentes sob medida
+│   ├── lp-product-manager.md # Maya  — GitHub Projects, backlog e sprints
 │   ├── lp-front-dev.md       # Remy  — implementação React/TS
 │   ├── lp-ui-ux.md           # Nina  — UI/UX, componentes, acessibilidade
 │   ├── lp-qa.md              # Quinn — quality gates, validação, testes
@@ -23,11 +24,13 @@ autoridade e handoff), porém reduzido ao que faz sentido para um app Vite/React
 │   ├── agent-authority.md    # quem pode o quê (push/MCP/CI = @lp-devops)
 │   ├── agent-handoff.md      # compactação de contexto ao trocar de agente
 │   ├── frontend-standards.md # padrões React/TS/Zustand derivados do código
+│   ├── product-management.md # taxonomia e fluxo do GitHub Projects
 │   └── mcp-usage.md          # como conectar ao MCP Server da API
 ├── commands/
 │   ├── new-component.md      # /new-component <feature>/<Nome>
 │   ├── wire-endpoint.md      # /wire-endpoint <METHOD> <caminho>
 │   ├── security-review.md    # /security-review <escopo>
+│   ├── product-sync.md       # /product-sync <missão> [escopo]
 │   └── contract-sync.md      # /contract-sync <endpoint|domínio|all>
 ├── hooks/
 │   ├── git-push-advisory.cjs       # lembrete NÃO-bloqueante de autoridade de push
@@ -37,7 +40,7 @@ autoridade e handoff), porém reduzido ao que faz sentido para um app Vite/React
 ```
 
 As personas equivalentes para Codex ficam em [`.codex/agents`](../.codex/agents), inclusive
-`lp-security.toml` e `lp-contract-qa.toml`. Os comandos são os dois workflows canônicos; no
+`lp-product-manager.toml`, `lp-security.toml` e `lp-contract-qa.toml`. Os comandos são os workflows canônicos; no
 Codex, invoque a persona equivalente e siga o arquivo em `commands/` como runbook.
 
 > Há também um [`.mcp.json.example`](../.mcp.json.example) na **raiz** do repo (conexão ao MCP).
@@ -47,7 +50,7 @@ Codex, invoque a persona equivalente e siga o arquivo em `commands/` como runboo
 1. **Settings:** `cp .claude/settings.json.example .claude/settings.json` (idioma PT + allowlist + hook).
 2. **MCP (opcional, via `@lp-devops`):** buildar o MCP na API, copiar `.mcp.json.example` →
    `.mcp.json`, ajustar o caminho da DLL. Ver [`rules/mcp-usage.md`](rules/mcp-usage.md).
-3. **Usar agentes:** `@lp-front-dev`, `@lp-ui-ux`, `@lp-qa`, `@lp-security`,
+3. **Usar agentes:** `@lp-product-manager`, `@lp-front-dev`, `@lp-ui-ux`, `@lp-qa`, `@lp-security`,
    `@lp-contract-qa`, `@lp-doc`, `@lp-devops`.
 
 ## Hooks de segurança e feedback rápido
@@ -69,9 +72,11 @@ Codex, invoque a persona equivalente e siga o arquivo em `commands/` como runboo
 ## Fluxo típico
 
 ```
-@lp-contract-qa (confere contrato) → @lp-front-dev (implementa)
+@lp-product-manager (captura/refina/prioriza) → @lp-contract-qa (confere contrato)
+→ @lp-front-dev (implementa)
 → @lp-ui-ux (refina UI) → @lp-security (audita) → @lp-qa (valida)
 → @lp-doc (documenta) → @lp-devops (push, quando você pedir)
+→ @lp-product-manager (sincroniza evidência e status)
 ```
 
 ## Princípios herdados do AIOX/Api (adaptados)

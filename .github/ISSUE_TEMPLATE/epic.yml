@@ -1,0 +1,32 @@
+name: Epic
+description: Objetivo amplo de produto composto por PBIs e resultados mensuráveis.
+title: '[EPIC] '
+labels: ['type: epic', 'area: product']
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo e resultado de negócio
+      description: Qual mudança de resultado este Epic deve produzir?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo e não escopo
+      placeholder: "Inclui:\n- ...\n\nNão inclui:\n- ..."
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Métricas e critérios de sucesso
+    validations:
+      required: true
+  - type: textarea
+    id: children
+    attributes:
+      label: PBIs, dependências e riscos
+      description: Use links de Issues; nunca inclua documento, segredo ou identidade real.
+    validations:
+      required: true
