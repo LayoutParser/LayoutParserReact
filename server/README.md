@@ -127,6 +127,8 @@ final `/*`. Um usuário precisa estar em `BFF_ADMIN_USERS` ou possuir uma role p
 
 - Helmet adiciona headers defensivos; HSTS é ativado somente em produção.
 - Rate limit em memória usa a identidade autenticada e recorre ao IP para anônimos.
+- As rotas OIDC têm limites explícitos por minuto: 20 inícios, 60 callbacks e 30 logouts por
+  chave do limitador, além do limite global do BFF.
 - `X-Correlation-ID` válido é preservado; valores inválidos são substituídos por UUID.
 - `Authorization`, cookies e identidades fornecidas pelo navegador são removidos antes do proxy.
   O BFF injeta somente os headers normalizados da sessão validada.

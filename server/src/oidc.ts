@@ -9,6 +9,9 @@ import type { AppConfig, EntraConfig } from './config.js';
 const OIDC_SCOPES = ['openid', 'profile', 'email'];
 const AUTH_VALUE_PATTERN = /^[A-Za-z0-9_-]{20,512}$/;
 const SESSION_KEY_INFO = Buffer.from('LayoutParserReact/BFF/session/v1', 'utf8');
+const AUTH_LOGIN_RATE_LIMIT = { max: 20, timeWindow: 60_000 } as const;
+const AUTH_CALLBACK_RATE_LIMIT = { max: 60, timeWindow: 60_000 } as const;
+const AUTH_LOGOUT_RATE_LIMIT = { max: 30, timeWindow: 60_000 } as const;
 
 export interface OidcTransaction {
   readonly state: string;
@@ -219,94 +222,110 @@ export function registerAuthenticationRoutes(
   config: AppConfig,
   client: OidcClient | null
 ): void {
-  app.get<{ Querystring: LoginQuery }>('/auth/login', async (request, reply) => {
-    reply.header('cache-control', 'no-store');
-    if (!client) {
-      await reply.code(503).send({
-        statusCode: 503,
-        error: 'Service Unavailable',
-        message: 'Autenticação Microsoft não configurada neste ambiente.',
-        correlationId: request.id,
-      });
-      return;
-    }
+  app.get<{ Querystring: LoginQuery }>(
+    '/auth/login',
+    { config: { rateLimit: AUTH_LOGIN_RATE_LIMIT } },
+    async (request, reply) => {
+      reply.header('cache-control', 'no-store');
+      if (!client) {
+        await reply.code(503).send({
+          statusCode: 503,
+          error: 'Service Unavailable',
+          message: 'Autenticação Microsoft não configurada neste ambiente.',
+          correlationId: request.id,
+        });
+        return;
+      }
 
-    const returnTo = normalizeReturnTo(request.query.returnTo, config.publicOrigin);
-    const transaction = createTransaction(returnTo);
-    request.session.regenerate();
-    request.session.set('oidcTransaction', transaction);
-
-    try {
-      const authorizationUrl = await client.getAuthorizationUrl(transaction);
-      await reply.redirect(authorizationUrl, 302);
-    } catch (error) {
+      const returnTo = normalizeReturnTo(request.query.returnTo, config.publicOrigin);
+      const transaction = createTransaction(returnTo);
       request.session.regenerate();
-      request.log.error(
-        {
-          event: 'auth.login.start_failed',
-          errorType: error instanceof Error ? error.name : 'UnknownError',
-        },
-        'Não foi possível iniciar a autenticação OIDC.'
-      );
-      await reply.redirect(authenticationErrorLocation('temporarily_unavailable'), 303);
+      request.session.set('oidcTransaction', transaction);
+
+      try {
+        const authorizationUrl = await client.getAuthorizationUrl(transaction);
+        await reply.redirect(authorizationUrl, 302);
+      } catch (error) {
+        request.session.regenerate();
+        request.log.error(
+          {
+            event: 'auth.login.start_failed',
+            errorType: error instanceof Error ? error.name : 'UnknownError',
+          },
+          'Não foi possível iniciar a autenticação OIDC.'
+        );
+        await reply.redirect(authenticationErrorLocation('temporarily_unavailable'), 303);
+      }
     }
-  });
+  );
 
-  app.get<{ Querystring: CallbackQuery }>('/auth/callback', async (request, reply) => {
-    reply.header('cache-control', 'no-store');
-    const transaction = request.session.get('oidcTransaction');
-    const code = request.query.code;
-    const state = request.query.state;
+  app.get<{ Querystring: CallbackQuery }>(
+    '/auth/callback',
+    { config: { rateLimit: AUTH_CALLBACK_RATE_LIMIT } },
+    async (request, reply) => {
+      reply.header('cache-control', 'no-store');
+      const transaction = request.session.get('oidcTransaction');
+      const code = request.query.code;
+      const state = request.query.state;
 
-    if (request.query.error) {
+      // O callback sempre abandona o cookie de transação antes de interpretar qualquer valor
+      // fornecido pelo navegador. Assim, nenhum parâmetro decide se uma sessão será regenerada.
       request.session.regenerate();
-      const errorCode = request.query.error === 'access_denied' ? 'access_denied' : 'login_failed';
-      await reply.redirect(authenticationErrorLocation(errorCode), 303);
-      return;
+
+      const transactionExpired =
+        !transaction || Date.now() - transaction.createdAt > 10 * 60 * 1000;
+      if (
+        !client ||
+        transactionExpired ||
+        !state ||
+        !AUTH_VALUE_PATTERN.test(state) ||
+        !safeEqual(state, transaction.state)
+      ) {
+        await reply.redirect(authenticationErrorLocation('invalid_callback'), 303);
+        return;
+      }
+
+      if (request.query.error === 'access_denied') {
+        await reply.redirect(authenticationErrorLocation('access_denied'), 303);
+        return;
+      }
+
+      if (request.query.error !== undefined || !code) {
+        await reply.redirect(authenticationErrorLocation('login_failed'), 303);
+        return;
+      }
+
+      try {
+        const identity = await client.exchangeAuthorizationCode({
+          code,
+          state,
+          nonce: transaction.nonce,
+          codeVerifier: transaction.codeVerifier,
+        });
+        const returnTo = transaction.returnTo;
+        request.session.set('identity', identity);
+        request.log.info({ event: 'auth.login.completed' }, 'Sessão OIDC criada.');
+        await reply.redirect(returnTo, 303);
+      } catch (error) {
+        request.log.warn(
+          {
+            event: 'auth.login.callback_failed',
+            errorType: error instanceof Error ? error.name : 'UnknownError',
+          },
+          'A resposta OIDC foi rejeitada.'
+        );
+        await reply.redirect(authenticationErrorLocation('login_failed'), 303);
+      }
     }
+  );
 
-    const transactionExpired = !transaction || Date.now() - transaction.createdAt > 10 * 60 * 1000;
-    if (
-      !client ||
-      transactionExpired ||
-      !code ||
-      !state ||
-      !AUTH_VALUE_PATTERN.test(state) ||
-      !safeEqual(state, transaction.state)
-    ) {
-      request.session.regenerate();
-      await reply.redirect(authenticationErrorLocation('invalid_callback'), 303);
-      return;
+  app.post(
+    '/auth/logout',
+    { config: { rateLimit: AUTH_LOGOUT_RATE_LIMIT } },
+    async (request, reply) => {
+      reply.header('cache-control', 'no-store');
+      request.session.delete();
+      await reply.redirect('/', 303);
     }
-
-    try {
-      const identity = await client.exchangeAuthorizationCode({
-        code,
-        state,
-        nonce: transaction.nonce,
-        codeVerifier: transaction.codeVerifier,
-      });
-      const returnTo = transaction.returnTo;
-      request.session.regenerate();
-      request.session.set('identity', identity);
-      request.log.info({ event: 'auth.login.completed' }, 'Sessão OIDC criada.');
-      await reply.redirect(returnTo, 303);
-    } catch (error) {
-      request.session.regenerate();
-      request.log.warn(
-        {
-          event: 'auth.login.callback_failed',
-          errorType: error instanceof Error ? error.name : 'UnknownError',
-        },
-        'A resposta OIDC foi rejeitada.'
-      );
-      await reply.redirect(authenticationErrorLocation('login_failed'), 303);
-    }
-  });
-
-  app.post('/auth/logout', async (request, reply) => {
-    reply.header('cache-control', 'no-store');
-    request.session.delete();
-    await reply.redirect('/', 303);
-  });
+  );
 }

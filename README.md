@@ -250,13 +250,21 @@ o `applicationHost.config` para acesso anônimo ao conteúdo e deixa a identidad
 BFF. Headers de identidade, cookies e `Authorization` enviados pelo navegador são removidos antes
 do proxy; somente a identidade validada pelo BFF é encaminhada à API.
 
-Nos environments `development` e `production`, use os mesmos nomes:
+Os environments `development` e `production` são isolados pelo GitHub. Portanto, cadastre os
+três valores **separadamente em cada environment**, mesmo quando o conteúdo for igual. No
+environment `development`, configure exatamente:
 
 ```text
 Variable ENTRA_TENANT_ID = common
 Variable ENTRA_CLIENT_ID = 9ff4c9ba-1bab-414a-a6df-39ddce8f7425
 Secret   ENTRA_CLIENT_SECRET = <Value do secret, não o Secret ID>
 ```
+
+Repita a mesma configuração em `production`. Variáveis ou secrets criados somente em
+`production` não ficam disponíveis ao workflow `ci-dev.yml`; nesse caso o deploy de
+desenvolvimento falha deliberadamente antes de alterar o IIS. Se o hostname de desenvolvimento
+for diferente do de produção, adicione também `https://<PUBLIC_HOST_DEV>/auth/callback` como URI
+de redirecionamento da plataforma **Web** no mesmo App Registration.
 
 O servidor e os navegadores precisam alcançar `login.microsoftonline.com` por HTTPS. Políticas de
 um tenant corporativo externo ainda podem exigir consentimento administrativo para aplicativos
