@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
+import type { OidcClient, OidcExchangeRequest, OidcTransaction } from '../src/oidc.js';
 
 interface CapturedRequest {
   readonly method: string;
@@ -23,6 +24,8 @@ interface UpstreamHarness {
 
 const apps: FastifyInstance[] = [];
 const upstreams: UpstreamHarness[] = [];
+const testClientId = '9ff4c9ba-1bab-414a-a6df-39ddce8f7425';
+const testClientSecret = 'test-secret-with-more-than-sixteen-characters';
 
 async function createUpstream(): Promise<UpstreamHarness> {
   const requests: CapturedRequest[] = [];
@@ -78,10 +81,9 @@ async function createApp(
     BFF_ADMIN_ROLES: 'LayoutParserAdmins',
     ...overrides,
   });
-  const app = await buildApp(
-    config,
-    options.logStream || options.logger !== undefined ? options : { logger: false }
-  );
+  const appOptions =
+    options.logStream || options.logger !== undefined ? options : { ...options, logger: false };
+  const app = await buildApp(config, appOptions);
   await app.ready();
   apps.push(app);
   upstreams.push(upstream);
@@ -131,49 +133,249 @@ describe('LayoutParser BFF', () => {
     expect(upstream.requests).toHaveLength(0);
   });
 
-  it('em produção aceita somente o trusted header vindo do proxy permitido', async () => {
+  it('em produção aceita somente a sessão OIDC criptografada e ignora headers forjados', async () => {
     const upstream = await createUpstream();
+    let transaction: OidcTransaction | undefined;
+    const oidcClient: OidcClient = {
+      async getAuthorizationUrl(value) {
+        transaction = value;
+        return `https://login.example/authorize?state=${value.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        return {
+          name: 'domain.user@example.test',
+          roles: ['LayoutParserAdmins'],
+          subject: 'subject-12345678901234567890',
+          tenantId: 'tenant-12345678901234567890',
+        };
+      },
+    };
     const config = loadConfig({
       NODE_ENV: 'production',
       LAYOUTPARSER_API_URL: upstream.url,
-      BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
+      BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+      ENTRA_TENANT_ID: 'common',
+      ENTRA_CLIENT_ID: testClientId,
+      ENTRA_CLIENT_SECRET: testClientSecret,
       BFF_TRUSTED_USER_HEADER: 'x-iis-user',
       BFF_TRUSTED_ROLES_HEADER: 'x-iis-roles',
       BFF_ADMIN_ROLES: 'LayoutParserAdmins',
     });
-    const app = await buildApp(config, { logger: false });
+    const app = await buildApp(config, { logger: false, oidcClient });
     await app.ready();
     apps.push(app);
     upstreams.push(upstream);
 
-    const trusted = await app.inject({
+    const login = await app.inject({ method: 'GET', url: '/auth/login' });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+    const callback = await app.inject({
       method: 'GET',
-      url: '/api/session',
-      headers: { 'x-iis-user': 'domain.user', 'x-iis-roles': 'LayoutParserAdmins' },
-      remoteAddress: '127.0.0.1',
+      url: `/auth/callback?code=test-code&state=${transaction?.state}`,
+      headers: { cookie: loginCookie },
     });
-    const developmentHeader = await app.inject({
+    const sessionCookie = String(callback.headers['set-cookie']).split(';', 1)[0];
+    const authenticated = await app.inject({
       method: 'GET',
       url: '/api/session',
-      headers: { 'x-dev-user': 'spoofed.user' },
-      remoteAddress: '127.0.0.1',
+      headers: { cookie: sessionCookie },
     });
-    const untrustedPeer = await app.inject({
+    const spoofedHeaders = await app.inject({
       method: 'GET',
       url: '/api/session',
-      headers: { 'x-iis-user': 'spoofed.user' },
-      remoteAddress: '192.0.2.10',
+      headers: {
+        'x-iis-user': 'spoofed.user',
+        'x-iis-roles': 'LayoutParserAdmins',
+        'x-dev-user': 'spoofed.dev',
+      },
     });
 
-    expect(trusted.json()).toEqual({
+    expect(authenticated.json()).toEqual({
       authenticated: true,
-      user: { name: 'domain.user' },
+      user: { name: 'domain.user@example.test' },
       roles: ['LayoutParserAdmins'],
       isAdmin: true,
     });
-    expect(trusted.headers['strict-transport-security']).toContain('max-age=31536000');
-    expect(developmentHeader.json()).toMatchObject({ authenticated: false, isAdmin: false });
-    expect(untrustedPeer.json()).toMatchObject({ authenticated: false, isAdmin: false });
+    expect(authenticated.headers['strict-transport-security']).toContain('max-age=31536000');
+    expect(spoofedHeaders.json()).toMatchObject({ authenticated: false, isAdmin: false });
+  });
+
+  it('conclui login OIDC com state, nonce e PKCE e permite logout local', async () => {
+    let authorizationTransaction: OidcTransaction | undefined;
+    let exchangeRequest: OidcExchangeRequest | undefined;
+    const oidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        authorizationTransaction = transaction;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode(request) {
+        exchangeRequest = request;
+        return {
+          name: 'student@example.edu',
+          roles: ['LayoutParserAdmins'],
+          subject: 'subject-12345678901234567890',
+          tenantId: 'tenant-12345678901234567890',
+        };
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient }
+    );
+
+    const login = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=%2Fadmin%3Ftab%3Dmetrics',
+    });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+
+    expect(login.statusCode).toBe(302);
+    expect(login.headers.location).toContain(authorizationTransaction?.state);
+    expect(authorizationTransaction).toMatchObject({ returnTo: '/admin?tab=metrics' });
+    expect(authorizationTransaction?.codeChallenge).not.toBe(
+      authorizationTransaction?.codeVerifier
+    );
+
+    const callback = await app.inject({
+      method: 'GET',
+      url: `/auth/callback?code=test-code&state=${authorizationTransaction?.state}`,
+      headers: { cookie: loginCookie },
+    });
+    const authenticatedCookie = String(callback.headers['set-cookie']).split(';', 1)[0];
+
+    expect(callback.statusCode).toBe(303);
+    expect(callback.headers.location).toBe('/admin?tab=metrics');
+    expect(exchangeRequest).toMatchObject({
+      code: 'test-code',
+      state: authorizationTransaction?.state,
+      nonce: authorizationTransaction?.nonce,
+      codeVerifier: authorizationTransaction?.codeVerifier,
+    });
+
+    const session = await app.inject({
+      method: 'GET',
+      url: '/api/session',
+      headers: { cookie: authenticatedCookie },
+    });
+    expect(session.json()).toMatchObject({
+      authenticated: true,
+      user: { name: 'student@example.edu' },
+      isAdmin: true,
+    });
+
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { cookie: authenticatedCookie },
+    });
+    expect(logout.statusCode).toBe(303);
+    expect(logout.headers.location).toBe('/');
+    expect(logout.headers['set-cookie']).toContain('Max-Age=0');
+  });
+
+  it('rejeita callback OIDC sem vínculo com a sessão e bloqueia open redirect', async () => {
+    let exchanged = false;
+    const oidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        return `https://login.example/authorize?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        exchanged = true;
+        throw new Error('não deveria trocar o código');
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient }
+    );
+
+    const login = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=%2F%2Fevil.example%2Fsteal',
+    });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+    const rejected = await app.inject({
+      method: 'GET',
+      url: '/auth/callback?code=test-code&state=forged-state-12345678901234567890',
+      headers: { cookie: loginCookie },
+    });
+
+    expect(rejected.statusCode).toBe(303);
+    expect(rejected.headers.location).toBe('/upload?authError=invalid_callback');
+    expect(exchanged).toBe(false);
+  });
+
+  it('trata ambiente sem OIDC, início indisponível, cancelamento e troca de código rejeitada', async () => {
+    const withoutOidc = await createApp();
+    const unavailable = await withoutOidc.app.inject({ method: 'GET', url: '/auth/login' });
+    expect(unavailable.statusCode).toBe(503);
+
+    const failingStartClient: OidcClient = {
+      async getAuthorizationUrl() {
+        throw new Error('discovery indisponível');
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('não chamado');
+      },
+    };
+    const failingStart = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient: failingStartClient }
+    );
+    const startResponse = await failingStart.app.inject({ method: 'GET', url: '/auth/login' });
+    expect(startResponse.statusCode).toBe(303);
+    expect(startResponse.headers.location).toBe('/upload?authError=temporarily_unavailable');
+
+    let transaction: OidcTransaction | undefined;
+    const failingExchangeClient: OidcClient = {
+      async getAuthorizationUrl(value) {
+        transaction = value;
+        return `https://login.example/authorize?state=${value.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('token rejeitado');
+      },
+    };
+    const failingExchange = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient: failingExchangeClient }
+    );
+    const login = await failingExchange.app.inject({ method: 'GET', url: '/auth/login' });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+    const canceled = await failingExchange.app.inject({
+      method: 'GET',
+      url: '/auth/callback?error=access_denied',
+      headers: { cookie: loginCookie },
+    });
+    expect(canceled.headers.location).toBe('/upload?authError=access_denied');
+
+    const secondLogin = await failingExchange.app.inject({ method: 'GET', url: '/auth/login' });
+    const secondCookie = String(secondLogin.headers['set-cookie']).split(';', 1)[0];
+    const rejected = await failingExchange.app.inject({
+      method: 'GET',
+      url: `/auth/callback?code=test-code&state=${transaction?.state}`,
+      headers: { cookie: secondCookie },
+    });
+    expect(rejected.headers.location).toBe('/upload?authError=login_failed');
   });
 
   it('preserva correlation id válido e substitui valor inseguro', async () => {
@@ -208,6 +410,8 @@ describe('LayoutParser BFF', () => {
         'content-type': 'text/plain',
         'x-dev-user': 'student.user',
         'x-dev-roles': 'Users',
+        authorization: 'Bearer browser-token-must-not-leak',
+        cookie: 'browser-cookie-must-not-leak=yes',
       },
       payload: 'document body',
     });
@@ -222,6 +426,8 @@ describe('LayoutParser BFF', () => {
     expect(upstream.requests[0]?.headers['x-iis-user']).toBe('student.user');
     expect(upstream.requests[0]?.headers['x-iis-roles']).toBe('Users');
     expect(upstream.requests[0]?.headers['x-dev-user']).toBeUndefined();
+    expect(upstream.requests[0]?.headers.authorization).toBeUndefined();
+    expect(upstream.requests[0]?.headers.cookie).toBeUndefined();
     expect(upstream.requests[0]?.headers['x-correlation-id']).toBe(
       response.headers['x-correlation-id']
     );

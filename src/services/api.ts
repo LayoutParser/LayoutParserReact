@@ -7,6 +7,7 @@ import type {
   ParseRequest,
   ParseResponse,
 } from '../types/api';
+import { SESSION_EXPIRED_EVENT } from '../types/session';
 import { createCorrelationId } from '../utils/correlation';
 import { isParseFailureCause } from '../utils/parseFailure';
 
@@ -61,8 +62,24 @@ apiClient.interceptors.request.use(config => {
   if (!config.headers['X-Correlation-ID']) {
     config.headers['X-Correlation-ID'] = createCorrelationId();
   }
+
   return config;
 });
+
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (
+      axios.isAxiosError(error) &&
+      error.response?.status === 401 &&
+      error.config?.url !== '/api/session' &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Erro tipado de POST /api/parse/upload.

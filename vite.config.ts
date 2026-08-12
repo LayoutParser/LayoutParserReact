@@ -29,6 +29,11 @@ export default defineConfig(({ mode }) => {
         ignored: ['**/coverage/**'],
       },
       proxy: {
+        '/auth': {
+          target: devBffTarget,
+          changeOrigin: true,
+          secure: false,
+        },
         '/api': {
           target: devBffTarget,
           changeOrigin: true,

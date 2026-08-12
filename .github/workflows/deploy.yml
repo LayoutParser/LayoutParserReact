@@ -118,18 +118,17 @@ jobs:
           LAYOUTPARSER_API_URL: ${{ vars.LAYOUTPARSER_API_URL }}
           BFF_ADMIN_USERS: ${{ secrets.BFF_ADMIN_USERS }}
           BFF_ADMIN_ROLES: ${{ secrets.BFF_ADMIN_ROLES }}
-          BFF_TRUSTED_PROXY_IPS: ${{ vars.BFF_TRUSTED_PROXY_IPS }}
+          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
+          ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
+          ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Secret DEPLOY_PATH ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variable PUBLIC_HOST ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:LAYOUTPARSER_API_URL)) { throw 'Variable LAYOUTPARSER_API_URL ausente.' }
-
-          $trustedProxies = if ([string]::IsNullOrWhiteSpace($env:BFF_TRUSTED_PROXY_IPS)) {
-            '127.0.0.1'
-          } else {
-            $env:BFF_TRUSTED_PROXY_IPS
-          }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_TENANT_ID)) { throw 'Variable ENTRA_TENANT_ID ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_ID)) { throw 'Variable ENTRA_CLIENT_ID ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_SECRET)) { throw 'Secret ENTRA_CLIENT_SECRET ausente.' }
 
           & ./scripts/Deploy-Iis.ps1 `
             -DeployRoot $env:DEPLOY_ROOT `
@@ -138,4 +137,6 @@ jobs:
             -UpstreamUrl $env:LAYOUTPARSER_API_URL `
             -AdminUsers $env:BFF_ADMIN_USERS `
             -AdminRoles $env:BFF_ADMIN_ROLES `
-            -TrustedProxyIps $trustedProxies
+            -EntraTenantId $env:ENTRA_TENANT_ID `
+            -EntraClientId $env:ENTRA_CLIENT_ID `
+            -EntraClientSecret $env:ENTRA_CLIENT_SECRET

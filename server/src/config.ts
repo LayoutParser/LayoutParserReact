@@ -1,8 +1,10 @@
-import { isIP } from 'node:net';
-
 const MEBIBYTE = 1024 * 1024;
 const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const DOCUMENT_FIELD_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
+const CLIENT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TENANT_ID_PATTERN =
+  /^(?:common|organizations|consumers|[0-9a-f-]{36}|[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?)$/i;
 const DEFAULT_ADMIN_PATHS = [
   '/api/monitoring/*',
   '/api/ai-metrics/*',
@@ -12,6 +14,14 @@ const DEFAULT_ADMIN_PATHS = [
 
 export type NodeEnvironment = 'development' | 'test' | 'production';
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+
+export interface EntraConfig {
+  readonly tenantId: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly authority: string;
+  readonly redirectUri: string;
+}
 
 export interface AppConfig {
   readonly nodeEnv: NodeEnvironment;
@@ -24,7 +34,6 @@ export interface AppConfig {
   readonly documentField: string;
   readonly rateLimitMax: number;
   readonly rateLimitWindowMs: number;
-  readonly trustedProxyIps: ReadonlySet<string>;
   readonly trustedUserHeader: string;
   readonly trustedRolesHeader: string;
   readonly adminUsers: ReadonlySet<string>;
@@ -33,6 +42,9 @@ export interface AppConfig {
   readonly developmentAuthEnabled: boolean;
   readonly developmentUserHeader: string;
   readonly developmentRolesHeader: string;
+  readonly publicOrigin: string;
+  readonly sessionTtlSeconds: number;
+  readonly entra: EntraConfig | null;
   readonly logLevel: LogLevel;
 }
 
@@ -96,26 +108,6 @@ function parseCsv(value: string | undefined): string[] {
     .split(',')
     .map(item => item.trim())
     .filter(Boolean);
-}
-
-function normalizeIp(value: string): string {
-  const withoutZone = value.split('%', 1)[0] ?? value;
-  if (withoutZone.startsWith('::ffff:')) {
-    return withoutZone.slice('::ffff:'.length);
-  }
-
-  return withoutZone;
-}
-
-function parseTrustedProxyIps(value: string | undefined): ReadonlySet<string> {
-  const addresses = parseCsv(value).map(normalizeIp);
-  for (const address of addresses) {
-    if (isIP(address) === 0) {
-      throw new ConfigError(`BFF_TRUSTED_PROXY_IPS contém IP inválido: ${address}.`);
-    }
-  }
-
-  return new Set(addresses);
 }
 
 function parseHeaderName(value: string | undefined, fallback: string, name: string): string {
@@ -202,6 +194,78 @@ function lowercaseSet(values: readonly string[]): ReadonlySet<string> {
   return new Set(values.map(value => value.toLocaleLowerCase('en-US')));
 }
 
+function parsePublicOrigin(value: string | undefined, isProduction: boolean): string {
+  const selected = value?.trim() || (isProduction ? '' : 'http://localhost:3000');
+  if (!selected) {
+    throw new ConfigError('BFF_PUBLIC_ORIGIN é obrigatória em produção.');
+  }
+
+  let url: URL;
+  try {
+    url = new URL(selected);
+  } catch {
+    throw new ConfigError('BFF_PUBLIC_ORIGIN deve ser uma origem HTTP(S) válida.');
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new ConfigError('BFF_PUBLIC_ORIGIN deve usar HTTP ou HTTPS.');
+  }
+
+  if (isProduction && url.protocol !== 'https:') {
+    throw new ConfigError('BFF_PUBLIC_ORIGIN deve usar HTTPS em produção.');
+  }
+
+  if (
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    (url.pathname !== '/' && url.pathname !== '')
+  ) {
+    throw new ConfigError(
+      'BFF_PUBLIC_ORIGIN deve conter somente a origem, sem credenciais ou path.'
+    );
+  }
+
+  return url.origin;
+}
+
+function parseEntraConfig(
+  environment: NodeJS.ProcessEnv,
+  publicOrigin: string,
+  isProduction: boolean
+): EntraConfig | null {
+  const tenantId = environment.ENTRA_TENANT_ID?.trim() ?? '';
+  const clientId = environment.ENTRA_CLIENT_ID?.trim() ?? '';
+  const clientSecret = environment.ENTRA_CLIENT_SECRET ?? '';
+  const hasAnyValue = Boolean(tenantId || clientId || clientSecret.trim());
+
+  if (!hasAnyValue && !isProduction) {
+    return null;
+  }
+
+  if (!tenantId) {
+    throw new ConfigError('ENTRA_TENANT_ID é obrigatória quando OIDC está habilitado.');
+  }
+  if (!TENANT_ID_PATTERN.test(tenantId)) {
+    throw new ConfigError('ENTRA_TENANT_ID possui formato inválido.');
+  }
+  if (!CLIENT_ID_PATTERN.test(clientId)) {
+    throw new ConfigError('ENTRA_CLIENT_ID deve ser o Application (client) ID em formato GUID.');
+  }
+  if (clientSecret.trim().length < 16) {
+    throw new ConfigError('ENTRA_CLIENT_SECRET está ausente ou é curto demais.');
+  }
+
+  return {
+    tenantId,
+    clientId,
+    clientSecret,
+    authority: `https://login.microsoftonline.com/${tenantId}`,
+    redirectUri: `${publicOrigin}/auth/callback`,
+  };
+}
+
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = parseNodeEnvironment(environment.NODE_ENV);
   const isProduction = nodeEnv === 'production';
@@ -222,7 +286,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     1024
   );
   const documentField = environment.BFF_DOCUMENT_FIELD?.trim() || 'txtFile';
-  const trustedProxyIps = parseTrustedProxyIps(environment.BFF_TRUSTED_PROXY_IPS);
   const trustedUserHeader = parseHeaderName(
     environment.BFF_TRUSTED_USER_HEADER,
     'x-iis-user',
@@ -241,6 +304,8 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   const adminUsers = lowercaseSet(parseCsv(environment.BFF_ADMIN_USERS));
   const adminRoles = lowercaseSet(parseCsv(environment.BFF_ADMIN_ROLES));
   const upstreamUrl = parseUpstreamUrl(environment.LAYOUTPARSER_API_URL, isProduction);
+  const publicOrigin = parsePublicOrigin(environment.BFF_PUBLIC_ORIGIN, isProduction);
+  const entra = parseEntraConfig(environment, publicOrigin, isProduction);
 
   if (!DOCUMENT_FIELD_PATTERN.test(documentField)) {
     throw new ConfigError('BFF_DOCUMENT_FIELD contém um nome de campo inválido.');
@@ -253,14 +318,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   if (isProduction) {
     if (host !== '127.0.0.1' && host !== '::1') {
       throw new ConfigError('Em produção, BFF_HOST deve apontar para loopback (127.0.0.1 ou ::1).');
-    }
-
-    if (trustedProxyIps.size === 0) {
-      throw new ConfigError('BFF_TRUSTED_PROXY_IPS é obrigatória em produção.');
-    }
-
-    if (!environment.BFF_TRUSTED_USER_HEADER?.trim()) {
-      throw new ConfigError('BFF_TRUSTED_USER_HEADER é obrigatória em produção.');
     }
 
     if (developmentAuthEnabled) {
@@ -295,7 +352,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       1000,
       86_400_000
     ),
-    trustedProxyIps,
     trustedUserHeader,
     trustedRolesHeader,
     adminUsers,
@@ -312,6 +368,15 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       'x-dev-roles',
       'BFF_DEV_ROLES_HEADER'
     ),
+    publicOrigin,
+    sessionTtlSeconds: parseInteger(
+      environment.BFF_SESSION_TTL_SECONDS,
+      28_800,
+      'BFF_SESSION_TTL_SECONDS',
+      300,
+      86_400
+    ),
+    entra,
     logLevel: parseLogLevel(environment.BFF_LOG_LEVEL),
   };
 }

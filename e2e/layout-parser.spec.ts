@@ -155,3 +155,23 @@ test('não renderiza o painel administrativo sem a função admin', async ({ pag
   await expect(page.getByRole('alert')).toContainText('Acesso restrito');
   await expect(page.getByText('Painel Administrativo')).toHaveCount(0);
 });
+
+test('bloqueia o conteúdo anônimo e oferece entrada Microsoft', async ({ page }) => {
+  await page.route('**/api/session', route =>
+    route.fulfill({
+      json: {
+        authenticated: false,
+        user: { name: '' },
+        roles: [],
+        isAdmin: false,
+      },
+    })
+  );
+
+  await page.goto('/upload');
+
+  const login = page.getByRole('link', { name: 'Entrar com Microsoft' });
+  await expect(login).toBeVisible();
+  await expect(login).toHaveAttribute('href', '/auth/login?returnTo=%2Fupload');
+  await expect(page.getByRole('button', { name: 'Processar Documento' })).toHaveCount(0);
+});

@@ -1,7 +1,8 @@
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parseService, ParseRequestError } from './api';
+import { SESSION_EXPIRED_EVENT } from '../types/session';
 
 const server = setupServer();
 
@@ -94,5 +95,16 @@ describe('parseService', () => {
       kind: 'network_error',
       httpStatus: undefined,
     });
+  });
+
+  it('notifica a aplicação quando a sessão expira durante uma chamada protegida', async () => {
+    const listener = vi.fn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, listener);
+    server.use(http.post('*/api/parse/upload', () => HttpResponse.json({}, { status: 401 })));
+
+    await parseService.parseFiles(createRequest()).catch(() => undefined);
+
+    expect(listener).toHaveBeenCalledOnce();
+    window.removeEventListener(SESSION_EXPIRED_EVENT, listener);
   });
 });

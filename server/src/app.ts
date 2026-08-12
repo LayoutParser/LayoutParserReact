@@ -4,6 +4,7 @@ import type { Writable } from 'node:stream';
 import helmet from '@fastify/helmet';
 import httpProxy from '@fastify/http-proxy';
 import rateLimit from '@fastify/rate-limit';
+import secureSession from '@fastify/secure-session';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -16,12 +17,19 @@ import Fastify, {
 import { authorizeProxyRequest, canonicalizePath, resolveIdentity } from './auth.js';
 import type { AppConfig } from './config.js';
 import { MultipartPayloadError, PayloadLimitError, PayloadLimitTransform } from './limits.js';
+import {
+  createOidcClient,
+  deriveSessionKey,
+  registerAuthenticationRoutes,
+  type OidcClient,
+} from './oidc.js';
 
 const ACCEPTED_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/;
 
 export interface BuildAppOptions {
   readonly logger?: NonNullable<FastifyServerOptions['logger']>;
   readonly logStream?: Writable;
+  readonly oidcClient?: OidcClient | null;
 }
 
 function createRequestId(request: {
@@ -115,6 +123,8 @@ function rewriteProxyHeaders(
   delete rewritten[config.trustedRolesHeader];
   delete rewritten[config.developmentUserHeader];
   delete rewritten[config.developmentRolesHeader];
+  delete rewritten.authorization;
+  delete rewritten.cookie;
 
   rewritten['x-correlation-id'] = request.id;
   if (request.identity) {
@@ -155,9 +165,24 @@ export async function buildApp(
     routerOptions: { caseSensitive: false },
   };
   const app: FastifyInstance = Fastify(serverOptions);
+  const oidcClient =
+    options.oidcClient === undefined ? createOidcClient(config) : options.oidcClient;
 
   app.decorateRequest('identity', null);
   app.decorateRequest('payloadLimitKind', null);
+
+  await app.register(secureSession, {
+    key: deriveSessionKey(config),
+    cookieName: config.isProduction ? '__Host-layoutparser_session' : 'layoutparser_session',
+    expiry: config.sessionTtlSeconds,
+    cookie: {
+      path: '/',
+      httpOnly: true,
+      secure: config.isProduction,
+      sameSite: 'lax',
+      maxAge: config.sessionTtlSeconds,
+    },
+  });
 
   app.setErrorHandler(async (error, request, reply) => {
     const normalizedError = error instanceof Error ? error : new Error('Unknown request error.');
@@ -256,12 +281,17 @@ export async function buildApp(
     service: 'layout-parser-bff',
   }));
 
-  app.get('/api/session', async request => ({
-    authenticated: request.identity !== null,
-    user: { name: request.identity?.name ?? '' },
-    roles: request.identity ? [...request.identity.roles] : [],
-    isAdmin: request.identity?.isAdmin ?? false,
-  }));
+  registerAuthenticationRoutes(app, config, oidcClient);
+
+  app.get('/api/session', async (request, reply) => {
+    reply.header('cache-control', 'no-store');
+    return {
+      authenticated: request.identity !== null,
+      user: { name: request.identity?.name ?? '' },
+      roles: request.identity ? [...request.identity.roles] : [],
+      isAdmin: request.identity?.isAdmin ?? false,
+    };
+  });
 
   await app.register(httpProxy, {
     upstream: config.upstreamUrl,

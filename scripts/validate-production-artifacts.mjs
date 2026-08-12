@@ -37,10 +37,10 @@ for (const file of publicAssets) {
 const webConfig = await readFile(path.join(distRoot, 'web.config'), 'utf8');
 for (const requiredFragment of [
   'LayoutParser API Gateway',
+  'LayoutParser Authentication Gateway',
   'Content-Security-Policy',
   'Strict-Transport-Security',
   'X-Content-Type-Options',
-  'HTTP_X_IIS_USER',
   "style-src 'self'",
 ]) {
   if (!webConfig.includes(requiredFragment)) {
@@ -62,6 +62,9 @@ const deployScript = await readFile(path.join(repositoryRoot, 'scripts', 'Deploy
 for (const requiredFragment of [
   'system.webServer/security/authentication/windowsAuthentication',
   'system.webServer/security/authentication/anonymousAuthentication',
+  "Enabled = 'true'",
+  "Enabled = 'false'",
+  'ENTRA_CLIENT_SECRET',
   "'/commit:apphost'",
 ]) {
   if (!deployScript.includes(requiredFragment)) {

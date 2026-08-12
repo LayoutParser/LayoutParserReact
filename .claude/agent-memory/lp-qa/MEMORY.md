@@ -7,3 +7,5 @@
 Gate canônico: `npm ci`, `npm ci --prefix server`, `npm run quality`, `npm run test:e2e` e
 `git diff --check`. Fluxos críticos: upload/cancelamento, parse/erro sem resultado obsoleto,
 árvore, transformação e download XML, sessão/admin, desktop/mobile e ausência de payload nos logs.
+Para autenticação, cobrir sessão anônima/autenticada, state/nonce/PKCE, open redirect, logout,
+remoção de cookie/Authorization antes do upstream e fail-fast das variáveis Entra.
