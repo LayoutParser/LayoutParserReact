@@ -8,6 +8,8 @@
 - [Adoção de shared](project_divida_adocao_shared.md) — não apagar componentes só porque a adoção ainda é parcial.
 - [Convenções reais](feedback_convencoes_reais_vs_doc.md) — confirmar no código antes de ampliar padrões.
 - [Baseline moderno](project_modern_front_quality_baseline.md) — stack, testes e gates atuais.
+- Autenticação vigente: `MainLayout` bloqueia conteúdo até `/api/session`; login navega para
+  `/auth/login`, logout é POST em `/auth/logout` e nenhum token Microsoft entra no React.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

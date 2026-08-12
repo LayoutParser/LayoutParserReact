@@ -3,6 +3,87 @@
   background: var(--color-canvas);
 }
 
+.session-bar {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: 0 clamp(var(--spacing-md), 3vw, var(--spacing-xl));
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.session-brand,
+.session-account {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.session-brand {
+  gap: var(--spacing-sm);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+}
+
+.session-brand img {
+  width: 30px;
+  height: 30px;
+}
+
+.session-account {
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.session-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.session-user {
+  max-width: min(32vw, 330px);
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-admin-link,
+.session-logout {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 var(--spacing-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.session-admin-link:hover,
+.session-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
 .main-header {
   display: flex;
   min-height: 72px;
@@ -29,7 +110,8 @@
 }
 
 .main-content {
-  height: 100vh;
+  height: calc(100vh - 54px);
+  height: calc(100dvh - 54px);
   overflow: hidden;
 }
 
@@ -115,5 +197,19 @@
     height: auto;
     min-height: 100vh;
     overflow: visible;
+  }
+}
+
+@media (max-width: 620px) {
+  .session-user {
+    display: none;
+  }
+
+  .session-bar {
+    padding-inline: var(--spacing-sm);
+  }
+
+  .session-admin-link {
+    padding-inline: var(--spacing-xs);
   }
 }

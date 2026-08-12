@@ -55,4 +55,23 @@ describe('useSessionStore', () => {
       isAdmin: false,
     });
   });
+
+  it('encerra o estado local quando a sessão expira no gateway', () => {
+    useSessionStore.setState({
+      authenticated: true,
+      user: { name: 'usuario' },
+      roles: ['user'],
+      isAdmin: false,
+      status: 'authenticated',
+      error: null,
+    });
+
+    useSessionStore.getState().expireSession();
+
+    expect(useSessionStore.getState()).toMatchObject({
+      authenticated: false,
+      status: 'unauthenticated',
+      roles: [],
+    });
+  });
 });

@@ -58,13 +58,13 @@ React melhora a experiência, mas não substitui a autorização aplicada no ser
 
 ```text
 Navegador
-  │ HTTPS, mesma origem: /api
+  │ HTTPS, mesma origem: /auth e /api
   ▼
-IIS — arquivos estáticos do React + autenticação integrada + URL Rewrite/ARR
-  │ trusted header, somente pela fronteira confiável
+IIS — arquivos estáticos do React + URL Rewrite/ARR
+  │ encaminha /auth/* e /api/*; não solicita credencial Windows
   ▼
 Gateway Node.js/Fastify — server/ — loopback
-  │ autenticação, autorização, limites, rate limit, correlação e proxy
+  │ Microsoft Entra OIDC, sessão, autorização, limites, rate limit e proxy
   ▼
 LayoutParserApi — ASP.NET Core/.NET — hub e fonte da verdade
   ├── LayoutParserLib — criptografia Sysmiddle
@@ -93,7 +93,7 @@ criar uma fronteira web segura e estável entre o navegador e os serviços inter
 | Gateway             | Node.js 24 LTS, Fastify 5 e TypeScript                                             |
 | Testes do front     | Vitest, Testing Library, MSW e cobertura V8                                        |
 | Testes de navegador | Playwright, com Chromium desktop e perfil móvel                                    |
-| Segurança           | Helmet, rate limit, CSP/IIS, auditoria npm e validação de artefatos                |
+| Segurança           | Entra OIDC/PKCE, sessão criptografada, Helmet, rate limit, CSP/IIS e auditoria npm |
 | CI                  | GitHub Actions com actions fixadas por SHA, CodeQL, Dependabot e dependency review |
 
 As versões efetivamente instaladas e seus intervalos estão em [`package.json`](package.json) e
@@ -108,9 +108,10 @@ As principais proteções existentes nesta branch são:
 - **Upload em camadas:** o front rejeita arquivo vazio, extensão não permitida, nome excessivo
   e documento acima de 25 MiB. O gateway limita o documento a 25 MiB e a requisição multipart
   completa a 32 MiB; a API deve manter sua própria validação autoritativa.
-- **Autenticação integrada:** em produção, o gateway aceita identidade somente por trusted
-  header vindo de um endereço de proxy explicitamente permitido. Não há usuário, senha, token
-  ou administrador padrão.
+- **Microsoft Entra OIDC:** o BFF executa Authorization Code com PKCE, `state` e `nonce`. A
+  senha permanece na Microsoft; tokens e o client secret nunca chegam ao React nem à API .NET.
+- **Sessão mínima e criptografada:** o cookie é `HttpOnly`, `Secure`, `SameSite=Lax`, expira em
+  oito horas e contém somente identidade mínima. A chave é derivada do client secret com HKDF.
 - **Autorização administrativa:** usuários e/ou grupos precisam estar nas allowlists do
   gateway para acessar os caminhos administrativos protegidos.
 - **Restrição de rede:** o gateway usa loopback por padrão e recusa bind externo em produção.
@@ -198,26 +199,31 @@ As variáveis do front estão documentadas em [`.env.example`](.env.example); as
 
 As variáveis mais importantes são:
 
-| Variável                              | Finalidade                                | Padrão de desenvolvimento |
-| ------------------------------------- | ----------------------------------------- | ------------------------- |
-| `BFF_HOST` / `BFF_PORT`               | Bind local do Fastify                     | `127.0.0.1` / `3100`      |
-| `LAYOUTPARSER_API_URL`                | Origem da API .NET                        | loopback local            |
-| `BFF_REQUEST_LIMIT_MIB`               | Limite da requisição multipart completa   | `32`                      |
-| `BFF_DOCUMENT_LIMIT_MIB`              | Limite cumulativo do campo `txtFile`      | `25`                      |
-| `BFF_RATE_LIMIT_MAX`                  | Máximo por janela                         | `120`                     |
-| `BFF_TRUSTED_PROXY_IPS`               | Proxies autorizados a declarar identidade | obrigatório em produção   |
-| `BFF_TRUSTED_USER_HEADER`             | Header de usuário inserido pelo IIS       | obrigatório em produção   |
-| `BFF_TRUSTED_ROLES_HEADER`            | Header opcional de grupos/funções         | configurável              |
-| `BFF_ADMIN_USERS` / `BFF_ADMIN_ROLES` | Allowlists administrativas                | ao menos uma em produção  |
-| `BFF_DEV_AUTH_ENABLED`                | Habilita identidade simulada local        | proibido em produção      |
+| Variável                              | Finalidade                                   | Padrão de desenvolvimento |
+| ------------------------------------- | -------------------------------------------- | ------------------------- |
+| `BFF_HOST` / `BFF_PORT`               | Bind local do Fastify                        | `127.0.0.1` / `3100`      |
+| `BFF_PUBLIC_ORIGIN`                   | Origem HTTPS pública usada no callback OIDC  | derivada no deploy        |
+| `LAYOUTPARSER_API_URL`                | Origem da API .NET                           | loopback local            |
+| `ENTRA_TENANT_ID`                     | Authority Microsoft (`common` neste projeto) | obrigatório em produção   |
+| `ENTRA_CLIENT_ID`                     | Application (client) ID                      | obrigatório em produção   |
+| `ENTRA_CLIENT_SECRET`                 | Credencial confidencial do BFF               | secret, nunca versionado  |
+| `BFF_SESSION_TTL_SECONDS`             | Vida máxima da sessão criptografada          | `28800`                   |
+| `BFF_REQUEST_LIMIT_MIB`               | Limite da requisição multipart completa      | `32`                      |
+| `BFF_DOCUMENT_LIMIT_MIB`              | Limite cumulativo do campo `txtFile`         | `25`                      |
+| `BFF_RATE_LIMIT_MAX`                  | Máximo por janela                            | `120`                     |
+| `BFF_ADMIN_USERS` / `BFF_ADMIN_ROLES` | Allowlists administrativas                   | ao menos uma em produção  |
+| `BFF_DEV_AUTH_ENABLED`                | Habilita identidade simulada local           | proibido em produção      |
 
 Rotas próprias do gateway:
 
-| Método e rota      | Finalidade                                                                 |
-| ------------------ | -------------------------------------------------------------------------- |
-| `GET /health`      | Liveness local, sem revelar nem consultar o upstream.                      |
-| `GET /api/session` | Sessão normalizada para o front: autenticação, usuário, roles e `isAdmin`. |
-| `/api/*`           | Proxy transparente para a API .NET, após os controles do gateway.          |
+| Método e rota        | Finalidade                                                                 |
+| -------------------- | -------------------------------------------------------------------------- |
+| `GET /health`        | Liveness local, sem revelar nem consultar o upstream.                      |
+| `GET /auth/login`    | Inicia Authorization Code + PKCE na Microsoft.                             |
+| `GET /auth/callback` | Valida `state`, `nonce`, código e cria a sessão criptografada.             |
+| `POST /auth/logout`  | Encerra apenas a sessão do LayoutParser.                                   |
+| `GET /api/session`   | Sessão normalizada para o front: autenticação, usuário, roles e `isAdmin`. |
+| `/api/*`             | Proxy para a API .NET depois de autenticação e autorização.                |
 
 Os caminhos administrativos protegidos e todos os detalhes de fail-fast estão em
 [`server/README.md`](server/README.md).
@@ -230,20 +236,39 @@ O desenho de produção esperado é:
 2. Instalar e habilitar URL Rewrite e ARR com proxy.
 3. Executar o gateway compilado como processo/serviço Node separado, escutando somente em
    loopback.
-4. Fazer o IIS encaminhar `/api/*` ao gateway.
-5. Habilitar a autenticação integrada adequada ao ambiente.
-6. Remover qualquer header de identidade recebido do navegador e inserir um novo valor a partir
-   da identidade já validada pelo IIS.
-7. Configurar no gateway o mesmo nome de header usado pelo IIS, os IPs confiáveis e a allowlist
-   administrativa.
+4. Fazer o IIS encaminhar `/auth/*` e `/api/*` ao gateway.
+5. Manter **Anonymous Authentication habilitada** e **Windows Authentication desabilitada** no
+   site; a autenticação acontece no BFF com a Microsoft.
+6. Configurar o App Registration como multitenant + contas pessoais e registrar exatamente
+   `https://BRNDDAPPBLD01/auth/callback` como URI da plataforma **Web**.
+7. Configurar `ENTRA_TENANT_ID=common`, client ID e client secret nos environments do GitHub.
 8. Manter a API .NET inacessível diretamente pelo navegador e protegida também em profundidade.
 
 O arquivo [`public/web.config`](public/web.config) é copiado para o build e contém a regra
-same-origin, limite total de 32 MiB e headers defensivos. A regra sobrescreve `X-IIS-User` com
-`{AUTH_USER}`; o BFF aceita esse header somente do proxy configurado. O deploy configura
-autenticação Windows no `applicationHost.config` do site e mantém essas seções bloqueadas para o
-aplicativo. A administração pode ser controlada pela allowlist de usuários ou por uma regra
-equivalente de roles.
+same-origin para autenticação/API, limite total de 32 MiB e headers defensivos. O deploy configura
+o `applicationHost.config` para acesso anônimo ao conteúdo e deixa a identidade sob autoridade do
+BFF. Headers de identidade, cookies e `Authorization` enviados pelo navegador são removidos antes
+do proxy; somente a identidade validada pelo BFF é encaminhada à API.
+
+Os environments `development` e `production` são isolados pelo GitHub. Portanto, cadastre os
+três valores **separadamente em cada environment**, mesmo quando o conteúdo for igual. No
+environment `development`, configure exatamente:
+
+```text
+Variable ENTRA_TENANT_ID = common
+Variable ENTRA_CLIENT_ID = 9ff4c9ba-1bab-414a-a6df-39ddce8f7425
+Secret   ENTRA_CLIENT_SECRET = <Value do secret, não o Secret ID>
+```
+
+Repita a mesma configuração em `production`. Variáveis ou secrets criados somente em
+`production` não ficam disponíveis ao workflow `ci-dev.yml`; nesse caso o deploy de
+desenvolvimento falha deliberadamente antes de alterar o IIS. Se o hostname de desenvolvimento
+for diferente do de produção, adicione também `https://<PUBLIC_HOST_DEV>/auth/callback` como URI
+de redirecionamento da plataforma **Web** no mesmo App Registration.
+
+O servidor e os navegadores precisam alcançar `login.microsoftonline.com` por HTTPS. Políticas de
+um tenant corporativo externo ainda podem exigir consentimento administrativo para aplicativos
+multitenant; essa decisão pertence ao tenant da conta que está entrando.
 
 ```powershell
 npm ci
@@ -255,7 +280,7 @@ O workflow [`deploy.yml`](.github/workflows/deploy.yml) executa os gates, cria u
 versionada, publica o React, instala as dependências de produção do BFF, registra/reinicia seu
 processo em uma Scheduled Task do Windows, faz smoke tests e mantém rollback para a release
 anterior. O script [Deploy-Iis.ps1](scripts/Deploy-Iis.ps1) exige HTTPS e falha se URL Rewrite,
-ARR, allowlists ou variáveis obrigatórias estiverem ausentes. Configure `PUBLIC_HOST` em produção
+ARR, OIDC, allowlists ou variáveis obrigatórias estiverem ausentes. Configure `PUBLIC_HOST` em produção
 e `PUBLIC_HOST_DEV` em desenvolvimento com o hostname DNS coberto pelo certificado, sem protocolo
 ou porta; esse valor também é usado no smoke test HTTPS. Os environments `development` e
 `production` devem exigir aprovação e isolar seus secrets/runners.
@@ -313,8 +338,8 @@ npm run quality --prefix server
 ```
 
 O gate próprio executa tipos, testes com cobertura, build e auditoria. A suíte cobre configuração
-fail-fast, sessão, trusted headers, allowlist administrativa, proxy, correlação, rate limit,
-limites de payload e privacidade dos logs.
+fail-fast, sessão criptografada, OIDC/PKCE, proteção contra CSRF/open redirect, allowlist
+administrativa, proxy, correlação, rate limit, limites de payload e privacidade dos logs.
 
 ### E2E com Playwright
 

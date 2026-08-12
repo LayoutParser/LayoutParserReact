@@ -14,14 +14,15 @@ export interface AuthenticatedIdentity {
   readonly isAdmin: boolean;
 }
 
+export interface SessionIdentity {
+  readonly name: string;
+  readonly roles: readonly string[];
+  readonly subject: string;
+  readonly tenantId: string;
+}
+
 type AnyFastifyRequest = FastifyRequest<RequestGenericInterface, RawServerBase>;
 type AnyFastifyReply = FastifyReply<RouteGenericInterface, RawServerBase>;
-
-function normalizeIp(address: string | undefined): string {
-  const selected = address ?? '';
-  const withoutZone = selected.split('%', 1)[0] ?? selected;
-  return withoutZone.startsWith('::ffff:') ? withoutZone.slice('::ffff:'.length) : withoutZone;
-}
 
 function isSafeIdentityValue(value: string): boolean {
   if (value.length === 0 || value.length > 256) {
@@ -71,32 +72,37 @@ export function resolveIdentity(
   request: AnyFastifyRequest,
   config: AppConfig
 ): AuthenticatedIdentity | null {
-  let userHeader: string;
-  let rolesHeader: string;
-
-  if (config.isProduction) {
-    const peer = normalizeIp(request.raw.socket.remoteAddress);
-    if (!config.trustedProxyIps.has(peer)) {
-      return null;
-    }
-
-    userHeader = config.trustedUserHeader;
-    rolesHeader = config.trustedRolesHeader;
-  } else {
-    if (!config.developmentAuthEnabled) {
-      return null;
-    }
-
-    userHeader = config.developmentUserHeader;
-    rolesHeader = config.developmentRolesHeader;
+  const sessionIdentity = request.session.get('identity');
+  if (
+    sessionIdentity &&
+    typeof sessionIdentity.name === 'string' &&
+    typeof sessionIdentity.subject === 'string' &&
+    typeof sessionIdentity.tenantId === 'string' &&
+    Array.isArray(sessionIdentity.roles) &&
+    isSafeIdentityValue(sessionIdentity.name) &&
+    isSafeIdentityValue(sessionIdentity.subject) &&
+    isSafeIdentityValue(sessionIdentity.tenantId)
+  ) {
+    const roles = sessionIdentity.roles
+      .filter((role): role is string => typeof role === 'string' && isSafeIdentityValue(role))
+      .slice(0, 50);
+    return {
+      name: sessionIdentity.name,
+      roles,
+      isAdmin: calculateIsAdmin(sessionIdentity.name, roles, config),
+    };
   }
 
-  const name = readSafeHeader(request, userHeader);
+  if (config.isProduction || !config.developmentAuthEnabled) {
+    return null;
+  }
+
+  const name = readSafeHeader(request, config.developmentUserHeader);
   if (!name) {
     return null;
   }
 
-  const roles = parseRoles(readSafeHeader(request, rolesHeader));
+  const roles = parseRoles(readSafeHeader(request, config.developmentRolesHeader));
   return {
     name,
     roles,

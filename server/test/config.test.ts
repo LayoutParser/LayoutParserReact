@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { ConfigError, loadConfig } from '../src/config.js';
 
+const productionEnvironment = {
+  NODE_ENV: 'production',
+  LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
+  BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+  ENTRA_TENANT_ID: 'common',
+  ENTRA_CLIENT_ID: '9ff4c9ba-1bab-414a-a6df-39ddce8f7425',
+  ENTRA_CLIENT_SECRET: 'test-secret-with-more-than-sixteen-characters',
+  BFF_ADMIN_ROLES: 'LayoutParserAdmins',
+} satisfies NodeJS.ProcessEnv;
+
 describe('loadConfig', () => {
   it('aplica defaults seguros de desenvolvimento', () => {
     const config = loadConfig({ NODE_ENV: 'development' });
@@ -12,76 +22,43 @@ describe('loadConfig', () => {
     expect(config.requestLimitBytes).toBe(32 * 1024 * 1024);
     expect(config.documentLimitBytes).toBe(25 * 1024 * 1024);
     expect(config.developmentAuthEnabled).toBe(false);
+    expect(config.publicOrigin).toBe('http://localhost:3000');
+    expect(config.entra).toBeNull();
   });
 
   it('carrega uma configuração de produção segura', () => {
-    const config = loadConfig({
-      NODE_ENV: 'production',
-      LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
-      BFF_TRUSTED_PROXY_IPS: '127.0.0.1,::1',
-      BFF_TRUSTED_USER_HEADER: 'X-IIS-User',
-      BFF_ADMIN_ROLES: 'LayoutParserAdmins',
-    });
+    const config = loadConfig({ ...productionEnvironment, BFF_TRUSTED_USER_HEADER: 'X-User' });
 
     expect(config.isProduction).toBe(true);
-    expect(config.trustedProxyIps).toEqual(new Set(['127.0.0.1', '::1']));
-    expect(config.trustedUserHeader).toBe('x-iis-user');
+    expect(config.publicOrigin).toBe('https://layoutparser.example');
+    expect(config.entra).toMatchObject({
+      tenantId: 'common',
+      clientId: '9ff4c9ba-1bab-414a-a6df-39ddce8f7425',
+      redirectUri: 'https://layoutparser.example/auth/callback',
+    });
+    expect(config.trustedUserHeader).toBe('x-user');
     expect(config.adminRoles.has('layoutparseradmins')).toBe(true);
   });
 
   it.each([
     [{ NODE_ENV: 'production' }, 'LAYOUTPARSER_API_URL'],
-    [
-      {
-        NODE_ENV: 'production',
-        LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
-        BFF_TRUSTED_USER_HEADER: 'x-iis-user',
-        BFF_ADMIN_ROLES: 'admins',
-      },
-      'BFF_TRUSTED_PROXY_IPS',
-    ],
-    [
-      {
-        NODE_ENV: 'production',
-        LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
-        BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
-        BFF_ADMIN_ROLES: 'admins',
-      },
-      'BFF_TRUSTED_USER_HEADER',
-    ],
-    [
-      {
-        NODE_ENV: 'production',
-        LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
-        BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
-        BFF_TRUSTED_USER_HEADER: 'x-iis-user',
-      },
-      'BFF_ADMIN_USERS',
-    ],
+    [{ ...productionEnvironment, BFF_PUBLIC_ORIGIN: '' }, 'BFF_PUBLIC_ORIGIN'],
+    [{ ...productionEnvironment, ENTRA_TENANT_ID: '' }, 'ENTRA_TENANT_ID'],
+    [{ ...productionEnvironment, ENTRA_CLIENT_ID: '' }, 'ENTRA_CLIENT_ID'],
+    [{ ...productionEnvironment, ENTRA_CLIENT_SECRET: '' }, 'ENTRA_CLIENT_SECRET'],
+    [{ ...productionEnvironment, BFF_ADMIN_ROLES: '' }, 'BFF_ADMIN_USERS'],
   ])('falha em produção sem configuração obrigatória: %s', (environment, expectedMessage) => {
     expect(() => loadConfig(environment)).toThrowError(expectedMessage);
   });
 
   it('proíbe autenticação de desenvolvimento em produção', () => {
     expect(() =>
-      loadConfig({
-        NODE_ENV: 'production',
-        LAYOUTPARSER_API_URL: 'https://layout-parser.internal',
-        BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
-        BFF_TRUSTED_USER_HEADER: 'x-iis-user',
-        BFF_ADMIN_ROLES: 'admins',
-        BFF_DEV_AUTH_ENABLED: 'true',
-      })
+      loadConfig({ ...productionEnvironment, BFF_DEV_AUTH_ENABLED: 'true' })
     ).toThrowError('BFF_DEV_AUTH_ENABLED');
   });
 
   it('proíbe bind não local e upstream HTTP remoto em produção', () => {
-    const base = {
-      NODE_ENV: 'production',
-      BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
-      BFF_TRUSTED_USER_HEADER: 'x-iis-user',
-      BFF_ADMIN_ROLES: 'admins',
-    };
+    const base = productionEnvironment;
 
     expect(() =>
       loadConfig({ ...base, BFF_HOST: '0.0.0.0', LAYOUTPARSER_API_URL: 'https://api.internal' })
@@ -92,12 +69,7 @@ describe('loadConfig', () => {
   });
 
   it('aceita HTTP local em produção sem incluir credenciais na URL', () => {
-    const base = {
-      NODE_ENV: 'production',
-      BFF_TRUSTED_PROXY_IPS: '127.0.0.1',
-      BFF_TRUSTED_USER_HEADER: 'x-iis-user',
-      BFF_ADMIN_ROLES: 'admins',
-    };
+    const base = productionEnvironment;
 
     expect(loadConfig({ ...base, LAYOUTPARSER_API_URL: 'http://127.0.0.1:5000' }).upstreamUrl).toBe(
       'http://127.0.0.1:5000'
@@ -112,7 +84,6 @@ describe('loadConfig', () => {
       loadConfig({ BFF_REQUEST_LIMIT_MIB: '10', BFF_DOCUMENT_LIMIT_MIB: '11' })
     ).toThrowError(ConfigError);
     expect(() => loadConfig({ BFF_DEV_AUTH_ENABLED: 'yes' })).toThrowError('true ou false');
-    expect(() => loadConfig({ BFF_TRUSTED_PROXY_IPS: 'not-an-ip' })).toThrowError('IP inválido');
     expect(() => loadConfig({ BFF_ADMIN_PATHS: '/api/admin/*/nested' })).toThrowError(
       'padrão inválido'
     );
@@ -124,6 +95,16 @@ describe('loadConfig', () => {
     [{ BFF_PORT: '70000' }, 'entre 1 e 65535'],
     [{ BFF_TRUSTED_USER_HEADER: 'bad header' }, 'header inválido'],
     [{ BFF_DOCUMENT_FIELD: 'bad field!' }, 'campo inválido'],
+    [{ BFF_SESSION_TTL_SECONDS: '299' }, 'entre 300 e 86400'],
+    [{ BFF_PUBLIC_ORIGIN: 'https://example.test/path' }, 'somente a origem'],
+    [
+      {
+        ENTRA_TENANT_ID: 'common/path',
+        ENTRA_CLIENT_ID: '9ff4c9ba-1bab-414a-a6df-39ddce8f7425',
+        ENTRA_CLIENT_SECRET: 'test-secret-with-more-than-sixteen-characters',
+      },
+      'ENTRA_TENANT_ID',
+    ],
     [{ LAYOUTPARSER_API_URL: 'ftp://api.internal' }, 'HTTP ou HTTPS'],
     [{ LAYOUTPARSER_API_URL: 'https://api.internal/base' }, 'sem path'],
     [{ BFF_LOG_LEVEL: 'verbose' }, 'BFF_LOG_LEVEL'],
