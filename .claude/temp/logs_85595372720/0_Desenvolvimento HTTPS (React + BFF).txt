@@ -1,0 +1,464 @@
+﻿2026-08-12T01:40:20.0903716Z Current runner version: '2.336.0'
+2026-08-12T01:40:20.0923100Z Runner name: 'NDD-NOT-10910'
+2026-08-12T01:40:20.0924071Z Runner group name: 'default'
+2026-08-12T01:40:20.0925031Z Machine name: 'NDD-NOT-10910'
+2026-08-12T01:40:20.0928615Z ##[group]GITHUB_TOKEN Permissions
+2026-08-12T01:40:20.0931758Z Contents: read
+2026-08-12T01:40:20.0932306Z Metadata: read
+2026-08-12T01:40:20.0932820Z ##[endgroup]
+2026-08-12T01:40:20.0935391Z Secret source: Actions
+2026-08-12T01:40:20.0936329Z Prepare workflow directory
+2026-08-12T01:40:20.2380904Z Prepare all required actions
+2026-08-12T01:40:20.2465228Z Getting action download info
+2026-08-12T01:40:20.8664706Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-08-12T01:40:22.4809046Z Download action repository 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' (SHA:820762786026740c76f36085b0efc47a31fe5020)
+2026-08-12T01:40:25.2597855Z Complete job name: Desenvolvimento HTTPS (React + BFF)
+2026-08-12T01:40:25.5278527Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-08-12T01:40:25.5281311Z with:
+2026-08-12T01:40:25.5281980Z   fetch-depth: 1
+2026-08-12T01:40:25.5282656Z   persist-credentials: false
+2026-08-12T01:40:25.5283518Z   repository: LayoutParser/LayoutParserReact
+2026-08-12T01:40:25.5291368Z   token: ***
+2026-08-12T01:40:25.5292020Z   ssh-strict: true
+2026-08-12T01:40:25.5292646Z   ssh-user: git
+2026-08-12T01:40:25.5293235Z   clean: true
+2026-08-12T01:40:25.5293898Z   sparse-checkout-cone-mode: true
+2026-08-12T01:40:25.5294702Z   fetch-tags: false
+2026-08-12T01:40:25.5295604Z   show-progress: true
+2026-08-12T01:40:25.5296265Z   lfs: false
+2026-08-12T01:40:25.5296876Z   submodules: false
+2026-08-12T01:40:25.5297608Z   set-safe-directory: true
+2026-08-12T01:40:25.5298322Z   allow-unsafe-pr-checkout: false
+2026-08-12T01:40:25.5303398Z env:
+2026-08-12T01:40:25.5303995Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:40:25.5304866Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:40:25.5305636Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:40:25.5306372Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:40:25.5307087Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:40:25.5307749Z ##[endgroup]
+2026-08-12T01:40:25.8311493Z Syncing repository: LayoutParser/LayoutParserReact
+2026-08-12T01:40:25.8315542Z ##[group]Getting Git version info
+2026-08-12T01:40:25.8316288Z Working directory is 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact'
+2026-08-12T01:40:25.8411318Z ##[endgroup]
+2026-08-12T01:40:25.8413738Z Deleting the contents of 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact'
+2026-08-12T01:40:32.9579171Z The repository will be downloaded using the GitHub REST API
+2026-08-12T01:40:32.9581669Z To create a local Git repository instead, add Git 2.18 or higher to the PATH
+2026-08-12T01:40:32.9588835Z Downloading the archive
+2026-08-12T01:40:34.5807305Z Writing archive to disk
+2026-08-12T01:40:34.5852459Z Extracting the archive
+2026-08-12T01:40:34.6307716Z [command]"C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "$ErrorActionPreference = 'Stop' ; try { Add-Type -AssemblyName System.IO.Compression.ZipFile } catch { } ; try { [System.IO.Compression.ZipFile]::ExtractToDirectory('C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\dede5b40-738b-44e9-929c-3c6211d1acc0.zip', 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\dede5b40-738b-44e9-929c-3c6211d1acc0', $true) } catch { if (($_.Exception.GetType().FullName -eq 'System.Management.Automation.MethodException') -or ($_.Exception.GetType().FullName -eq 'System.Management.Automation.RuntimeException') ){ Expand-Archive -LiteralPath 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\dede5b40-738b-44e9-929c-3c6211d1acc0.zip' -DestinationPath 'C:\actions-runner\_work\LayoutParserReact\LayoutParserReact\dede5b40-738b-44e9-929c-3c6211d1acc0' -Force } else { throw $_ } } ;"
+2026-08-12T01:40:37.0134379Z Resolved version LayoutParser-LayoutParserReact-2721320
+2026-08-12T01:40:38.3923773Z ##[group]Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+2026-08-12T01:40:38.3925422Z with:
+2026-08-12T01:40:38.3926022Z   node-version: 24.x
+2026-08-12T01:40:38.3926689Z   cache: npm
+2026-08-12T01:40:38.3927800Z   cache-dependency-path: package-lock.json
+server/package-lock.json
+
+2026-08-12T01:40:38.3928989Z   check-latest: false
+2026-08-12T01:40:38.3938769Z   token: ***
+2026-08-12T01:40:38.3939567Z   package-manager-cache: true
+2026-08-12T01:40:38.3940495Z env:
+2026-08-12T01:40:38.3941145Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:40:38.3941924Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:40:38.3942810Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:40:38.3943570Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:40:38.3944390Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:40:38.3945096Z ##[endgroup]
+2026-08-12T01:40:38.9147563Z Found in cache @ C:\actions-runner\_work\_tool\node\24.19.0\x64
+2026-08-12T01:40:38.9187419Z ##[group]Environment details
+2026-08-12T01:40:42.0824799Z node: v24.19.0
+2026-08-12T01:40:42.0825579Z npm: 11.17.0
+2026-08-12T01:40:42.0826154Z yarn: 
+2026-08-12T01:40:42.0827828Z ##[endgroup]
+2026-08-12T01:40:42.1132295Z [command]C:\Windows\system32\cmd.exe /D /S /C "C:\actions-runner\_work\_tool\node\24.19.0\x64\npm.cmd config get cache"
+2026-08-12T01:40:43.1173358Z C:\Windows\system32\config\systemprofile\AppData\Local\npm-cache
+2026-08-12T01:40:43.8166481Z npm cache is not found
+2026-08-12T01:40:43.9017700Z ##[group]Run npm ci
+2026-08-12T01:40:43.9018184Z [36;1mnpm ci[0m
+2026-08-12T01:40:43.9018528Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'npm ci do front falhou.' }[0m
+2026-08-12T01:40:43.9018935Z [36;1mnpm ci --prefix server[0m
+2026-08-12T01:40:43.9019229Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'npm ci do BFF falhou.' }[0m
+2026-08-12T01:40:43.9089399Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-08-12T01:40:43.9090348Z env:
+2026-08-12T01:40:43.9090789Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:40:43.9091223Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:40:43.9091739Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:40:43.9092226Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:40:43.9092694Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:40:43.9093197Z ##[endgroup]
+2026-08-12T01:41:30.9903838Z 
+2026-08-12T01:41:30.9915472Z added 469 packages, and audited 470 packages in 46s
+2026-08-12T01:41:30.9916161Z 
+2026-08-12T01:41:30.9916821Z 169 packages are looking for funding
+2026-08-12T01:41:30.9917500Z   run `npm fund` for details
+2026-08-12T01:41:30.9945842Z 
+2026-08-12T01:41:30.9947252Z found 0 vulnerabilities
+2026-08-12T01:41:42.7577238Z 
+2026-08-12T01:41:42.7578859Z added 172 packages, and audited 173 packages in 11s
+2026-08-12T01:41:42.7599228Z 
+2026-08-12T01:41:42.7600382Z found 0 vulnerabilities
+2026-08-12T01:41:42.9878020Z ##[group]Run npm run quality
+2026-08-12T01:41:42.9879270Z [36;1mnpm run quality[0m
+2026-08-12T01:41:42.9880000Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Quality gates falharam.' }[0m
+2026-08-12T01:41:42.9952087Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-08-12T01:41:42.9953612Z env:
+2026-08-12T01:41:42.9954289Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:41:42.9955064Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:41:42.9955881Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:41:42.9956605Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:41:42.9957363Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:41:42.9958057Z   VITE_API_BASE_URL: 
+2026-08-12T01:41:42.9958689Z ##[endgroup]
+2026-08-12T01:41:44.6448185Z 
+2026-08-12T01:41:44.6449367Z > layout-parser-react@1.0.0 quality
+2026-08-12T01:41:44.6451167Z > npm run quality:front && npm run quality:server && npm run typecheck:e2e && npm run contract:check
+2026-08-12T01:41:44.6452281Z 
+2026-08-12T01:41:45.4406273Z 
+2026-08-12T01:41:45.4407455Z > layout-parser-react@1.0.0 quality:front
+2026-08-12T01:41:45.4409373Z > npm run lint && npm run typecheck && npm run test:coverage && npm run build:dev && npm run build:prod && npm run artifacts:validate && npm run format:check && npm run audit
+2026-08-12T01:41:45.4412877Z 
+2026-08-12T01:41:46.3151523Z 
+2026-08-12T01:41:46.3152936Z > layout-parser-react@1.0.0 lint
+2026-08-12T01:41:46.3154247Z > eslint . --report-unused-disable-directives --max-warnings 0
+2026-08-12T01:41:46.3154776Z 
+2026-08-12T01:42:41.0172174Z 
+2026-08-12T01:42:41.0173305Z > layout-parser-react@1.0.0 typecheck
+2026-08-12T01:42:41.0174077Z > tsc --noEmit
+2026-08-12T01:42:41.0186106Z 
+2026-08-12T01:42:51.2368154Z 
+2026-08-12T01:42:51.2369759Z > layout-parser-react@1.0.0 test:coverage
+2026-08-12T01:42:51.2371381Z > vitest run --coverage
+2026-08-12T01:42:51.2394229Z 
+2026-08-12T01:42:52.7997176Z 
+2026-08-12T01:42:52.8004743Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mC:/actions-runner/_work/LayoutParserReact/LayoutParserReact[39m
+2026-08-12T01:42:52.8006849Z       [2mCoverage enabled with [22m[33mv8[39m
+2026-08-12T01:42:52.8007561Z 
+2026-08-12T01:43:16.9845398Z  [32m✓[39m src/utils/uploadValidation.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+2026-08-12T01:43:18.4634500Z  [32m✓[39m src/components/shared/Modal.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1221[2mms[22m[39m
+2026-08-12T01:43:18.4636666Z      [33m[2m✓[22m[39m expõe semântica de diálogo, fecha com Escape e restaura o foco [33m 924[2mms[22m[39m
+2026-08-12T01:43:18.5640241Z  [32m✓[39m src/components/upload/LayoutCombobox.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1493[2mms[22m[39m
+2026-08-12T01:43:18.5642275Z      [33m[2m✓[22m[39m expõe o popup e as opções com semântica de combobox/listbox [33m 929[2mms[22m[39m
+2026-08-12T01:43:18.5678603Z      [33m[2m✓[22m[39m filtra e seleciona um layout por teclado [33m 326[2mms[22m[39m
+2026-08-12T01:43:19.1539441Z  [32m✓[39m src/components/analysis/StructureTree.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1462[2mms[22m[39m
+2026-08-12T01:43:19.1541753Z      [33m[2m✓[22m[39m expõe árvore semântica e permite expandir e navegar pelo teclado [33m 1293[2mms[22m[39m
+2026-08-12T01:43:19.5817593Z  [32m✓[39m src/components/analysis/XmlTransformationDisplay.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1888[2mms[22m[39m
+2026-08-12T01:43:19.5820300Z      [33m[2m✓[22m[39m envia o contrato completo com prioridade para o layoutGuid do parse [33m 1150[2mms[22m[39m
+2026-08-12T01:43:22.7004389Z  [32m✓[39m src/components/layout/LayoutParserPage.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 2944[2mms[22m[39m
+2026-08-12T01:43:22.7007192Z      [33m[2m✓[22m[39m executa o fluxo de catálogo, upload e parse com sucesso [33m 1757[2mms[22m[39m
+2026-08-12T01:43:22.7016301Z      [33m[2m✓[22m[39m remove o resultado anterior quando o documento seguinte falha [33m 565[2mms[22m[39m
+2026-08-12T01:43:22.7063675Z      [33m[2m✓[22m[39m cancela o upload em andamento sem aplicar resultado novo [33m 617[2mms[22m[39m
+2026-08-12T01:43:22.9603917Z  [32m✓[39m src/services/api.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 569[2mms[22m[39m
+2026-08-12T01:43:22.9607018Z      [33m[2m✓[22m[39m envia multipart e correlation id na mesma origem [33m 382[2mms[22m[39m
+2026-08-12T01:43:28.4224381Z  [32m✓[39m src/utils/parseFailure.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+2026-08-12T01:43:28.9938808Z  [32m✓[39m src/store/useSessionStore.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+2026-08-12T01:43:30.7627301Z  [32m✓[39m src/components/admin/AdminMonitoringTabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1026[2mms[22m[39m
+2026-08-12T01:43:30.7630671Z      [33m[2m✓[22m[39m carrega as validações sem atualizar estado sincronicamente no effect [33m 862[2mms[22m[39m
+2026-08-12T01:43:31.0588841Z  [32m✓[39m src/components/analysis/AnalysisModeTabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 999[2mms[22m[39m
+2026-08-12T01:43:31.0605518Z      [33m[2m✓[22m[39m remove a orientação de background e mantém a avaliação multi-candidato acessível [33m 871[2mms[22m[39m
+2026-08-12T01:43:31.3820537Z  [32m✓[39m src/components/shared/Tabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1062[2mms[22m[39m
+2026-08-12T01:43:31.3825170Z      [33m[2m✓[22m[39m conecta tablist, tabs e painel ativo por ARIA [33m 794[2mms[22m[39m
+2026-08-12T01:43:32.3420478Z  [32m✓[39m src/utils/transformationDiagnostics.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+2026-08-12T01:43:34.2184858Z  [32m✓[39m src/components/auth/RequireAdmin.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 619[2mms[22m[39m
+2026-08-12T01:43:34.2188776Z      [33m[2m✓[22m[39m bloqueia usuário sem função administrativa [33m 471[2mms[22m[39m
+2026-08-12T01:43:39.0279046Z  [32m✓[39m src/services/cache/layoutCache.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+2026-08-12T01:43:39.6275075Z  [32m✓[39m src/components/upload/ParseErrorBanner.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 793[2mms[22m[39m
+2026-08-12T01:43:39.6277251Z      [33m[2m✓[22m[39m apresenta defeito interno sem induzir investigação do arquivo [33m 684[2mms[22m[39m
+2026-08-12T01:43:41.2089912Z  [32m✓[39m src/utils/xmlDelivery.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+2026-08-12T01:43:41.6537995Z  [32m✓[39m src/components/shared/AppErrorBoundary.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 946[2mms[22m[39m
+2026-08-12T01:43:41.6539823Z      [33m[2m✓[22m[39m mostra recuperação segura e registra apenas metadados [33m 794[2mms[22m[39m
+2026-08-12T01:43:42.2042220Z  [32m✓[39m src/components/auth/AuthenticationGate.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1068[2mms[22m[39m
+2026-08-12T01:43:42.2044792Z      [33m[2m✓[22m[39m oferece login Microsoft preservando somente o retorno local [33m 895[2mms[22m[39m
+2026-08-12T01:43:42.6792762Z  [32m✓[39m src/utils/logSanitizer.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+2026-08-12T01:43:42.7582248Z  [32m✓[39m src/services/api/sessionService.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+2026-08-12T01:43:46.5779658Z  [32m✓[39m src/utils/layoutGuid.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+2026-08-12T01:43:46.7762773Z  [32m✓[39m src/services/api/transformationService.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 23[2mms[22m[39m
+2026-08-12T01:43:47.1316748Z  [32m✓[39m src/utils/keyboard.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+2026-08-12T01:43:48.1839852Z 
+2026-08-12T01:43:48.1850206Z [2m Test Files [22m [1m[32m24 passed[39m[22m[90m (24)[39m
+2026-08-12T01:43:48.1851986Z [2m      Tests [22m [1m[32m126 passed[39m[22m[90m (126)[39m
+2026-08-12T01:43:48.1856180Z [2m   Start at [22m 22:42:52
+2026-08-12T01:43:48.1859106Z [2m   Duration [22m 55.32s[2m (transform 4.43s, setup 49.57s, import 18.62s, tests 16.46s, environment 243.50s)[22m
+2026-08-12T01:43:48.1861680Z 
+2026-08-12T01:43:48.1963980Z [34m % [39m[2mCoverage report from [22m[33mv8[39m
+2026-08-12T01:43:48.2166201Z -------------------|---------|----------|---------|---------|-------------------
+2026-08-12T01:43:48.2168535Z File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+2026-08-12T01:43:48.2169600Z -------------------|---------|----------|---------|---------|-------------------
+2026-08-12T01:43:48.2188155Z All files          |   46.11 |    35.61 |   47.81 |   46.36 |                   
+2026-08-12T01:43:48.2189432Z  src               |       0 |      100 |       0 |       0 |                   
+2026-08-12T01:43:48.2191369Z   App.tsx          |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2193492Z   routes.tsx       |       0 |      100 |       0 |       0 | 6-31              
+2026-08-12T01:43:48.2195626Z  ...mponents/admin |    37.2 |    15.15 |   22.72 |   36.36 |                   
+2026-08-12T01:43:48.2199308Z   AdminPage.tsx    |       0 |        0 |       0 |       0 | 8-42              
+2026-08-12T01:43:48.2201856Z   ...dationTab.tsx |   36.76 |    18.03 |   21.73 |    36.5 | ...92,101,122-336 
+2026-08-12T01:43:48.2204115Z   ...toringTab.tsx |   42.59 |    16.36 |   31.25 |   41.17 | ...92,105,159-311 
+2026-08-12T01:43:48.2206570Z  ...ents/aiMetrics |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2209097Z   ...ricsPanel.tsx |       0 |        0 |       0 |       0 | 7-279             
+2026-08-12T01:43:48.2211664Z  ...nents/analysis |   28.09 |    20.28 |   33.75 |   28.51 |                   
+2026-08-12T01:43:48.2214125Z   ...sModeTabs.tsx |   85.71 |       75 |   66.66 |   85.71 | 51,61,116         
+2026-08-12T01:43:48.2216434Z   ...lthBanner.tsx |       0 |        0 |       0 |       0 | 22-82             
+2026-08-12T01:43:48.2221074Z   ...ntSummary.tsx |    90.9 |    56.25 |     100 |      90 | 10                
+2026-08-12T01:43:48.2222588Z   FieldDisplay.tsx |       0 |        0 |       0 |       0 | 10-844            
+2026-08-12T01:43:48.2223596Z   FieldSearch.tsx  |      50 |    22.22 |      50 |      50 | 22,29-36,47       
+2026-08-12T01:43:48.2224574Z   ...ctureTree.tsx |   53.33 |     46.4 |   66.66 |   54.26 | ...34-235,237-238 
+2026-08-12T01:43:48.2225654Z   ...onDisplay.tsx |   63.85 |    48.38 |   64.28 |   63.85 | ...80-213,286-325 
+2026-08-12T01:43:48.2226641Z  ...omponents/auth |      85 |    90.47 |      75 |      85 |                   
+2026-08-12T01:43:48.2227648Z   AdminRoute.tsx   |       0 |      100 |       0 |       0 | 4-5               
+2026-08-12T01:43:48.2228845Z   ...ationGate.tsx |   88.88 |       80 |     100 |   88.88 | 29                
+2026-08-12T01:43:48.2230395Z   RequireAdmin.tsx |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2231900Z  ...ponents/layout |   58.73 |    56.48 |   69.23 |   57.72 |                   
+2026-08-12T01:43:48.2237368Z   ...arserPage.tsx |   58.73 |    56.48 |   69.23 |   57.72 | ...43-245,263-364 
+2026-08-12T01:43:48.2239200Z  ...ponents/shared |   81.25 |    72.85 |   76.19 |   82.22 |                   
+2026-08-12T01:43:48.2240916Z   ...rBoundary.tsx |      75 |      100 |      75 |      75 | 29-30             
+2026-08-12T01:43:48.2241966Z   Button.tsx       |       0 |        0 |       0 |       0 | 13-21             
+2026-08-12T01:43:48.2242984Z   Modal.tsx        |    90.9 |    84.84 |     100 |   92.68 | 58-60             
+2026-08-12T01:43:48.2243912Z   ...ErrorPage.tsx |       0 |        0 |       0 |       0 | 4-8               
+2026-08-12T01:43:48.2245196Z   RouteLoading.tsx |       0 |      100 |       0 |       0 | 3-4               
+2026-08-12T01:43:48.2246966Z   Tabs.tsx         |   88.88 |       76 |   88.88 |    90.9 | 39-40,71          
+2026-08-12T01:43:48.2248099Z  ...ponents/upload |   80.19 |    66.23 |   95.45 |   80.41 |                   
+2026-08-12T01:43:48.2249217Z   ...tCombobox.tsx |   78.94 |    61.76 |   95.23 |   79.12 | ...19-120,122-123 
+2026-08-12T01:43:48.2250158Z   ...rorBanner.tsx |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2251067Z  src/layouts       |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2251963Z   MainLayout.tsx   |       0 |        0 |       0 |       0 | 9-73              
+2026-08-12T01:43:48.2252897Z  src/services      |    88.7 |    78.94 |     100 |   88.52 |                   
+2026-08-12T01:43:48.2253837Z   api.ts           |    88.7 |    78.94 |     100 |   88.52 | ...89,197-198,262 
+2026-08-12T01:43:48.2254752Z  src/services/api  |   16.43 |    10.86 |   13.33 |   16.66 |                   
+2026-08-12T01:43:48.2255674Z   ...icsService.ts |       0 |        0 |       0 |       0 | 14-51             
+2026-08-12T01:43:48.2256774Z   layoutService.ts |       0 |        0 |       0 |       0 | 8-51              
+2026-08-12T01:43:48.2257928Z   logService.ts    |       0 |      100 |       0 |       0 | 13-27             
+2026-08-12T01:43:48.2263936Z   ...ingService.ts |       0 |        0 |       0 |       0 | 78-99             
+2026-08-12T01:43:48.2265769Z   ...ionService.ts |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2268785Z   ...ionService.ts |      50 |        0 |     100 |      50 | 33-39             
+2026-08-12T01:43:48.2270682Z   ...sisService.ts |       0 |        0 |       0 |       0 | 10-74             
+2026-08-12T01:43:48.2272497Z  ...services/cache |   65.57 |    51.35 |    87.5 |   68.42 |                   
+2026-08-12T01:43:48.2274433Z   layoutCache.ts   |   65.57 |    51.35 |    87.5 |   68.42 | ...26-130,142-143 
+2026-08-12T01:43:48.2276299Z  src/store         |   37.05 |    23.28 |      48 |   37.01 |                   
+2026-08-12T01:43:48.2278053Z   ...tricsStore.ts |       0 |        0 |       0 |       0 | 29-84             
+2026-08-12T01:43:48.2280399Z   useAppStore.ts   |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2281685Z   useFieldStore.ts |   46.66 |    33.33 |   42.85 |      50 | 19,45,51-53,62-79 
+2026-08-12T01:43:48.2282876Z   ...ayoutStore.ts |       0 |        0 |       0 |       0 | 32-88             
+2026-08-12T01:43:48.2284383Z   ...earchStore.ts |    8.33 |        0 |      25 |    6.45 | 25-59,76-94       
+2026-08-12T01:43:48.2285952Z   ...ssionStore.ts |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2287278Z   ...ctureStore.ts |   47.61 |       25 |   55.55 |      45 | 29,38-55          
+2026-08-12T01:43:48.2288803Z   ...ationStore.ts |   84.61 |      100 |   81.81 |   83.33 | 89-91             
+2026-08-12T01:43:48.2290202Z  src/types         |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2291886Z   aiMetrics.ts     |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2293865Z   api.ts           |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2295765Z   clientLog.ts     |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2297776Z   field.ts         |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2299764Z   layout.ts        |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2301147Z   session.ts       |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2302430Z   structure.ts     |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2303530Z   ...sformation.ts |       0 |        0 |       0 |       0 |                   
+2026-08-12T01:43:48.2304607Z  src/utils         |   67.75 |     58.7 |      70 |   68.51 |                   
+2026-08-12T01:43:48.2306526Z   correlation.ts   |      50 |       50 |      50 |      50 | 11-15             
+2026-08-12T01:43:48.2307856Z   ...mentHealth.ts |   40.74 |    36.36 |   28.57 |    42.3 | ...2-53,61,94-117 
+2026-08-12T01:43:48.2309210Z   keyboard.ts      |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2310507Z   layoutGuid.ts    |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2311709Z   logSanitizer.ts  |    86.2 |    69.23 |     100 |   85.71 | 19,40-44          
+2026-08-12T01:43:48.2313048Z   parseFailure.ts  |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2314324Z   ...iagnostics.ts |     100 |      100 |     100 |     100 |                   
+2026-08-12T01:43:48.2341290Z   treeBuilder.ts   |   20.37 |    21.73 |   30.76 |   21.56 | 41-151            
+2026-08-12T01:43:48.2342444Z   ...Validation.ts |     100 |    94.73 |     100 |     100 | 59                
+2026-08-12T01:43:48.2343316Z   xmlDelivery.ts   |   72.34 |    86.48 |     100 |   73.91 | 52,74-87          
+2026-08-12T01:43:48.2344423Z -------------------|---------|----------|---------|---------|-------------------
+2026-08-12T01:43:49.8593011Z 
+2026-08-12T01:43:49.8595154Z > layout-parser-react@1.0.0 build:dev
+2026-08-12T01:43:49.8596012Z > vite build --mode development
+2026-08-12T01:43:49.8596382Z 
+2026-08-12T01:43:50.7910480Z [36mvite v8.2.1 [32mbuilding client environment for development...[36m[39m
+2026-08-12T01:43:50.8172477Z [2K
+2026-08-12T01:43:51.3853362Z transforming...✓ 149 modules transformed.
+2026-08-12T01:43:51.5719754Z rendering chunks...
+2026-08-12T01:43:52.0020158Z computing gzip size...
+2026-08-12T01:43:52.0099034Z dist/index.html                                        0.92 kB │ gzip:  0.48 kB
+2026-08-12T01:43:52.0100523Z dist/assets/raleway-v18-latin-500-BcEJleWx.woff       25.24 kB
+2026-08-12T01:43:52.0101727Z dist/assets/raleway-v18-latin-regular-C4RtxcGF.woff   25.80 kB
+2026-08-12T01:43:52.0103066Z dist/assets/raleway-v18-latin-600-ngQRCo5u.woff       26.08 kB
+2026-08-12T01:43:52.0104257Z dist/assets/raleway-v18-latin-700-BC1tgOxX.woff       26.12 kB
+2026-08-12T01:43:52.0105525Z dist/assets/index-DQEUuWzV.css                        14.19 kB │ gzip:  3.57 kB
+2026-08-12T01:43:52.0106851Z dist/assets/AdminRoute-wNcFzUV7.css                   37.33 kB │ gzip:  4.58 kB
+2026-08-12T01:43:52.0108511Z dist/assets/LayoutParserPage-DCSdw8nD.css             42.00 kB │ gzip:  6.25 kB
+2026-08-12T01:43:52.0110613Z dist/assets/rolldown-runtime-hePW80VL.js               0.71 kB │ gzip:  0.42 kB
+2026-08-12T01:43:52.0113273Z dist/assets/AdminRoute-BAhWo1HZ.js                    30.77 kB │ gzip:  5.61 kB │ map:  85.87 kB
+2026-08-12T01:43:52.0116776Z dist/assets/ui-BkR0G1di.js                            47.83 kB │ gzip: 18.21 kB │ map: 229.46 kB
+2026-08-12T01:43:52.0119999Z dist/assets/LayoutParserPage-DkJJAHLh.js              50.57 kB │ gzip: 15.59 kB │ map: 210.30 kB
+2026-08-12T01:43:52.0122593Z dist/assets/router-QXOOF4j8.js                       101.91 kB │ gzip: 33.69 kB │ map: 567.00 kB
+2026-08-12T01:43:52.0125356Z dist/assets/index-DjaIYrks.js                        192.92 kB │ gzip: 61.41 kB │ map: 846.76 kB
+2026-08-12T01:43:52.0126524Z 
+2026-08-12T01:43:52.0127082Z [32m✓ built in 1.22s[39m
+2026-08-12T01:43:52.8120532Z 
+2026-08-12T01:43:52.8124949Z > layout-parser-react@1.0.0 build:prod
+2026-08-12T01:43:52.8126574Z > vite build --mode production
+2026-08-12T01:43:52.8127157Z 
+2026-08-12T01:43:53.4345901Z [36mvite v8.2.1 [32mbuilding client environment for production...[36m[39m
+2026-08-12T01:43:53.4621002Z [2K
+2026-08-12T01:43:53.7151870Z transforming...✓ 149 modules transformed.
+2026-08-12T01:43:53.8134024Z rendering chunks...
+2026-08-12T01:43:53.9562146Z computing gzip size...
+2026-08-12T01:43:53.9627077Z dist/index.html                                        0.92 kB │ gzip:  0.48 kB
+2026-08-12T01:43:53.9628292Z dist/assets/raleway-v18-latin-500-BcEJleWx.woff       25.24 kB
+2026-08-12T01:43:53.9629463Z dist/assets/raleway-v18-latin-regular-C4RtxcGF.woff   25.80 kB
+2026-08-12T01:43:53.9632574Z dist/assets/raleway-v18-latin-600-ngQRCo5u.woff       26.08 kB
+2026-08-12T01:43:53.9634129Z dist/assets/raleway-v18-latin-700-BC1tgOxX.woff       26.12 kB
+2026-08-12T01:43:53.9635309Z dist/assets/index-DQEUuWzV.css                        14.19 kB │ gzip:  3.57 kB
+2026-08-12T01:43:53.9636548Z dist/assets/AdminRoute-wNcFzUV7.css                   37.33 kB │ gzip:  4.58 kB
+2026-08-12T01:43:53.9637824Z dist/assets/LayoutParserPage-DCSdw8nD.css             42.00 kB │ gzip:  6.25 kB
+2026-08-12T01:43:53.9639317Z dist/assets/rolldown-runtime-hePW80VL.js               0.71 kB │ gzip:  0.42 kB
+2026-08-12T01:43:53.9641657Z dist/assets/AdminRoute-BAhWo1HZ.js                    30.73 kB │ gzip:  5.57 kB
+2026-08-12T01:43:53.9643879Z dist/assets/ui-BkR0G1di.js                            47.79 kB │ gzip: 18.18 kB
+2026-08-12T01:43:53.9646124Z dist/assets/LayoutParserPage-DkJJAHLh.js              50.52 kB │ gzip: 15.55 kB
+2026-08-12T01:43:53.9649570Z dist/assets/router-QXOOF4j8.js                       101.87 kB │ gzip: 33.66 kB
+2026-08-12T01:43:53.9651517Z dist/assets/index-DjaIYrks.js                        192.88 kB │ gzip: 61.37 kB
+2026-08-12T01:43:53.9656626Z 
+2026-08-12T01:43:53.9657242Z [32m✓ built in 526ms[39m
+2026-08-12T01:43:54.8008187Z 
+2026-08-12T01:43:54.8009577Z > layout-parser-react@1.0.0 artifacts:validate
+2026-08-12T01:43:54.8010992Z > node scripts/validate-production-artifacts.mjs
+2026-08-12T01:43:54.8011679Z 
+2026-08-12T01:43:55.0337251Z Artefatos de produção validados (17 arquivos, sem source maps/IP interno).
+2026-08-12T01:43:55.7695619Z 
+2026-08-12T01:43:55.7699205Z > layout-parser-react@1.0.0 format:check
+2026-08-12T01:43:55.7700543Z > prettier --check . --ignore-unknown
+2026-08-12T01:43:55.7701200Z 
+2026-08-12T01:43:56.1794838Z Checking formatting...
+2026-08-12T01:44:03.7965658Z All matched files use Prettier code style!
+2026-08-12T01:44:04.6721874Z 
+2026-08-12T01:44:04.6723326Z > layout-parser-react@1.0.0 audit
+2026-08-12T01:44:04.6724979Z > npm audit --audit-level=moderate
+2026-08-12T01:44:04.6725756Z 
+2026-08-12T01:44:07.0743474Z found 0 vulnerabilities
+2026-08-12T01:44:07.8092906Z 
+2026-08-12T01:44:07.8093943Z > layout-parser-react@1.0.0 quality:server
+2026-08-12T01:44:07.8094748Z > npm --prefix server run quality
+2026-08-12T01:44:07.8095072Z 
+2026-08-12T01:44:08.6475290Z 
+2026-08-12T01:44:08.6479393Z > @layout-parser/academic-bff@1.0.0 quality
+2026-08-12T01:44:08.6480688Z > npm run typecheck && npm run test:coverage && npm run build && npm run audit
+2026-08-12T01:44:08.6481632Z 
+2026-08-12T01:44:09.5414151Z 
+2026-08-12T01:44:09.5415785Z > @layout-parser/academic-bff@1.0.0 typecheck
+2026-08-12T01:44:09.5417094Z > tsc -p tsconfig.json --noEmit
+2026-08-12T01:44:09.5417619Z 
+2026-08-12T01:44:11.8833146Z 
+2026-08-12T01:44:11.8834391Z > @layout-parser/academic-bff@1.0.0 test:coverage
+2026-08-12T01:44:11.8835124Z > vitest run --coverage
+2026-08-12T01:44:11.8835400Z 
+2026-08-12T01:44:13.3119443Z 
+2026-08-12T01:44:13.3124916Z [1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90mC:/actions-runner/_work/LayoutParserReact/LayoutParserReact/server[39m
+2026-08-12T01:44:13.3126214Z       [2mCoverage enabled with [22m[33mv8[39m
+2026-08-12T01:44:13.3126616Z 
+2026-08-12T01:44:14.3730089Z  [32m✓[39m test/config.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+2026-08-12T01:44:14.4952173Z  [32m✓[39m test/limits.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+2026-08-12T01:44:16.3625045Z  [32m✓[39m test/app.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 864[2mms[22m[39m
+2026-08-12T01:44:16.3626649Z      [33m[2m✓[22m[39m expõe health sem autenticação, com Helmet e correlation id [33m 361[2mms[22m[39m
+2026-08-12T01:44:16.5650169Z 
+2026-08-12T01:44:16.5668855Z [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+2026-08-12T01:44:16.5670127Z [2m      Tests [22m [1m[32m44 passed[39m[22m[90m (44)[39m
+2026-08-12T01:44:16.5672085Z [2m   Start at [22m 22:44:13
+2026-08-12T01:44:16.5678801Z [2m   Duration [22m 3.24s[2m (transform 490ms, setup 0ms, import 2.13s, tests 1.08s, environment 1ms)[22m
+2026-08-12T01:44:16.5684594Z 
+2026-08-12T01:44:16.5748002Z [34m % [39m[2mCoverage report from [22m[33mv8[39m
+2026-08-12T01:44:16.5889169Z -----------|---------|----------|---------|---------|---------------------------
+2026-08-12T01:44:16.5891721Z File       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s         
+2026-08-12T01:44:16.5892449Z -----------|---------|----------|---------|---------|---------------------------
+2026-08-12T01:44:16.5902009Z All files  |   86.98 |    82.38 |   85.88 |   86.76 |                           
+2026-08-12T01:44:16.5905508Z  app.ts    |   88.88 |    73.07 |   95.23 |   88.76 | 80,97,104-112,200,323,329 
+2026-08-12T01:44:16.5908019Z  auth.ts   |   96.15 |    91.66 |     100 |      96 | 29,126                    
+2026-08-12T01:44:16.5913072Z  config.ts |   95.79 |    97.82 |     100 |   95.68 | 100,131,207,211,215       
+2026-08-12T01:44:16.5915917Z  limits.ts |   87.93 |    83.33 |   84.61 |   87.93 | 78-79,85,107-108,128-129  
+2026-08-12T01:44:16.5921314Z  oidc.ts   |   68.75 |    53.12 |   57.14 |   68.42 | 77,83,87-191,294-295      
+2026-08-12T01:44:16.5923751Z -----------|---------|----------|---------|---------|---------------------------
+2026-08-12T01:44:17.5208357Z 
+2026-08-12T01:44:17.5209294Z > @layout-parser/academic-bff@1.0.0 build
+2026-08-12T01:44:17.5209983Z > tsc -p tsconfig.json
+2026-08-12T01:44:17.5210262Z 
+2026-08-12T01:44:19.5572810Z 
+2026-08-12T01:44:19.5574125Z > @layout-parser/academic-bff@1.0.0 audit
+2026-08-12T01:44:19.5575341Z > npm audit --audit-level=moderate
+2026-08-12T01:44:19.5575915Z 
+2026-08-12T01:44:21.7977278Z found 0 vulnerabilities
+2026-08-12T01:44:22.5864249Z 
+2026-08-12T01:44:22.5865814Z > layout-parser-react@1.0.0 typecheck:e2e
+2026-08-12T01:44:22.5894978Z > tsc -p tsconfig.e2e.json --noEmit
+2026-08-12T01:44:22.5895430Z 
+2026-08-12T01:44:25.4650209Z 
+2026-08-12T01:44:25.4651397Z > layout-parser-react@1.0.0 contract:check
+2026-08-12T01:44:25.4652546Z > node scripts/check-api-contract.mjs
+2026-08-12T01:44:25.4653077Z 
+2026-08-12T01:44:25.6462960Z Contrato validado: 11 usos no front, 11 endpoints registrados.
+2026-08-12T01:44:25.8644375Z ##[group]Run ./scripts/Install-IisArr.ps1
+2026-08-12T01:44:25.8644890Z [36;1m./scripts/Install-IisArr.ps1[0m
+2026-08-12T01:44:25.8688185Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-08-12T01:44:25.8688628Z env:
+2026-08-12T01:44:25.8688821Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:44:25.8689047Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:44:25.8689299Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:44:25.8689536Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:44:25.8689764Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:44:25.8689980Z ##[endgroup]
+2026-08-12T01:44:26.7242192Z IIS Application Request Routing (ARR) jÃ¡ estÃ¡ instalado.
+2026-08-12T01:44:26.8325378Z ##[group]Run if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variável IIS_SITE_NAME_DEV ausente.' }
+2026-08-12T01:44:26.8327119Z [36;1mif ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variável IIS_SITE_NAME_DEV ausente.' }[0m
+2026-08-12T01:44:26.8328534Z [36;1mif ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variável PUBLIC_HOST_DEV ausente.' }[0m
+2026-08-12T01:44:26.8329817Z [36;1m[0m
+2026-08-12T01:44:26.8330462Z [36;1m./scripts/Initialize-IisDevHttps.ps1 `[0m
+2026-08-12T01:44:26.8331214Z [36;1m  -SiteName $env:IIS_SITE_NAME `[0m
+2026-08-12T01:44:26.8331885Z [36;1m  -PublicHost $env:PUBLIC_HOST[0m
+2026-08-12T01:44:26.8431004Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-08-12T01:44:26.8431496Z env:
+2026-08-12T01:44:26.8431710Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:44:26.8432018Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:44:26.8432458Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:44:26.8432912Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:44:26.8433183Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:44:26.8446795Z   IIS_SITE_NAME: layoutparser-front-dev
+2026-08-12T01:44:26.8447666Z   PUBLIC_HOST: localhost
+2026-08-12T01:44:26.8448070Z ##[endgroup]
+2026-08-12T01:44:28.0414394Z HTTPS configurado em https://localhost:443/ com o certificado B1ACC7BC4726401AEE617CCCB19E0339328ADC34.
+2026-08-12T01:44:28.2087596Z ##[group]Run if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Variable DEPLOY_PATH_DEV ausente.' }
+2026-08-12T01:44:28.2095071Z [36;1mif ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Variable DEPLOY_PATH_DEV ausente.' }[0m
+2026-08-12T01:44:28.2097073Z [36;1mif ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME_DEV ausente.' }[0m
+2026-08-12T01:44:28.2098222Z [36;1mif ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variable PUBLIC_HOST_DEV ausente.' }[0m
+2026-08-12T01:44:28.2099500Z [36;1mif ([string]::IsNullOrWhiteSpace($env:LAYOUTPARSER_API_URL)) { throw 'Variable LAYOUTPARSER_API_URL_DEV ausente.' }[0m
+2026-08-12T01:44:28.2100907Z [36;1mif ([string]::IsNullOrWhiteSpace($env:ENTRA_TENANT_ID)) { throw 'Variable ENTRA_TENANT_ID ausente.' }[0m
+2026-08-12T01:44:28.2105084Z [36;1mif ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_ID)) { throw 'Variable ENTRA_CLIENT_ID ausente.' }[0m
+2026-08-12T01:44:28.2108024Z [36;1mif ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_SECRET)) { throw 'Secret ENTRA_CLIENT_SECRET ausente.' }[0m
+2026-08-12T01:44:28.2109161Z [36;1m[0m
+2026-08-12T01:44:28.2109587Z [36;1m& ./scripts/Deploy-Iis.ps1 `[0m
+2026-08-12T01:44:28.2110148Z [36;1m  -DeployRoot $env:DEPLOY_ROOT `[0m
+2026-08-12T01:44:28.2110695Z [36;1m  -SiteName $env:IIS_SITE_NAME `[0m
+2026-08-12T01:44:28.2111251Z [36;1m  -PublicHost $env:PUBLIC_HOST `[0m
+2026-08-12T01:44:28.2111847Z [36;1m  -UpstreamUrl $env:LAYOUTPARSER_API_URL `[0m
+2026-08-12T01:44:28.2112587Z [36;1m  -AdminUsers $env:BFF_ADMIN_USERS `[0m
+2026-08-12T01:44:28.2113197Z [36;1m  -AdminRoles $env:BFF_ADMIN_ROLES `[0m
+2026-08-12T01:44:28.2113816Z [36;1m  -EntraTenantId $env:ENTRA_TENANT_ID `[0m
+2026-08-12T01:44:28.2114469Z [36;1m  -EntraClientId $env:ENTRA_CLIENT_ID `[0m
+2026-08-12T01:44:28.2115178Z [36;1m  -EntraClientSecret $env:ENTRA_CLIENT_SECRET[0m
+2026-08-12T01:44:28.2189119Z shell: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE -command ". '{0}'"
+2026-08-12T01:44:28.2190806Z env:
+2026-08-12T01:44:28.2191528Z   GIT_CONFIG_COUNT: 2
+2026-08-12T01:44:28.2192384Z   GIT_CONFIG_KEY_0: core.autocrlf
+2026-08-12T01:44:28.2193330Z   GIT_CONFIG_VALUE_0: false
+2026-08-12T01:44:28.2194209Z   GIT_CONFIG_KEY_1: core.eol
+2026-08-12T01:44:28.2195086Z   GIT_CONFIG_VALUE_1: lf
+2026-08-12T01:44:28.2196192Z   DEPLOY_ROOT: C:\inetpub\wwwroot\layoutparser\front-end
+2026-08-12T01:44:28.2197474Z   IIS_SITE_NAME: layoutparser-front-dev
+2026-08-12T01:44:28.2198499Z   PUBLIC_HOST: localhost
+2026-08-12T01:44:28.2199634Z   LAYOUTPARSER_API_URL: http://127.0.0.1:5100
+2026-08-12T01:44:28.2201821Z   BFF_ADMIN_USERS: ***
+2026-08-12T01:44:28.2202668Z   BFF_ADMIN_ROLES: 
+2026-08-12T01:44:28.2203799Z   ENTRA_TENANT_ID: common
+2026-08-12T01:44:28.2205061Z   ENTRA_CLIENT_ID: 9ff4c9ba-1bab-414a-a6df-39ddce8f7425
+2026-08-12T01:44:28.2206341Z   ENTRA_CLIENT_SECRET: 
+2026-08-12T01:44:28.2207207Z ##[endgroup]
+2026-08-12T01:44:28.8952096Z Secret ENTRA_CLIENT_SECRET ausente.
+2026-08-12T01:44:28.8953385Z No C:\actions-runner\_work\_temp\9ae2f3bd-0e0d-4e66-ae59-b2cffc2e30d5.ps1:8 caractere:63
+2026-08-12T01:44:28.8954546Z + ... ENTRA_CLIENT_SECRET)) { throw 'Secret ENTRA_CLIENT_SECRET ausente.' }
+2026-08-12T01:44:28.8955448Z +                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-08-12T01:44:28.8956519Z     + CategoryInfo          : OperationStopped: (Secret ENTRA_CLIENT_SECRET ausente.:String) [], RuntimeException
+2026-08-12T01:44:28.8957701Z     + FullyQualifiedErrorId : Secret ENTRA_CLIENT_SECRET ausente.
+2026-08-12T01:44:28.8958407Z  
+2026-08-12T01:44:28.9244572Z ##[error]Process completed with exit code 1.
+2026-08-12T01:44:29.0174363Z Post job cleanup.
+2026-08-12T01:44:29.2975706Z Cleaning up orphan processes
