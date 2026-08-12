@@ -45,7 +45,7 @@ jobs:
             server/package-lock.json
 
       - name: Instalar dependências
-        shell: pwsh
+        shell: powershell
         run: |
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'npm ci do front falhou.' }
@@ -53,7 +53,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'npm ci do BFF falhou.' }
 
       - name: Quality gates e builds same-origin
-        shell: pwsh
+        shell: powershell
         env:
           VITE_API_BASE_URL: ''
         run: |
@@ -61,7 +61,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Quality gates falharam.' }
 
       - name: Garantir ARR 3 no IIS de desenvolvimento
-        shell: pwsh
+        shell: powershell
         run: ./scripts/Install-IisArr.ps1
 
       - name: Garantir HTTPS no IIS de desenvolvimento
@@ -86,18 +86,17 @@ jobs:
           LAYOUTPARSER_API_URL: ${{ vars.LAYOUTPARSER_API_URL_DEV }}
           BFF_ADMIN_USERS: ${{ secrets.BFF_ADMIN_USERS_DEV }}
           BFF_ADMIN_ROLES: ${{ secrets.BFF_ADMIN_ROLES_DEV }}
-          BFF_TRUSTED_PROXY_IPS: ${{ vars.BFF_TRUSTED_PROXY_IPS_DEV }}
+          ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
+          ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
+          ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Variable DEPLOY_PATH_DEV ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME_DEV ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:PUBLIC_HOST)) { throw 'Variable PUBLIC_HOST_DEV ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:LAYOUTPARSER_API_URL)) { throw 'Variable LAYOUTPARSER_API_URL_DEV ausente.' }
-
-          $trustedProxies = if ([string]::IsNullOrWhiteSpace($env:BFF_TRUSTED_PROXY_IPS)) {
-            '127.0.0.1'
-          } else {
-            $env:BFF_TRUSTED_PROXY_IPS
-          }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_TENANT_ID)) { throw 'Variable ENTRA_TENANT_ID ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_ID)) { throw 'Variable ENTRA_CLIENT_ID ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_SECRET)) { throw 'Secret ENTRA_CLIENT_SECRET ausente.' }
 
           & ./scripts/Deploy-Iis.ps1 `
             -DeployRoot $env:DEPLOY_ROOT `
@@ -106,4 +105,6 @@ jobs:
             -UpstreamUrl $env:LAYOUTPARSER_API_URL `
             -AdminUsers $env:BFF_ADMIN_USERS `
             -AdminRoles $env:BFF_ADMIN_ROLES `
-            -TrustedProxyIps $trustedProxies
+            -EntraTenantId $env:ENTRA_TENANT_ID `
+            -EntraClientId $env:ENTRA_CLIENT_ID `
+            -EntraClientSecret $env:ENTRA_CLIENT_SECRET

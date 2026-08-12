@@ -6,10 +6,11 @@ interface SessionState extends SessionResponse {
   status: SessionStatus;
   error: string | null;
   loadSession: (force?: boolean) => Promise<void>;
+  expireSession: () => void;
   reset: () => void;
 }
 
-const initialSession: Omit<SessionState, 'loadSession' | 'reset'> = {
+const initialSession: Omit<SessionState, 'loadSession' | 'expireSession' | 'reset'> = {
   authenticated: false,
   roles: [],
   isAdmin: false,
@@ -44,5 +45,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
+  expireSession: () => set({ ...initialSession, status: 'unauthenticated' }),
   reset: () => set(initialSession),
 }));

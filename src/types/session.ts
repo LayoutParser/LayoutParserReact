@@ -10,3 +10,5 @@ export interface SessionResponse {
 }
 
 export type SessionStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+
+export const SESSION_EXPIRED_EVENT = 'layoutparser:session-expired';

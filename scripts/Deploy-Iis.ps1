@@ -5,8 +5,10 @@ param(
   [Parameter(Mandatory = $true)] [string] $PublicHost,
   [Parameter(Mandatory = $true)] [string] $UpstreamUrl,
   [Parameter(Mandatory = $true)] [string] $AdminUsers,
+  [Parameter(Mandatory = $true)] [string] $EntraTenantId,
+  [Parameter(Mandatory = $true)] [string] $EntraClientId,
+  [Parameter(Mandatory = $true)] [string] $EntraClientSecret,
   [string] $AdminRoles = '',
-  [string] $TrustedProxyIps = '127.0.0.1',
   [string] $FrontendSource = 'dist',
   [string] $ServerSource = 'server',
   [int] $BffPort = 3100,
@@ -86,11 +88,11 @@ function Set-IisSiteAuthentication([string] $AppCmd, [string] $TargetSiteName) {
   $settings = @(
     [pscustomobject]@{
       Section = 'system.webServer/security/authentication/anonymousAuthentication'
-      Enabled = 'false'
+      Enabled = 'true'
     },
     [pscustomobject]@{
       Section = 'system.webServer/security/authentication/windowsAuthentication'
-      Enabled = 'true'
+      Enabled = 'false'
     }
   )
 
@@ -123,6 +125,15 @@ if ($PublicHost -notmatch '^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Z
 if ([string]::IsNullOrWhiteSpace($AdminUsers) -and [string]::IsNullOrWhiteSpace($AdminRoles)) {
   throw 'Configure BFF_ADMIN_USERS e/ou BFF_ADMIN_ROLES no environment do GitHub.'
 }
+if ($EntraTenantId -notmatch '^(?i:common|organizations|consumers|[0-9a-f-]{36}|[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?)$') {
+  throw 'ENTRA_TENANT_ID possui formato inválido.'
+}
+if ($EntraClientId -notmatch '^(?i:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$') {
+  throw 'ENTRA_CLIENT_ID deve ser um GUID válido.'
+}
+if ([string]::IsNullOrWhiteSpace($EntraClientSecret) -or $EntraClientSecret.Length -lt 16) {
+  throw 'ENTRA_CLIENT_SECRET está ausente ou é curto demais.'
+}
 if ($BffPort -lt 1 -or $BffPort -gt 65535) { throw 'BFF_PORT inválida.' }
 if ($KeepReleases -lt 2 -or $KeepReleases -gt 20) { throw 'KEEP_RELEASES deve estar entre 2 e 20.' }
 
@@ -146,9 +157,6 @@ if (-not (Get-WebGlobalModule -Name 'RewriteModule' -ErrorAction SilentlyContinu
 if (-not (Get-WebGlobalModule -Name 'ApplicationRequestRouting' -ErrorAction SilentlyContinue)) {
   throw 'IIS Application Request Routing (ARR) não está instalado.'
 }
-if (-not (Get-WebGlobalModule -Name 'WindowsAuthenticationModule' -ErrorAction SilentlyContinue)) {
-  throw 'O serviço de função IIS Windows Authentication não está instalado.'
-}
 Set-WebConfigurationProperty `
   -PSPath 'MACHINE/WEBROOT/APPHOST' `
   -Filter 'system.webServer/proxy' `
@@ -156,12 +164,6 @@ Set-WebConfigurationProperty `
   -Value $true
 
 $appCmd = Join-Path $env:windir 'System32\inetsrv\appcmd.exe'
-$allowedVariables = & $appCmd list config -section:system.webServer/rewrite/allowedServerVariables
-if ($LASTEXITCODE -ne 0) { throw 'Não foi possível consultar as server variables do URL Rewrite.' }
-if (($allowedVariables | Out-String) -notmatch 'HTTP_X_IIS_USER') {
-  & $appCmd set config -section:system.webServer/rewrite/allowedServerVariables "/+[name='HTTP_X_IIS_USER']" /commit:apphost
-  if ($LASTEXITCODE -ne 0) { throw 'Não foi possível autorizar HTTP_X_IIS_USER no URL Rewrite.' }
-}
 $website = Get-Website -Name $SiteName -ErrorAction SilentlyContinue
 if (-not $website) { throw "O site IIS '$SiteName' precisa ser provisionado antes do deploy." }
 Set-IisSiteAuthentication -AppCmd $appCmd -TargetSiteName $SiteName
@@ -169,6 +171,22 @@ $httpsBinding = Get-WebBinding -Name $SiteName -Protocol 'https' -ErrorAction Si
 if (-not $httpsBinding) { throw "O site IIS '$SiteName' não possui binding HTTPS." }
 $httpBinding = Get-WebBinding -Name $SiteName -Protocol 'http' -ErrorAction SilentlyContinue
 if ($httpBinding) { throw "O site IIS '$SiteName' ainda expõe binding HTTP; mantenha apenas HTTPS." }
+
+$matchingBinding = @($httpsBinding) | Where-Object {
+  $parts = $_.bindingInformation.Split(':')
+  $bindingHost = if ($parts.Count -ge 3) { $parts[2] } else { '' }
+  -not $bindingHost -or $bindingHost -eq $PublicHost
+} | Select-Object -First 1
+if (-not $matchingBinding) {
+  throw "O site IIS '$SiteName' não possui binding HTTPS compatível com PUBLIC_HOST '$PublicHost'."
+}
+$binding = $matchingBinding.bindingInformation.Split(':')
+$httpsPort = if ($binding.Count -ge 2 -and $binding[1]) { $binding[1] } else { '443' }
+$publicOrigin = if ($httpsPort -eq '443') {
+  "https://$PublicHost"
+} else {
+  "https://$PublicHost`:$httpsPort"
+}
 
 $releasesRoot = Join-Path $deployPath 'releases'
 $runtimeRoot = Join-Path $deployPath 'runtime'
@@ -210,12 +228,15 @@ $launcher = @(
   "`$env:NODE_ENV = 'production'",
   "`$env:BFF_HOST = '127.0.0.1'",
   "`$env:BFF_PORT = $(ConvertTo-PowerShellLiteral $BffPort.ToString())",
+  "`$env:BFF_PUBLIC_ORIGIN = $(ConvertTo-PowerShellLiteral $publicOrigin)",
   "`$env:LAYOUTPARSER_API_URL = $(ConvertTo-PowerShellLiteral $UpstreamUrl)",
-  "`$env:BFF_TRUSTED_PROXY_IPS = $(ConvertTo-PowerShellLiteral $TrustedProxyIps)",
   "`$env:BFF_TRUSTED_USER_HEADER = 'x-iis-user'",
   "`$env:BFF_TRUSTED_ROLES_HEADER = 'x-iis-roles'",
   "`$env:BFF_ADMIN_USERS = $(ConvertTo-PowerShellLiteral $AdminUsers)",
   "`$env:BFF_ADMIN_ROLES = $(ConvertTo-PowerShellLiteral $AdminRoles)",
+  "`$env:ENTRA_TENANT_ID = $(ConvertTo-PowerShellLiteral $EntraTenantId)",
+  "`$env:ENTRA_CLIENT_ID = $(ConvertTo-PowerShellLiteral $EntraClientId)",
+  "`$env:ENTRA_CLIENT_SECRET = $(ConvertTo-PowerShellLiteral $EntraClientSecret)",
   "`$env:BFF_DEV_AUTH_ENABLED = 'false'",
   "Set-Location -LiteralPath $(ConvertTo-PowerShellLiteral $serverTarget)",
   "& $(ConvertTo-PowerShellLiteral $nodeTarget) $(ConvertTo-PowerShellLiteral (Join-Path $serverTarget 'dist/src/index.js'))",
@@ -250,21 +271,9 @@ try {
   Set-ItemProperty "IIS:\Sites\$SiteName" -Name physicalPath -Value $frontendTarget
   Restart-WebItem "IIS:\Sites\$SiteName"
 
-  $matchingBinding = @($httpsBinding) | Where-Object {
-    $parts = $_.bindingInformation.Split(':')
-    $bindingHost = if ($parts.Count -ge 3) { $parts[2] } else { '' }
-    -not $bindingHost -or $bindingHost -eq $PublicHost
-  } | Select-Object -First 1
-  if (-not $matchingBinding) {
-    throw "O site IIS '$SiteName' não possui binding HTTPS compatível com PUBLIC_HOST '$PublicHost'."
-  }
-
-  $binding = $matchingBinding.bindingInformation.Split(':')
-  $httpsPort = if ($binding.Count -ge 2 -and $binding[1]) { $binding[1] } else { '443' }
-  $smokeUrl = "https://$PublicHost`:$httpsPort/"
+  $smokeUrl = "$publicOrigin/"
   $response = Invoke-WebRequest `
     -Uri $smokeUrl `
-    -UseDefaultCredentials `
     -UseBasicParsing `
     -TimeoutSec 15
   if ($response.StatusCode -ne 200) { throw "Smoke test retornou HTTP $($response.StatusCode)." }

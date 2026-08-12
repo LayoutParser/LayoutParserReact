@@ -172,6 +172,12 @@
   --color-info-bg: #e6f0f7;
   --color-info-text: #0b4c76;
 
+  /* Cores oficiais do símbolo Microsoft, usadas somente no botão de identidade. */
+  --color-microsoft-red: #f35325;
+  --color-microsoft-green: #81bc06;
+  --color-microsoft-blue: #05a6f0;
+  --color-microsoft-yellow: #ffba08;
+
   /* ---------------------------------------------------------------------------
    * Espaçamento
    * ------------------------------------------------------------------------ */

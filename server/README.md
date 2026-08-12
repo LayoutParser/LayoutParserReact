@@ -12,11 +12,14 @@ Navegador -> HTTPS/IIS -> 127.0.0.1:3100 (BFF Node) -> LayoutParserApi
 
 ### Rotas
 
-| Rota               | Comportamento                                                    |
-| ------------------ | ---------------------------------------------------------------- |
-| `GET /health`      | Liveness local, sem consultar nem revelar o upstream.            |
-| `GET /api/session` | Rota própria do BFF; nunca é encaminhada para a API.             |
-| `/api/*`           | Proxy transparente, preservando `/api`, método, query e payload. |
+| Rota                 | Comportamento                                                    |
+| -------------------- | ---------------------------------------------------------------- |
+| `GET /health`        | Liveness local, sem consultar nem revelar o upstream.            |
+| `GET /auth/login`    | Inicia OIDC Authorization Code com PKCE.                         |
+| `GET /auth/callback` | Valida a resposta Microsoft e cria a sessão.                     |
+| `POST /auth/logout`  | Apaga a sessão local sem encerrar o Office 365 global.           |
+| `GET /api/session`   | Rota própria do BFF; nunca é encaminhada para a API.             |
+| `/api/*`             | Proxy transparente, preservando `/api`, método, query e payload. |
 
 O contrato determinístico de sessão é sempre:
 
@@ -73,22 +76,23 @@ produção. É obrigatório:
 
 1. Publicar o site em HTTPS no IIS.
 2. Manter o BFF em `127.0.0.1` ou `::1`; bind externo é recusado em produção.
-3. Configurar ARR/URL Rewrite para encaminhar `/api/*` ao BFF.
-4. Remover do request público o header escolhido para identidade e fazer o IIS inserir esse
-   header novamente a partir da autenticação validada pelo servidor.
-5. Informar explicitamente `BFF_TRUSTED_PROXY_IPS`, `BFF_TRUSTED_USER_HEADER` e uma allowlist
-   administrativa.
+3. Configurar ARR/URL Rewrite para encaminhar `/auth/*` e `/api/*` ao BFF.
+4. Habilitar Anonymous Authentication e desabilitar Windows Authentication no site IIS.
+5. Informar origem pública, configuração Entra e uma allowlist administrativa.
 6. Usar HTTPS no upstream remoto. HTTP só é aceito para upstream de loopback.
 7. Manter `BFF_DEV_AUTH_ENABLED=false`.
 
-Exemplo sem credenciais ou identidades inventadas:
+Exemplo com placeholders deliberados:
 
 ```dotenv
 NODE_ENV=production
 BFF_HOST=127.0.0.1
 BFF_PORT=3100
+BFF_PUBLIC_ORIGIN=https://layoutparser.exemplo
 LAYOUTPARSER_API_URL=https://api.interna.exemplo
-BFF_TRUSTED_PROXY_IPS=127.0.0.1
+ENTRA_TENANT_ID=common
+ENTRA_CLIENT_ID=<Application client ID>
+ENTRA_CLIENT_SECRET=<secret Value>
 BFF_TRUSTED_USER_HEADER=X-IIS-User
 BFF_TRUSTED_ROLES_HEADER=X-IIS-Roles
 BFF_ADMIN_USERS=
@@ -97,11 +101,13 @@ BFF_DEV_AUTH_ENABLED=false
 ```
 
 Preencha a allowlist antes de iniciar. O exemplo é propositalmente incompleto e falhará até que
-`BFF_ADMIN_USERS` ou `BFF_ADMIN_ROLES` tenha um valor real.
+`ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` e a allowlist tenham valores reais. O client secret deve
+existir somente no secret store do ambiente.
 
-> Um trusted header só é uma fronteira de autenticação quando clientes não conseguem alcançar
-> o BFF diretamente e o proxy remove qualquer valor enviado pelo navegador antes de inserir a
-> identidade autenticada. O bind local e a validação do IP do proxy reforçam essa fronteira.
+O BFF usa Authorization Code + PKCE e valida `state` e `nonce`. A sessão é um cookie criptografado
+`HttpOnly`, `Secure` e `SameSite=Lax`, com duração padrão de oito horas. Somente nome normalizado,
+identificador do sujeito, tenant e roles ficam na sessão; ID/access tokens não ficam no navegador
+nem são repassados à API. A chave da sessão é derivada do client secret com HKDF e domínio próprio.
 
 ### Autorização administrativa
 
@@ -122,8 +128,8 @@ final `/*`. Um usuário precisa estar em `BFF_ADMIN_USERS` ou possuir uma role p
 - Helmet adiciona headers defensivos; HSTS é ativado somente em produção.
 - Rate limit em memória usa a identidade autenticada e recorre ao IP para anônimos.
 - `X-Correlation-ID` válido é preservado; valores inválidos são substituídos por UUID.
-- A identidade de desenvolvimento é removida antes do proxy. O BFF injeta somente os headers
-  normalizados que a API deve confiar.
+- `Authorization`, cookies e identidades fornecidas pelo navegador são removidos antes do proxy.
+  O BFF injeta somente os headers normalizados da sessão validada.
 - Logs Pino são JSON estruturado e contêm método, path sem query, status, duração e estado de
   autenticação. Headers sensíveis e corpos TXT/XML não são registrados.
 - URLs de upstream com credenciais são recusadas.
@@ -161,10 +167,11 @@ The total HTTP request limit defaults to **32 MiB**, while the `txtFile` documen
 to **25 MiB**. The difference reserves space for the XML layout, multipart boundaries and form
 metadata; it does not increase the allowed document size.
 
-Production authentication trusts an IIS-injected identity header only from explicitly allowed
-proxy IPs. Development impersonation must be explicitly enabled and cannot be enabled when
-`NODE_ENV=production`. Administrative API paths require a user or role allowlist. There are no
-built-in credentials.
+Production authentication uses Microsoft Entra OIDC Authorization Code with PKCE, state and
+nonce validation. IIS serves anonymous static content and forwards `/auth/*` and `/api/*` to the
+loopback-only BFF. The BFF stores only minimal identity data in an encrypted HttpOnly session
+cookie; Microsoft tokens and the client secret never reach React or the .NET API. Development
+impersonation remains explicit and is forbidden when `NODE_ENV=production`.
 
 See the Portuguese sections above for the complete environment reference, IIS deployment
 checklist, security model and verification commands.

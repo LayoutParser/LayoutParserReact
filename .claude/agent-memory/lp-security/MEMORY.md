@@ -10,9 +10,12 @@ Memoria duravel da revisora de seguranca do LayoutParser React.
 
 ## Decisoes vigentes
 
-- Browser usa apenas same-origin `/api`; enderecos internos nao entram no bundle.
-- BFF Node em loopback exige identidade confiavel em producao e allowlist para admin.
+- Browser usa apenas same-origin `/auth` e `/api`; enderecos internos nao entram no bundle.
+- Producao usa Entra OIDC Authorization Code + PKCE/state/nonce no BFF; IIS nao autentica usuario.
+- Sessao criptografada HttpOnly/Secure/SameSite=Lax guarda identidade minima por ate oito horas.
+- Tokens Microsoft, cookie e Authorization do browser nunca sao repassados para a API .NET.
+- BFF Node em loopback exige sessao valida em producao e allowlist separada para admin.
 - Upload: allowlist de extensoes, 25 MiB no documento, 32 MiB na request e streaming.
 - TXT/XML, bodies, tokens e headers sensiveis nao entram em log ou localStorage.
 - Auditoria moderada, CodeQL, dependency review, Dependabot e Actions fixadas por SHA.
-- Deploy exige IIS HTTPS/Windows Auth/ARR/Rewrite e mantem releases com rollback.
+- Deploy exige IIS HTTPS/Anonymous, Windows Auth desabilitado, ARR/Rewrite e mantem rollback.

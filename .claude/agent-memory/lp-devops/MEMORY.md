@@ -8,7 +8,9 @@
 - [Verificação independente](feedback_verificar_diagnostico_independente.md) — reproduzir a evidência-chave.
 - [Dependabot](project_dependabot_compatibility_policy.md) — agrupar pares e migrar majors manualmente.
 
-Arquitetura vigente: front same-origin; IIS HTTPS/Windows Auth → BFF Node em loopback → API
-.NET. `Deploy-Iis.ps1` publica releases versionadas, mantém rollback e falha sem ARR, Rewrite,
-site HTTPS, allowlist ou configuração segura. Não versionar paths pessoais, IPs, tokens ou
-payloads. O MCP continua pertencendo à API e este repo só mantém o exemplo de conexão.
+Arquitetura vigente: front same-origin; IIS HTTPS anônimo encaminha `/auth` e `/api` → BFF Node
+em loopback com Entra OIDC/sessão criptografada → API .NET. `Deploy-Iis.ps1` desabilita Windows
+Auth, publica releases versionadas, mantém rollback e falha sem ARR, Rewrite, Entra, site HTTPS,
+allowlist ou configuração segura. `ENTRA_CLIENT_SECRET` existe somente como environment secret;
+o launcher local que o recebe fica restrito a SYSTEM/Administradores. Não versionar secrets,
+paths pessoais, IPs, tokens ou payloads. O MCP continua pertencendo à API.
