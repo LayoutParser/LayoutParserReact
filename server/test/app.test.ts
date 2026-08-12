@@ -363,7 +363,7 @@ describe('LayoutParser BFF', () => {
     const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
     const canceled = await failingExchange.app.inject({
       method: 'GET',
-      url: '/auth/callback?error=access_denied',
+      url: `/auth/callback?error=access_denied&state=${transaction?.state}`,
       headers: { cookie: loginCookie },
     });
     expect(canceled.headers.location).toBe('/upload?authError=access_denied');
@@ -376,6 +376,19 @@ describe('LayoutParser BFF', () => {
       headers: { cookie: secondCookie },
     });
     expect(rejected.headers.location).toBe('/upload?authError=login_failed');
+  });
+
+  it('limita explicitamente tentativas de início de autenticação por minuto', async () => {
+    const { app } = await createApp();
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const response = await app.inject({ method: 'GET', url: '/auth/login' });
+      expect(response.statusCode).toBe(503);
+    }
+
+    const blocked = await app.inject({ method: 'GET', url: '/auth/login' });
+    expect(blocked.statusCode, blocked.body).toBe(429);
+    expect(blocked.json()).toMatchObject({ message: 'Limite de requisições excedido.' });
   });
 
   it('preserva correlation id válido e substitui valor inseguro', async () => {
