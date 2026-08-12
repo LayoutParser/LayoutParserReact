@@ -213,7 +213,7 @@ export function createOidcClient(config: AppConfig): OidcClient | null {
   return config.entra ? new MsalOidcClient(config.entra) : null;
 }
 
-function authenticationErrorLocation(code: string): string {
+function errorPageLocation(code: string): string {
   return `/upload?authError=${encodeURIComponent(code)}`;
 }
 
@@ -254,7 +254,7 @@ export function registerAuthenticationRoutes(
           },
           'Não foi possível iniciar a autenticação OIDC.'
         );
-        await reply.redirect(authenticationErrorLocation('temporarily_unavailable'), 303);
+        await reply.redirect(errorPageLocation('temporarily_unavailable'), 303);
       }
     }
   );
@@ -281,17 +281,17 @@ export function registerAuthenticationRoutes(
         !AUTH_VALUE_PATTERN.test(state) ||
         !safeEqual(state, transaction.state)
       ) {
-        await reply.redirect(authenticationErrorLocation('invalid_callback'), 303);
+        await reply.redirect(errorPageLocation('invalid_callback'), 303);
         return;
       }
 
       if (request.query.error === 'access_denied') {
-        await reply.redirect(authenticationErrorLocation('access_denied'), 303);
+        await reply.redirect(errorPageLocation('access_denied'), 303);
         return;
       }
 
       if (request.query.error !== undefined || !code) {
-        await reply.redirect(authenticationErrorLocation('login_failed'), 303);
+        await reply.redirect(errorPageLocation('login_failed'), 303);
         return;
       }
 
@@ -314,7 +314,7 @@ export function registerAuthenticationRoutes(
           },
           'A resposta OIDC foi rejeitada.'
         );
-        await reply.redirect(authenticationErrorLocation('login_failed'), 303);
+        await reply.redirect(errorPageLocation('login_failed'), 303);
       }
     }
   );
