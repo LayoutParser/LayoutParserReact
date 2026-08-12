@@ -84,6 +84,57 @@ function Wait-BffHealth([int] $Port) {
   throw "O BFF não ficou saudável em $healthUrl."
 }
 
+function Test-AuthenticationRedirect([string] $PublicOrigin) {
+  $loginUrl = "$PublicOrigin/auth/login?returnTo=%2F"
+  $request = [System.Net.HttpWebRequest]::Create($loginUrl)
+  $request.Method = 'GET'
+  $request.AllowAutoRedirect = $false
+  $request.Timeout = 15000
+
+  try {
+    $response = [System.Net.HttpWebResponse] $request.GetResponse()
+  } catch [System.Net.WebException] {
+    if (-not $_.Exception.Response) { throw }
+    $response = [System.Net.HttpWebResponse] $_.Exception.Response
+  }
+
+  try {
+    if ([int] $response.StatusCode -ne 302) {
+      throw "O login Microsoft retornou HTTP $([int] $response.StatusCode), esperado 302."
+    }
+
+    $location = $response.Headers['Location']
+    if ([string]::IsNullOrWhiteSpace($location)) {
+      throw 'O login Microsoft não retornou o header Location.'
+    }
+
+    $authorizationUri = [System.Uri] $location
+    if (
+      $authorizationUri.Scheme -ne 'https' -or
+      $authorizationUri.Host -ne 'login.microsoftonline.com'
+    ) {
+      throw "O ARR alterou o destino do login Microsoft para '$($authorizationUri.GetLeftPart([System.UriPartial]::Authority))'."
+    }
+
+    $redirectMatch = [regex]::Match(
+      $authorizationUri.Query,
+      '(?:^\?|&)redirect_uri=([^&]+)',
+      [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    )
+    if (-not $redirectMatch.Success) {
+      throw 'A autorização Microsoft não contém redirect_uri.'
+    }
+
+    $redirectUri = [System.Uri]::UnescapeDataString($redirectMatch.Groups[1].Value)
+    $expectedRedirectUri = "$PublicOrigin/auth/callback"
+    if ($redirectUri -ne $expectedRedirectUri) {
+      throw "OIDC redirect_uri incorreta: '$redirectUri'; esperado '$expectedRedirectUri'."
+    }
+  } finally {
+    if ($response) { $response.Dispose() }
+  }
+}
+
 function Set-IisSiteAuthentication([string] $AppCmd, [string] $TargetSiteName) {
   $settings = @(
     [pscustomobject]@{
@@ -162,6 +213,11 @@ Set-WebConfigurationProperty `
   -Filter 'system.webServer/proxy' `
   -Name 'enabled' `
   -Value $true
+Set-WebConfigurationProperty `
+  -PSPath 'MACHINE/WEBROOT/APPHOST' `
+  -Filter 'system.webServer/proxy' `
+  -Name 'reverseRewriteHostInResponseHeaders' `
+  -Value $false
 
 $appCmd = Join-Path $env:windir 'System32\inetsrv\appcmd.exe'
 $website = Get-Website -Name $SiteName -ErrorAction SilentlyContinue
@@ -277,6 +333,7 @@ try {
     -UseBasicParsing `
     -TimeoutSec 15
   if ($response.StatusCode -ne 200) { throw "Smoke test retornou HTTP $($response.StatusCode)." }
+  Test-AuthenticationRedirect -PublicOrigin $publicOrigin
 
   [pscustomobject]@{
     release = $releaseName

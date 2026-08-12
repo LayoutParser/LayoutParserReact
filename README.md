@@ -240,15 +240,17 @@ O desenho de produção esperado é:
 5. Manter **Anonymous Authentication habilitada** e **Windows Authentication desabilitada** no
    site; a autenticação acontece no BFF com a Microsoft.
 6. Configurar o App Registration como multitenant + contas pessoais e registrar exatamente
-   `https://BRNDDAPPBLD01/auth/callback` como URI da plataforma **Web**.
+   `https://<PUBLIC_HOST>/auth/callback` como URI da plataforma **Web**. No ambiente atual, a URI
+   canônica de produção é `https://172.25.32.42/auth/callback`.
 7. Configurar `ENTRA_TENANT_ID=common`, client ID e client secret nos environments do GitHub.
 8. Manter a API .NET inacessível diretamente pelo navegador e protegida também em profundidade.
 
 O arquivo [`public/web.config`](public/web.config) é copiado para o build e contém a regra
 same-origin para autenticação/API, limite total de 32 MiB e headers defensivos. O deploy configura
-o `applicationHost.config` para acesso anônimo ao conteúdo e deixa a identidade sob autoridade do
-BFF. Headers de identidade, cookies e `Authorization` enviados pelo navegador são removidos antes
-do proxy; somente a identidade validada pelo BFF é encaminhada à API.
+o `applicationHost.config` para acesso anônimo ao conteúdo e desativa
+`reverseRewriteHostInResponseHeaders`: assim, o ARR preserva o `Location` externo emitido pelo BFF
+para `login.microsoftonline.com`. Headers de identidade, cookies e `Authorization` enviados pelo
+navegador são removidos antes do proxy; somente a identidade validada pelo BFF é encaminhada à API.
 
 Os environments `development` e `production` são isolados pelo GitHub. Portanto, cadastre os
 três valores **separadamente em cada environment**, mesmo quando o conteúdo for igual. No
@@ -281,8 +283,9 @@ versionada, publica o React, instala as dependências de produção do BFF, regi
 processo em uma Scheduled Task do Windows, faz smoke tests e mantém rollback para a release
 anterior. O script [Deploy-Iis.ps1](scripts/Deploy-Iis.ps1) exige HTTPS e falha se URL Rewrite,
 ARR, OIDC, allowlists ou variáveis obrigatórias estiverem ausentes. Configure `PUBLIC_HOST` em produção
-e `PUBLIC_HOST_DEV` em desenvolvimento com o hostname DNS coberto pelo certificado, sem protocolo
-ou porta; esse valor também é usado no smoke test HTTPS. Os environments `development` e
+e `PUBLIC_HOST_DEV` em desenvolvimento com o hostname DNS ou IP privado coberto pelo SAN do
+certificado, sem protocolo ou porta. O smoke test HTTPS também confirma que o login aponta para a
+Microsoft e que o `redirect_uri` coincide com essa origem. Os environments `development` e
 `production` devem exigir aprovação e isolar seus secrets/runners.
 
 No runner de desenvolvimento, o workflow instala o ARR 3 quando ele estiver ausente usando o
