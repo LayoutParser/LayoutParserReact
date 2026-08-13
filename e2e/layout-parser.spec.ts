@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const layoutGuid = '11111111-1111-1111-1111-111111111111';
 const syntheticTxt = `000001001ABC${' '.repeat(588)}`;
+const sapLayoutName = 'LAY_MARELLI_TXT_SAP_ENVNFE_4.00_NFe';
 
 const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
   await page.route('**/api/session', route =>
@@ -122,6 +123,101 @@ const processSyntheticDocument = async (page: Page) => {
   await page.getByRole('button', { name: 'Processar Documento' }).click();
 };
 
+const mockSapProcessingApis = async (page: Page) => {
+  const field = (elementGuid: string, name: string, sequence: number) => ({
+    elementGuid,
+    name,
+    sequence,
+    type: 'FieldElementVO',
+    isRequired: false,
+  });
+  const line = (
+    elementGuid: string,
+    name: string,
+    initialValue: string,
+    sequence: number,
+    elements: unknown[] = []
+  ) => ({
+    elementGuid,
+    name,
+    initialValue,
+    sequence,
+    type: 'LineElementVO',
+    isRequired: false,
+    elements,
+  });
+  const layoutElements = [
+    line('edi', 'LINHA000', 'EDI_DC40', 1),
+    line('ide', 'LINHA_IDE', 'ZRSDM_NFE_400_IDE000', 2),
+    line('emit', 'LINHA_EMIT', 'ZRSDM_NFE_400_EMIT000', 3, [
+      field('cnpj', 'CNPJ', 1),
+      line('enderemit', 'LINHA_ENDEMIT', 'ZRSDM_NFE_400_ENDEREMIT000', 2),
+    ]),
+  ];
+
+  await page.route('**/api/layoutdatabase/mqseries-nfe', route =>
+    route.fulfill({
+      json: {
+        success: true,
+        layouts: [
+          {
+            layoutGuid,
+            name: sapLayoutName,
+            description: 'Fixture SAP IDoc para E2E',
+            decryptedContent: '<layout />',
+          },
+        ],
+      },
+    })
+  );
+
+  await page.route('**/api/parse/upload', route =>
+    route.fulfill({
+      headers: { 'X-Correlation-ID': 'sap-e2e-correlation' },
+      json: {
+        success: true,
+        detectedType: 'idoc',
+        text: syntheticTxt,
+        layout: {
+          layoutGuid,
+          layoutType: '2',
+          name: sapLayoutName,
+          description: 'Fixture SAP IDoc para E2E',
+          limitOfCaracters: 600,
+          elements: layoutElements,
+        },
+        fields: [
+          {
+            lineName: 'LINHA_EMIT',
+            fieldName: 'CNPJ',
+            value: '12345678901234',
+            startPosition: 10,
+            length: 14,
+            lineSequence: '000001',
+            sequence: 1,
+            isValid: true,
+          },
+        ],
+        transformationsStatus: 'completed',
+      },
+    })
+  );
+};
+
+const processSapDocument = async (page: Page) => {
+  await page.goto('/upload');
+
+  await page.getByRole('button', { name: 'Buscar Layout' }).click();
+  await page.getByRole('combobox', { name: 'Selecionar Layout' }).click();
+  await page.getByRole('option', { name: new RegExp(sapLayoutName) }).click();
+  await page.locator('#txtFile').setInputFiles({
+    name: 'documento.idoc',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(syntheticTxt),
+  });
+  await page.getByRole('button', { name: 'Processar Documento' }).click();
+};
+
 test('processa TXT e entrega o XML transformado para download', async ({ page }) => {
   await mockAuthenticatedGateway(page);
   await mockProcessingApis(page);
@@ -165,6 +261,28 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await expect(page.getByRole('textbox', { name: 'Conteúdo XML transformado' })).toHaveValue(
     /<codigo>XYZ<\/codigo>/
   );
+});
+
+test('navega pela hierarquia SAP IDoc declarada no layout', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockSapProcessingApis(page);
+  await processSapDocument(page);
+
+  await expect(page.getByRole('heading', { name: 'Hierarquia de segmentos' })).toBeVisible();
+  await expect(page.getByText('4 segmentos')).toBeVisible();
+
+  const tree = page.getByRole('tree', { name: 'Estrutura do documento' });
+  const controlRecord = tree.getByRole('treeitem', { name: /EDI_DC40/ });
+  await expect(controlRecord).toHaveAttribute('aria-expanded', 'false');
+  await controlRecord.click();
+
+  const emit = tree.getByRole('treeitem', { name: /ZRSDM_NFE_400_EMIT/ });
+  await expect(emit).toBeVisible();
+  await expect(emit).toHaveAttribute('aria-expanded', 'false');
+  await expect(tree.getByRole('treeitem', { name: /CNPJ/ })).toHaveCount(0);
+  await emit.click();
+
+  await expect(tree.getByRole('treeitem', { name: /ZRSDM_NFE_400_ENDEREMIT/ })).toBeVisible();
 });
 
 test('explica a ausência de candidatos Sysmiddle e TCL/XSL sem mensagem de background', async ({

@@ -2,13 +2,18 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useStructureStore } from '../../store/useStructureStore';
 import { useFieldStore } from '../../store/useFieldStore';
-import { buildTreeFromFields, buildTreeFromLayout } from '../../utils/treeBuilder';
+import {
+  buildSapIdocTree,
+  buildTreeFromFields,
+  buildTreeFromLayout,
+  isSapNfeLayoutName,
+} from '../../utils/treeBuilder';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import type { TreeNode } from '../../types/structure';
 import './StructureTree.css';
 
 const StructureTree: React.FC = () => {
-  const { parseResult, fields } = useAppStore();
+  const { parseResult, fields, selectedLayout } = useAppStore();
   const {
     treeData,
     selectedNodeId,
@@ -71,7 +76,14 @@ const StructureTree: React.FC = () => {
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
 
-    if (isTruncated) {
+    const isSapNfeLayout = isSapNfeLayoutName(parseResult.layout?.name || selectedLayout?.name);
+
+    if (isSapNfeLayout && hasLayoutElements) {
+      // O layout SAP já declara a hierarquia de segmentos em LineElementVO aninhados. Esta
+      // visão apresenta o esquema do IDoc, não afirma que todos os segmentos existem no TXT.
+      const sapTree = buildSapIdocTree(layoutElements);
+      tree = sapTree.length > 0 ? sapTree : buildTreeFromLayout(layoutElements);
+    } else if (isTruncated) {
       // ✅ Em caso de erro de TAMANHO, NÃO exibir estrutura completa do layout, pois ela
       // induz o usuário ao erro (as linhas seguintes não são confiáveis). Com defeitos que
       // não dessincronizam, a árvore do layout continua válida e é a mais informativa.
@@ -90,7 +102,7 @@ const StructureTree: React.FC = () => {
 
     setTreeData(tree);
     setFields(fieldsForTree);
-  }, [parseResult, fields, setTreeData, setFields]);
+  }, [parseResult, fields, selectedLayout, setTreeData, setFields]);
 
   // Função auxiliar para encontrar a linha pai de um nó
   const findParentLine = (node: TreeNode, nodes: TreeNode[]): TreeNode | null => {
@@ -125,7 +137,7 @@ const StructureTree: React.FC = () => {
 
     if (node.type === 'LineElementVO' || node.type.includes('Line')) {
       // Quando clica em uma linha, destacar o primeiro campo da linha
-      const lineName = node.name;
+      const lineName = node.sourceLineName || node.name;
       const lineFields = fieldStoreFields.filter(f => f.lineName === lineName);
 
       if (lineFields.length > 0) {
@@ -248,7 +260,11 @@ const StructureTree: React.FC = () => {
     const selected = selectedNodeId === node.id;
 
     return (
-      <li key={node.id} className={`tree-node ${selected ? 'selected' : ''}`} role="none">
+      <li
+        key={node.id}
+        className={`tree-node ${node.variant ? `tree-node--${node.variant}` : ''} ${selected ? 'selected' : ''}`}
+        role="none"
+      >
         <button
           type="button"
           role="treeitem"
@@ -266,12 +282,18 @@ const StructureTree: React.FC = () => {
         >
           {hasChildren && (
             <span className="tree-toggle" aria-hidden="true">
-              {expanded ? '▼' : '▶'}
+              {expanded ? '−' : '+'}
             </span>
           )}
           {!hasChildren && <span className="tree-spacer" />}
           <span className="tree-node-name">{node.name}</span>
-          <span className="tree-node-type">{node.type.replace('VO', '')}</span>
+          <span className="tree-node-type">
+            {node.variant === 'sap-segment'
+              ? node.name === 'EDI_DC40'
+                ? 'Controle'
+                : 'Segmento'
+              : node.type.replace('VO', '')}
+          </span>
         </button>
         {hasChildren && expanded && (
           <ul className="tree-children" role="group">
@@ -290,14 +312,30 @@ const StructureTree: React.FC = () => {
     );
   }
 
+  const isSapHierarchy = treeData[0]?.variant === 'sap-segment';
+  const countNodes = (nodes: TreeNode[]): number =>
+    nodes.reduce((total, node) => total + 1 + countNodes(node.children), 0);
+  const totalNodes = countNodes(treeData);
+
   return (
     <div className="structure-tree">
+      {isSapHierarchy && (
+        <div className="tree-summary">
+          <div>
+            <span className="tree-summary-eyebrow">IDoc SAP</span>
+            <h3>Hierarquia de segmentos</h3>
+            <p>EDI_DC40 é a raiz. Use os controles + para percorrer a estrutura do layout.</p>
+          </div>
+          <span className="tree-summary-count">{totalNodes} segmentos</span>
+        </div>
+      )}
+
       <div className="tree-controls">
         <button type="button" onClick={expandAll} className="tree-control-btn">
-          Expandir Tudo
+          Expandir tudo
         </button>
         <button type="button" onClick={collapseAll} className="tree-control-btn">
-          Recolher Tudo
+          Recolher tudo
         </button>
       </div>
 
