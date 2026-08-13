@@ -6,10 +6,11 @@ description: Taxonomia e fluxo operacional do GitHub Projects para o LayoutParse
 
 ## Registro oficial
 
-- Project: **LayoutParser Web — Product Delivery**.
+- Project: [**LayoutParserReact — Backlog**](https://github.com/orgs/LayoutParser/projects/3)
+  (Project v2 privado da organização, número `3`).
 - Repositório: `LayoutParser/LayoutParserReact`.
-- Views esperadas: `Backlog`, `Sprint`, `Board`, `Roadmap`, `Bugs & Gates`.
-- Status: `Backlog`, `Ready`, `In progress`, `In review`, `In validation`, `Done`, `Blocked`.
+- Views: `Backlog`, `Board`, `Sprint`, `Roadmap`, `Bugs & Gates`.
+- Status: `Backlog`, `Ready`, `In Progress`, `In Review`, `In Validation`, `Done`, `Blocked`.
 
 ## Taxonomia
 
