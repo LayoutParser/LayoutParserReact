@@ -18,7 +18,7 @@ import { authorizeProxyRequest, canonicalizePath, resolveIdentity } from './auth
 import type { AppConfig } from './config.js';
 import { MultipartPayloadError, PayloadLimitError, PayloadLimitTransform } from './limits.js';
 import {
-  createOidcClient,
+  createOidcClients,
   deriveSessionKey,
   registerAuthenticationRoutes,
   type OidcClient,
@@ -29,7 +29,11 @@ const ACCEPTED_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/;
 export interface BuildAppOptions {
   readonly logger?: NonNullable<FastifyServerOptions['logger']>;
   readonly logStream?: Writable;
+  // Override do cliente OIDC do Entra, usado em teste. `undefined` mantém o cliente real
+  // derivado da config; `null` desabilita o provedor mesmo com config presente.
   readonly oidcClient?: OidcClient | null;
+  // Override equivalente para o provedor Google, independente do Entra.
+  readonly googleOidcClient?: OidcClient | null;
 }
 
 function createRequestId(request: {
@@ -165,8 +169,11 @@ export async function buildApp(
     routerOptions: { caseSensitive: false },
   };
   const app: FastifyInstance = Fastify(serverOptions);
-  const oidcClient =
-    options.oidcClient === undefined ? createOidcClient(config) : options.oidcClient;
+  const defaultOidcClients = createOidcClients(config);
+  const entraOidcClient =
+    options.oidcClient === undefined ? defaultOidcClients.entra : options.oidcClient;
+  const googleOidcClient =
+    options.googleOidcClient === undefined ? defaultOidcClients.google : options.googleOidcClient;
 
   app.decorateRequest('identity', null);
   app.decorateRequest('payloadLimitKind', null);
@@ -281,7 +288,10 @@ export async function buildApp(
     service: 'layout-parser-bff',
   }));
 
-  registerAuthenticationRoutes(app, config, oidcClient);
+  registerAuthenticationRoutes(app, config, {
+    entra: entraOidcClient,
+    google: googleOidcClient,
+  });
 
   app.get('/api/session', async (request, reply) => {
     reply.header('cache-control', 'no-store');
