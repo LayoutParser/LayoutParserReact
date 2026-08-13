@@ -466,6 +466,11 @@ As regras operacionais estão em [`AGENTS.md`](AGENTS.md), e a visão do harness
 backlog, comandos de revisão de segurança e sincronização de contrato, hooks de feedback
 rápido/proteção de caminhos sensíveis e memória por agente.
 
+O registro operacional do produto é o Project privado
+[**LayoutParserReact — Backlog**](https://github.com/orgs/LayoutParser/projects/3), com views de
+backlog, board, sprint, roadmap e bugs/gates. Issues e critérios continuam sendo a fonte de
+evidência; o Project organiza status, tipo, prioridade, área e agente dono.
+
 O MCP **não é implementado neste front**. O servidor MCP pertence ao `LayoutParserApi`, pois a
 API é o hub e a fonte da verdade. Este repositório fornece apenas
 [`.mcp.json.example`](.mcp.json.example) para conectar o ambiente de IA ao MCP da API; copie para
