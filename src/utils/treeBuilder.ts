@@ -20,6 +20,171 @@ interface RawFieldElement {
   isRequired?: boolean;
 }
 
+interface RawLayoutElement {
+  ElementGuid?: string;
+  elementGuid?: string;
+  Name?: string;
+  name?: string;
+  Sequence?: number;
+  sequence?: number;
+  Type?: string;
+  type?: string;
+  Description?: string;
+  description?: string;
+  IsRequired?: boolean;
+  isRequired?: boolean;
+  InitialValue?: string;
+  initialValue?: string;
+  ParentElement?: string;
+  parentElement?: string;
+  MinimalOccurrence?: number;
+  minimalOccurrence?: number;
+  MaximumOccurrence?: number;
+  maximumOccurrence?: number;
+  Elements?: unknown;
+  elements?: unknown;
+}
+
+const SAP_NFE_LAYOUT_SUFFIX = '_TXT_SAP_ENVNFE_4.00_NFE';
+const SAP_CONTROL_RECORD = 'EDI_DC40';
+const SAP_SEGMENT_WITH_TECHNICAL_SUFFIX = /^[A-Z0-9_]+\d{3}$/i;
+
+const readString = (value: unknown): string => (typeof value === 'string' ? value : '');
+
+const readNumber = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const deserializeLayoutElement = (value: unknown): RawLayoutElement | null => {
+  if (typeof value === 'string') {
+    try {
+      return deserializeLayoutElement(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+
+  return value && typeof value === 'object' ? (value as RawLayoutElement) : null;
+};
+
+const readElementChildren = (element: RawLayoutElement): unknown[] => {
+  const children = element.elements ?? element.Elements;
+  if (Array.isArray(children)) return children;
+
+  if (children && typeof children === 'object') {
+    const wrapped = (children as { Element?: unknown }).Element;
+    if (Array.isArray(wrapped)) return wrapped;
+    if (wrapped) return [wrapped];
+  }
+
+  return [];
+};
+
+const isLineElement = (element: RawLayoutElement): boolean => {
+  const type = readString(element.type ?? element.Type);
+  return type.toLowerCase().includes('lineelement');
+};
+
+const resolveSapSegmentName = (element: RawLayoutElement): string | null => {
+  const initialValue = readString(element.initialValue ?? element.InitialValue).trim();
+  if (initialValue.toUpperCase() === SAP_CONTROL_RECORD) return SAP_CONTROL_RECORD;
+  if (!SAP_SEGMENT_WITH_TECHNICAL_SUFFIX.test(initialValue)) return null;
+
+  return initialValue.replace(/\d{3}$/, '').toUpperCase();
+};
+
+const sortTreeBySequence = (nodes: TreeNode[]): TreeNode[] =>
+  nodes
+    .sort((a, b) => a.sequence - b.sequence)
+    .map(node => ({ ...node, children: sortTreeBySequence(node.children) }));
+
+const setTreeLevels = (node: TreeNode, level: number): TreeNode => ({
+  ...node,
+  level,
+  children: node.children.map(child => setTreeLevels(child, level + 1)),
+});
+
+const buildSapChildSegments = (
+  values: readonly unknown[],
+  parentPath: string,
+  level: number
+): TreeNode[] => {
+  const nodes: TreeNode[] = [];
+
+  values.forEach((value, index) => {
+    const element = deserializeLayoutElement(value);
+    if (!element) return;
+
+    const path = `${parentPath}-${index}`;
+    const segmentName = isLineElement(element) ? resolveSapSegmentName(element) : null;
+
+    if (!segmentName) {
+      nodes.push(...buildSapChildSegments(readElementChildren(element), path, level));
+      return;
+    }
+
+    const elementGuid = readString(element.elementGuid ?? element.ElementGuid) || `sap-${path}`;
+    const sourceLineName = readString(element.name ?? element.Name) || `Segmento ${segmentName}`;
+    const sequence = readNumber(element.sequence ?? element.Sequence, index + 1);
+    const children = buildSapChildSegments(readElementChildren(element), path, level + 1);
+    const normalizedElement: LayoutElement = {
+      type: readString(element.type ?? element.Type) || 'LineElementVO',
+      elementGuid,
+      description: readString(element.description ?? element.Description),
+      sequence,
+      name: sourceLineName,
+      isRequired: Boolean(element.isRequired ?? element.IsRequired),
+      initialValue: readString(element.initialValue ?? element.InitialValue),
+      parentElement: readString(element.parentElement ?? element.ParentElement),
+      minimalOccurrence: readNumber(element.minimalOccurrence ?? element.MinimalOccurrence, 0),
+      maximumOccurrence: readNumber(element.maximumOccurrence ?? element.MaximumOccurrence, 0),
+    };
+
+    nodes.push({
+      id: elementGuid,
+      type: 'LineElementVO',
+      name: segmentName,
+      elementGuid,
+      sequence,
+      children,
+      element: normalizedElement,
+      level,
+      variant: 'sap-segment',
+      sourceLineName,
+    });
+  });
+
+  return sortTreeBySequence(nodes);
+};
+
+/** Identifica a família de layouts SAP NFe sem amarrar a visualização a um cliente específico. */
+export const isSapNfeLayoutName = (layoutName?: string): boolean =>
+  layoutName?.trim().toUpperCase().endsWith(SAP_NFE_LAYOUT_SUFFIX) ?? false;
+
+/**
+ * Constrói a árvore de segmentos declarada no layout IDoc SAP.
+ *
+ * Campos posicionais são deliberadamente ignorados nesta visão: eles continuam disponíveis no
+ * painel de campos. Os LineElementVO aninhados preservam a relação de segmento pai/filho e todos
+ * os segmentos de primeiro nível ficam sob o registro de controle EDI_DC40.
+ */
+export const buildSapIdocTree = (elements: readonly unknown[]): TreeNode[] => {
+  const topLevelSegments = buildSapChildSegments(elements, 'root', 0);
+  const controlIndex = topLevelSegments.findIndex(node => node.name === SAP_CONTROL_RECORD);
+  if (controlIndex < 0) return [];
+
+  const controlRecord = topLevelSegments[controlIndex];
+  const documentSegments = topLevelSegments.filter((_, index) => index !== controlIndex);
+  const root = setTreeLevels(
+    {
+      ...controlRecord,
+      children: sortTreeBySequence([...controlRecord.children, ...documentSegments]),
+    },
+    0
+  );
+
+  return [root];
+};
+
 /**
  * Subconjunto de um campo parseado que `buildTreeFromFields` realmente lê. Declarado
  * como superset tolerante (tudo opcional) para aceitar tanto o `Field` de `types/api.ts`
