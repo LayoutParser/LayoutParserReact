@@ -64,10 +64,24 @@ export const resolvePositionalLineIndex = (
     return -1;
   }
 
-  const physicalLineCount = content.length / POSITIONAL_LINE_LENGTH;
+  // Modelo sem sequencial numérico (ex.: segmentos SAP IDoc, identificados por nome —
+  // `EDI_DC40`, `ZRSDM_NFE_400_EMIT` etc. — em vez de um código de 6/3 dígitos): não há
+  // marcador de conteúdo para ancorar a busca, então a única evidência confiável é a ORDEM DE
+  // APARIÇÃO do grupo. `fallbackIndex` já É essa ordem: o chamador agrupa os campos pela chave
+  // `lineName + occurrence`, preservando a ordem em que o back-end devolveu os campos (que é a
+  // ordem física do TXT) — logo, a posição do grupo na lista já resolve a n-ésima ocorrência do
+  // segmento sem precisar casar string nenhuma.
+  //
+  // Antes, esse fallback só era aceito quando `content.length` fosse múltiplo EXATO de 600 E
+  // batesse exatamente com `totalGroups`; qualquer folga (documento com padding residual, linha
+  // de controle sem campos exibíveis etc.) bloqueava a edição inteira do modelo IDoc com "A
+  // ocorrência física desta linha não pôde ser identificada", mesmo a ordem estando correta.
+  // Mantemos a validação de limites (índice dentro do total de linhas físicas cabíveis no
+  // conteúdo) como guarda mínima contra índice fora do documento.
+  const physicalLineCount = Math.floor(content.length / POSITIONAL_LINE_LENGTH);
   if (
-    Number.isInteger(physicalLineCount) &&
-    physicalLineCount === totalGroups &&
+    totalGroups > 0 &&
+    Number.isInteger(fallbackIndex) &&
     fallbackIndex >= 0 &&
     fallbackIndex < physicalLineCount
   ) {
