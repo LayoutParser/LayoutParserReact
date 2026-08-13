@@ -24,4 +24,10 @@ export const sessionService = {
       throw error;
     }
   },
+
+  // POST sem body/Content-Type — evita o form HTML nativo (que sempre envia
+  // application/x-www-form-urlencoded, tipo que o BFF não registra parser e rejeita com 415).
+  async logout(): Promise<void> {
+    await apiClient.post('/auth/logout');
+  },
 };

@@ -178,6 +178,19 @@ export async function buildApp(
   app.decorateRequest('identity', null);
   app.decorateRequest('payloadLimitKind', null);
 
+  // Decisão (bug fix): o form nativo de logout (`<form method="post" action="/auth/logout">`)
+  // sempre envia Content-Type application/x-www-form-urlencoded, mesmo sem nenhum campo. O
+  // front já foi corrigido para chamar /auth/logout via fetch sem Content-Type (fonte da
+  // verdade, evita o problema na origem), mas mantemos este parser tolerante como
+  // defesa-em-profundidade: nenhuma rota atual lê corpo urlencoded, então ignorar o corpo é
+  // seguro hoje. Se uma rota futura precisar realmente ler esse content-type, este parser
+  // silencioso vai mascarar o problema — troque por um parser real nesse momento.
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_request, _body, done) => done(null, undefined)
+  );
+
   await app.register(secureSession, {
     key: deriveSessionKey(config),
     cookieName: config.isProduction ? '__Host-layoutparser_session' : 'layoutparser_session',

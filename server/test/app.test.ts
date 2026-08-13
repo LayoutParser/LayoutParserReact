@@ -279,6 +279,20 @@ describe('LayoutParser BFF', () => {
     expect(logout.headers['set-cookie']).toContain('Max-Age=0');
   });
 
+  it('aceita POST /auth/logout com Content-Type application/x-www-form-urlencoded e corpo vazio', async () => {
+    // Regressão: o form HTML nativo de logout (antes de trocarmos por fetch no front) sempre
+    // envia esse content-type, mesmo sem campos. Sem um parser registrado, o Fastify rejeitava
+    // com 415 (FST_ERR_CTP_INVALID_MEDIA_TYPE) antes mesmo de a rota rodar.
+    const { app } = await createApp();
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    expect(logout.statusCode).toBe(303);
+    expect(logout.headers.location).toBe('/');
+  });
+
   it('conclui login Google OIDC como provedor alternativo ao Entra, sem afetar o Entra', async () => {
     let googleTransaction: OidcTransaction | undefined;
     let googleExchangeRequest: OidcExchangeRequest | undefined;
