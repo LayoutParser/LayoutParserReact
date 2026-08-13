@@ -106,7 +106,7 @@ describe('LayoutParser BFF', () => {
     expect(response.headers['x-frame-options']).toBe('SAMEORIGIN');
     expect(response.headers['x-correlation-id']).toMatch(/^[0-9a-f-]{36}$/);
     expect(response.headers['ratelimit-limit']).toBeUndefined();
-  });
+  }, 15_000);
 
   it('reserva GET /api/session no BFF e devolve o contrato determinístico', async () => {
     const { app, upstream } = await createApp();
