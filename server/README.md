@@ -12,14 +12,21 @@ Navegador -> HTTPS/IIS -> 127.0.0.1:3100 (BFF Node) -> LayoutParserApi
 
 ### Rotas
 
-| Rota                 | Comportamento                                                    |
-| -------------------- | ---------------------------------------------------------------- |
-| `GET /health`        | Liveness local, sem consultar nem revelar o upstream.            |
-| `GET /auth/login`    | Inicia OIDC Authorization Code com PKCE.                         |
-| `GET /auth/callback` | Valida a resposta Microsoft e cria a sessão.                     |
-| `POST /auth/logout`  | Apaga a sessão local sem encerrar o Office 365 global.           |
-| `GET /api/session`   | Rota própria do BFF; nunca é encaminhada para a API.             |
-| `/api/*`             | Proxy transparente, preservando `/api`, método, query e payload. |
+| Rota                        | Comportamento                                                           |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `GET /health`               | Liveness local, sem consultar nem revelar o upstream.                   |
+| `GET /auth/login`           | Inicia OIDC Authorization Code com PKCE (Microsoft Entra).              |
+| `GET /auth/callback`        | Valida a resposta Microsoft e cria a sessão.                            |
+| `GET /auth/google/login`    | Inicia OIDC Authorization Code com PKCE (Google, alternativo).          |
+| `GET /auth/google/callback` | Valida a resposta do Google e cria a sessão.                            |
+| `POST /auth/logout`         | Apaga a sessão local (de qualquer provedor) sem afetar a conta externa. |
+| `GET /api/session`          | Rota própria do BFF; nunca é encaminhada para a API.                    |
+| `/api/*`                    | Proxy transparente, preservando `/api`, método, query e payload.        |
+
+Entra e Google são provedores **alternativos**: o usuário escolhe um dos dois na tela de login.
+Nenhum substitui o outro, cada um é opcional independentemente (ver variáveis de ambiente
+abaixo) e a sessão resultante guarda `identity.provider` (`'entra' | 'google'`) para saber qual
+foi usado — sem que isso mude o contrato de `/api/session` consumido pelo front.
 
 O contrato determinístico de sessão é sempre:
 
@@ -93,6 +100,8 @@ LAYOUTPARSER_API_URL=https://api.interna.exemplo
 ENTRA_TENANT_ID=common
 ENTRA_CLIENT_ID=<Application client ID>
 ENTRA_CLIENT_SECRET=<secret Value>
+GOOGLE_CLIENT_ID=<Client ID do Google Cloud Console>
+GOOGLE_CLIENT_SECRET=<Client Secret do Google Cloud Console>
 BFF_TRUSTED_USER_HEADER=X-IIS-User
 BFF_TRUSTED_ROLES_HEADER=X-IIS-Roles
 BFF_ADMIN_USERS=
@@ -102,12 +111,18 @@ BFF_DEV_AUTH_ENABLED=false
 
 Preencha a allowlist antes de iniciar. O exemplo é propositalmente incompleto e falhará até que
 `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` e a allowlist tenham valores reais. O client secret deve
-existir somente no secret store do ambiente.
+existir somente no secret store do ambiente. `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` são
+**opcionais** em qualquer ambiente, inclusive produção: se ausentes, `/auth/google/login` responde
+503 e o Entra continua funcionando normalmente. Não há restrição de domínio do Google — qualquer
+conta pessoal ou do Workspace pode autenticar.
 
-O BFF usa Authorization Code + PKCE e valida `state` e `nonce`. A sessão é um cookie criptografado
-`HttpOnly`, `Secure` e `SameSite=Lax`, com duração padrão de oito horas. Somente nome normalizado,
-identificador do sujeito, tenant e roles ficam na sessão; ID/access tokens não ficam no navegador
-nem são repassados à API. A chave da sessão é derivada do client secret com HKDF e domínio próprio.
+O BFF usa Authorization Code + PKCE e valida `state` e `nonce` em ambos os provedores. A sessão é
+um cookie criptografado `HttpOnly`, `Secure` e `SameSite=Lax`, com duração padrão de oito horas.
+Somente nome normalizado, identificador do sujeito, roles e o provedor usado (`entra` ou `google`)
+ficam na sessão; o Entra também grava o tenant. ID/access tokens não ficam no navegador nem são
+repassados à API. A chave da sessão continua derivada apenas do client secret do Entra com HKDF
+(quando presente); o Google não participa dessa derivação — ver comentário em
+`src/oidc.ts#deriveSessionKey` para a justificativa.
 
 ### Autorização administrativa
 

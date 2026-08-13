@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import AuthenticationGate from '../components/auth/AuthenticationGate';
+import { sessionService } from '../services/api/sessionService';
 import { useAppStore } from '../store/useAppStore';
 import { useSessionStore } from '../store/useSessionStore';
 import { SESSION_EXPIRED_EVENT } from '../types/session';
@@ -12,6 +13,7 @@ export const MainLayout: React.FC = () => {
   const location = useLocation();
   const { status, authenticated, user, isAdmin, error, loadSession, expireSession } =
     useSessionStore();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const searchParameters = new URLSearchParams(location.search);
   const authError = searchParameters.get('authError');
@@ -70,6 +72,25 @@ export const MainLayout: React.FC = () => {
   const userName = user?.name || 'Conta Microsoft';
   const userInitial = userName.trim().charAt(0).toLocaleUpperCase('pt-BR') || 'U';
 
+  // SPA sem fallback sem-JS relevante: POST via fetch (sem body/Content-Type) evita o form
+  // HTML nativo, que sempre envia application/x-www-form-urlencoded e é rejeitado pelo BFF
+  // (sem parser registrado para esse content-type) com 415. A navegação de página inteira ao
+  // final garante estado limpo (sessão, stores) equivalente ao redirect 303 que o form fazia.
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+    setIsLoggingOut(true);
+    try {
+      await sessionService.logout();
+    } catch {
+      // Mesmo se a chamada falhar (ex.: rede), seguimos para '/' — o gate de autenticação
+      // revalida a sessão via /api/session no próximo carregamento.
+    } finally {
+      window.location.assign('/');
+    }
+  };
+
   return (
     <div className="main-layout">
       <header className="session-bar">
@@ -89,11 +110,14 @@ export const MainLayout: React.FC = () => {
           <span className="session-user" title={userName}>
             {userName}
           </span>
-          <form method="post" action="/auth/logout">
-            <button type="submit" className="session-logout">
-              Sair
-            </button>
-          </form>
+          <button
+            type="button"
+            className="session-logout"
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Saindo...' : 'Sair'}
+          </button>
         </div>
       </header>
       <main className="main-content">

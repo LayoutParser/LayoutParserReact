@@ -122,6 +122,16 @@
   color: var(--color-accent-hover);
 }
 
+.authentication-google-action {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+.google-symbol {
+  width: 18px;
+  height: 18px;
+}
+
 .microsoft-symbol {
   display: grid;
   width: 18px;

@@ -88,4 +88,43 @@ describe('positionalFieldEdit', () => {
     expect(resolvePositionalLineIndex(first + second, '001', 2, 0, 2)).toBe(1);
     expect(resolvePositionalLineIndex(first + second, '001', 3, 0, 2)).toBe(-1);
   });
+
+  describe('segmentos SAP IDoc (lineSequence não numérico, identificado por nome)', () => {
+    // Segmentos IDoc não carregam sequencial de 6/3 dígitos: `lineSequence` chega com o nome
+    // do segmento (ex.: "EDI_DC40", "ZRSDM_NFE_400_EMIT"). A única evidência confiável é a
+    // ordem física em que o grupo aparece no TXT, que o chamador já calcula (fallbackIndex).
+
+    it('resolve um segmento único pela ordem física do grupo', () => {
+      const lines = Array.from({ length: 3 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
+
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 0, 3)).toBe(0);
+    });
+
+    it('resolve segmento repetido (múltiplas ocorrências do mesmo nome) por índice distinto', () => {
+      const lines = Array.from({ length: 4 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
+
+      // Duas ocorrências de ZRSDM_NFE_400_ITEM em índices físicos diferentes (1 e 3), cada
+      // uma resolvida pelo fallbackIndex já calculado pelo chamador para aquele grupo.
+      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 1, 1, 4)).toBe(1);
+      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 2, 3, 4)).toBe(3);
+    });
+
+    it('resolve campo dentro de segmento aninhado (ex.: ENDEREMIT dentro de EMIT)', () => {
+      const lines = Array.from({ length: 5 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
+
+      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ENDEREMIT', 1, 2, 5)).toBe(2);
+    });
+
+    it('recusa índice fora dos limites físicos do conteúdo atual', () => {
+      const lines = Array.from({ length: 2 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
+
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 2, 3)).toBe(-1);
+    });
+
+    it('recusa quando o chamador não reporta nenhum grupo', () => {
+      const lines = ' '.repeat(POSITIONAL_LINE_LENGTH);
+
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 0, 0)).toBe(-1);
+    });
+  });
 });

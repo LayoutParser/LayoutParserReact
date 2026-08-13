@@ -67,11 +67,11 @@ const AnalysisModeTabs: React.FC = () => {
       label: 'TXT Posicional',
       content: (
         <div className="file-visualization">
-          <div className="file-visualization-content">
-            <FieldDisplay />
-          </div>
           <div className="file-visualization-header">
             <StructureTree />
+          </div>
+          <div className="file-visualization-content">
+            <FieldDisplay />
           </div>
         </div>
       ),
