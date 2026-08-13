@@ -143,6 +143,7 @@ describe('LayoutParser BFF', () => {
       },
       async exchangeAuthorizationCode() {
         return {
+          provider: 'entra',
           name: 'domain.user@example.test',
           roles: ['LayoutParserAdmins'],
           subject: 'subject-12345678901234567890',
@@ -210,6 +211,7 @@ describe('LayoutParser BFF', () => {
       async exchangeAuthorizationCode(request) {
         exchangeRequest = request;
         return {
+          provider: 'entra',
           name: 'student@example.edu',
           roles: ['LayoutParserAdmins'],
           subject: 'subject-12345678901234567890',
@@ -275,6 +277,167 @@ describe('LayoutParser BFF', () => {
     expect(logout.statusCode).toBe(303);
     expect(logout.headers.location).toBe('/');
     expect(logout.headers['set-cookie']).toContain('Max-Age=0');
+  });
+
+  it('aceita POST /auth/logout com Content-Type application/x-www-form-urlencoded e corpo vazio', async () => {
+    // Regressão: o form HTML nativo de logout (antes de trocarmos por fetch no front) sempre
+    // envia esse content-type, mesmo sem campos. Sem um parser registrado, o Fastify rejeitava
+    // com 415 (FST_ERR_CTP_INVALID_MEDIA_TYPE) antes mesmo de a rota rodar.
+    const { app } = await createApp();
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    });
+    expect(logout.statusCode).toBe(303);
+    expect(logout.headers.location).toBe('/');
+  });
+
+  it('conclui login Google OIDC como provedor alternativo ao Entra, sem afetar o Entra', async () => {
+    let googleTransaction: OidcTransaction | undefined;
+    let googleExchangeRequest: OidcExchangeRequest | undefined;
+    const googleOidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        googleTransaction = transaction;
+        return `https://accounts.google.com/o/oauth2/v2/auth?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode(request) {
+        googleExchangeRequest = request;
+        return {
+          provider: 'google',
+          name: 'student@gmail.com',
+          roles: [],
+          subject: 'google-subject-12345678901234567890',
+        };
+      },
+    };
+    let entraCalled = false;
+    const entraOidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        entraCalled = true;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        entraCalled = true;
+        throw new Error('não deveria ser chamado pelo fluxo Google');
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+        GOOGLE_CLIENT_ID: '1234567890-abc123def456.apps.googleusercontent.com',
+        GOOGLE_CLIENT_SECRET: 'test-google-secret-with-enough-length',
+      },
+      { oidcClient: entraOidcClient, googleOidcClient }
+    );
+
+    const login = await app.inject({
+      method: 'GET',
+      url: '/auth/google/login?returnTo=%2Fadmin%3Ftab%3Dmetrics',
+    });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+
+    expect(login.statusCode).toBe(302);
+    expect(login.headers.location).toContain(googleTransaction?.state);
+    expect(googleTransaction).toMatchObject({ provider: 'google', returnTo: '/admin?tab=metrics' });
+
+    const callback = await app.inject({
+      method: 'GET',
+      url: `/auth/google/callback?code=test-code&state=${googleTransaction?.state}`,
+      headers: { cookie: loginCookie },
+    });
+    const authenticatedCookie = String(callback.headers['set-cookie']).split(';', 1)[0];
+
+    expect(callback.statusCode).toBe(303);
+    expect(callback.headers.location).toBe('/admin?tab=metrics');
+    expect(googleExchangeRequest).toMatchObject({
+      code: 'test-code',
+      state: googleTransaction?.state,
+      nonce: googleTransaction?.nonce,
+    });
+    expect(entraCalled).toBe(false);
+
+    const session = await app.inject({
+      method: 'GET',
+      url: '/api/session',
+      headers: { cookie: authenticatedCookie },
+    });
+    expect(session.json()).toMatchObject({
+      authenticated: true,
+      user: { name: 'student@gmail.com' },
+    });
+  });
+
+  it('recusa callback do Google com transação de login iniciada pelo Entra (e vice-versa)', async () => {
+    let entraTransaction: OidcTransaction | undefined;
+    const entraOidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        entraTransaction = transaction;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('não deveria trocar o código');
+      },
+    };
+    const googleOidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        return `https://accounts.google.com/o/oauth2/v2/auth?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('não deveria trocar o código');
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+        GOOGLE_CLIENT_ID: '1234567890-abc123def456.apps.googleusercontent.com',
+        GOOGLE_CLIENT_SECRET: 'test-google-secret-with-enough-length',
+      },
+      { oidcClient: entraOidcClient, googleOidcClient }
+    );
+
+    const login = await app.inject({ method: 'GET', url: '/auth/login' });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+    const crossProviderCallback = await app.inject({
+      method: 'GET',
+      url: `/auth/google/callback?code=test-code&state=${entraTransaction?.state}`,
+      headers: { cookie: loginCookie },
+    });
+
+    expect(crossProviderCallback.statusCode).toBe(303);
+    expect(crossProviderCallback.headers.location).toBe('/upload?authError=invalid_callback');
+  });
+
+  it('responde 503 em /auth/google/login quando o Google não está configurado, sem afetar o Entra', async () => {
+    const entraOidcClient: OidcClient = {
+      async getAuthorizationUrl(transaction) {
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=${transaction.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('não chamado neste teste');
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient: entraOidcClient }
+    );
+
+    const googleUnavailable = await app.inject({ method: 'GET', url: '/auth/google/login' });
+    expect(googleUnavailable.statusCode).toBe(503);
+
+    const entraLogin = await app.inject({ method: 'GET', url: '/auth/login' });
+    expect(entraLogin.statusCode).toBe(302);
   });
 
   it('rejeita callback OIDC sem vínculo com a sessão e bloqueia open redirect', async () => {

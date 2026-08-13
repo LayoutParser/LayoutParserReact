@@ -3,6 +3,7 @@ import { parseService, ParseRequestError } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { logService } from '../../services/api/logService';
 import { useAppStore } from '../../store/useAppStore';
+import { useSessionStore } from '../../store/useSessionStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
@@ -52,6 +53,10 @@ const LayoutParserPage: React.FC = () => {
   // Só para saber qual aba de análise está ativa (ver AnalysisModeTabs) e decidir se a busca
   // de campos faz sentido na tela — não interfere no fluxo de upload/parse abaixo.
   const { activeMode } = useTransformationStore();
+
+  // /api/layoutdatabase/refresh-cache é rota admin no BFF (DEFAULT_ADMIN_PATHS); esconder o
+  // botão para não-admin evita um controle visível que sempre resulta em 403.
+  const { isAdmin } = useSessionStore();
 
   const handleSearchLayouts = async () => {
     setIsSearching(true);
@@ -299,15 +304,19 @@ const LayoutParserPage: React.FC = () => {
           className={`l-bottom-left ${isControlsVisible ? '' : 'hidden'}`}
         >
           <div className="controls-panel">
-            {/* Atualizar Layout */}
-            <button
-              type="button"
-              onClick={handleRefreshCache}
-              disabled={isSearching}
-              className="control-btn refresh-btn"
-            >
-              {isSearching ? 'Atualizando...' : 'Atualizar Layout'}
-            </button>
+            {/* Atualizar Layout — só habilita depois de já ter carregado layouts (busca bem-
+                sucedida ou cache) e só aparece para admin, já que refresh-cache é rota
+                administrativa no BFF. */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleRefreshCache}
+                disabled={isSearching || allLayouts.length === 0}
+                className="control-btn refresh-btn"
+              >
+                {isSearching ? 'Atualizando...' : 'Atualizar Layout'}
+              </button>
+            )}
 
             {/* Buscar Layout */}
             {showSearchButton && (

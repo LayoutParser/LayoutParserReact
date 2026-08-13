@@ -18,7 +18,7 @@ import { authorizeProxyRequest, canonicalizePath, resolveIdentity } from './auth
 import type { AppConfig } from './config.js';
 import { MultipartPayloadError, PayloadLimitError, PayloadLimitTransform } from './limits.js';
 import {
-  createOidcClient,
+  createOidcClients,
   deriveSessionKey,
   registerAuthenticationRoutes,
   type OidcClient,
@@ -29,7 +29,11 @@ const ACCEPTED_CORRELATION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/;
 export interface BuildAppOptions {
   readonly logger?: NonNullable<FastifyServerOptions['logger']>;
   readonly logStream?: Writable;
+  // Override do cliente OIDC do Entra, usado em teste. `undefined` mantém o cliente real
+  // derivado da config; `null` desabilita o provedor mesmo com config presente.
   readonly oidcClient?: OidcClient | null;
+  // Override equivalente para o provedor Google, independente do Entra.
+  readonly googleOidcClient?: OidcClient | null;
 }
 
 function createRequestId(request: {
@@ -165,11 +169,27 @@ export async function buildApp(
     routerOptions: { caseSensitive: false },
   };
   const app: FastifyInstance = Fastify(serverOptions);
-  const oidcClient =
-    options.oidcClient === undefined ? createOidcClient(config) : options.oidcClient;
+  const defaultOidcClients = createOidcClients(config);
+  const entraOidcClient =
+    options.oidcClient === undefined ? defaultOidcClients.entra : options.oidcClient;
+  const googleOidcClient =
+    options.googleOidcClient === undefined ? defaultOidcClients.google : options.googleOidcClient;
 
   app.decorateRequest('identity', null);
   app.decorateRequest('payloadLimitKind', null);
+
+  // Decisão (bug fix): o form nativo de logout (`<form method="post" action="/auth/logout">`)
+  // sempre envia Content-Type application/x-www-form-urlencoded, mesmo sem nenhum campo. O
+  // front já foi corrigido para chamar /auth/logout via fetch sem Content-Type (fonte da
+  // verdade, evita o problema na origem), mas mantemos este parser tolerante como
+  // defesa-em-profundidade: nenhuma rota atual lê corpo urlencoded, então ignorar o corpo é
+  // seguro hoje. Se uma rota futura precisar realmente ler esse content-type, este parser
+  // silencioso vai mascarar o problema — troque por um parser real nesse momento.
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_request, _body, done) => done(null, undefined)
+  );
 
   await app.register(secureSession, {
     key: deriveSessionKey(config),
@@ -281,7 +301,10 @@ export async function buildApp(
     service: 'layout-parser-bff',
   }));
 
-  registerAuthenticationRoutes(app, config, oidcClient);
+  registerAuthenticationRoutes(app, config, {
+    entra: entraOidcClient,
+    google: googleOidcClient,
+  });
 
   app.get('/api/session', async (request, reply) => {
     reply.header('cache-control', 'no-store');

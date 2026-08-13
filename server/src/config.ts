@@ -5,6 +5,8 @@ const CLIENT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TENANT_ID_PATTERN =
   /^(?:common|organizations|consumers|[0-9a-f-]{36}|[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?)$/i;
+// Google Client ID emitido pelo Google Cloud Console, ex.: 1234567890-abc123.apps.googleusercontent.com
+const GOOGLE_CLIENT_ID_PATTERN = /^[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com$/i;
 const DEFAULT_ADMIN_PATHS = [
   '/api/monitoring/*',
   '/api/ai-metrics/*',
@@ -20,6 +22,12 @@ export interface EntraConfig {
   readonly clientId: string;
   readonly clientSecret: string;
   readonly authority: string;
+  readonly redirectUri: string;
+}
+
+export interface GoogleConfig {
+  readonly clientId: string;
+  readonly clientSecret: string;
   readonly redirectUri: string;
 }
 
@@ -45,6 +53,7 @@ export interface AppConfig {
   readonly publicOrigin: string;
   readonly sessionTtlSeconds: number;
   readonly entra: EntraConfig | null;
+  readonly google: GoogleConfig | null;
   readonly logLevel: LogLevel;
 }
 
@@ -266,6 +275,36 @@ function parseEntraConfig(
   };
 }
 
+function parseGoogleConfig(
+  environment: NodeJS.ProcessEnv,
+  publicOrigin: string
+): GoogleConfig | null {
+  const clientId = environment.GOOGLE_CLIENT_ID?.trim() ?? '';
+  const clientSecret = environment.GOOGLE_CLIENT_SECRET ?? '';
+  const hasAnyValue = Boolean(clientId || clientSecret.trim());
+
+  // Google é um provedor alternativo ao Entra: opcional em qualquer ambiente, inclusive em
+  // produção. Se nenhuma variável for informada, a rota /auth/google/login responde 503.
+  if (!hasAnyValue) {
+    return null;
+  }
+
+  if (!GOOGLE_CLIENT_ID_PATTERN.test(clientId)) {
+    throw new ConfigError(
+      'GOOGLE_CLIENT_ID deve ser o Client ID emitido pelo Google Cloud Console (*.apps.googleusercontent.com).'
+    );
+  }
+  if (clientSecret.trim().length < 16) {
+    throw new ConfigError('GOOGLE_CLIENT_SECRET está ausente ou é curto demais.');
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    redirectUri: `${publicOrigin}/auth/google/callback`,
+  };
+}
+
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
   const nodeEnv = parseNodeEnvironment(environment.NODE_ENV);
   const isProduction = nodeEnv === 'production';
@@ -306,6 +345,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   const upstreamUrl = parseUpstreamUrl(environment.LAYOUTPARSER_API_URL, isProduction);
   const publicOrigin = parsePublicOrigin(environment.BFF_PUBLIC_ORIGIN, isProduction);
   const entra = parseEntraConfig(environment, publicOrigin, isProduction);
+  const google = parseGoogleConfig(environment, publicOrigin);
 
   if (!DOCUMENT_FIELD_PATTERN.test(documentField)) {
     throw new ConfigError('BFF_DOCUMENT_FIELD contém um nome de campo inválido.');
@@ -377,6 +417,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       86_400
     ),
     entra,
+    google,
     logLevel: parseLogLevel(environment.BFF_LOG_LEVEL),
   };
 }

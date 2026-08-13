@@ -14,11 +14,15 @@ export interface AuthenticatedIdentity {
   readonly isAdmin: boolean;
 }
 
+export type AuthProvider = 'entra' | 'google';
+
 export interface SessionIdentity {
+  readonly provider: AuthProvider;
   readonly name: string;
   readonly roles: readonly string[];
   readonly subject: string;
-  readonly tenantId: string;
+  // Específico do Entra (tenant do diretório). Login via Google não preenche este campo.
+  readonly tenantId?: string;
 }
 
 type AnyFastifyRequest = FastifyRequest<RequestGenericInterface, RawServerBase>;
@@ -77,11 +81,13 @@ export function resolveIdentity(
     sessionIdentity &&
     typeof sessionIdentity.name === 'string' &&
     typeof sessionIdentity.subject === 'string' &&
-    typeof sessionIdentity.tenantId === 'string' &&
+    (sessionIdentity.provider === 'entra' || sessionIdentity.provider === 'google') &&
+    (sessionIdentity.tenantId === undefined ||
+      (typeof sessionIdentity.tenantId === 'string' &&
+        isSafeIdentityValue(sessionIdentity.tenantId))) &&
     Array.isArray(sessionIdentity.roles) &&
     isSafeIdentityValue(sessionIdentity.name) &&
-    isSafeIdentityValue(sessionIdentity.subject) &&
-    isSafeIdentityValue(sessionIdentity.tenantId)
+    isSafeIdentityValue(sessionIdentity.subject)
   ) {
     const roles = sessionIdentity.roles
       .filter((role): role is string => typeof role === 'string' && isSafeIdentityValue(role))

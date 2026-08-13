@@ -16,7 +16,22 @@ describe('AuthenticationGate', () => {
       'href',
       '/auth/login?returnTo=%2Fupload%3Flayout%3Ddemo'
     );
-    expect(screen.getByText(/Sua senha permanece na Microsoft/i)).toBeVisible();
+    expect(screen.getByText(/Sua senha permanece com o provedor escolhido/i)).toBeVisible();
+  });
+
+  it('oferece login Google como alternativa, preservando somente o retorno local', () => {
+    render(
+      <AuthenticationGate
+        status="unauthenticated"
+        returnTo="/upload?layout=demo"
+        onRetry={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /Entrar com Google/i })).toHaveAttribute(
+      'href',
+      '/auth/google/login?returnTo=%2Fupload%3Flayout%3Ddemo'
+    );
   });
 
   it('traduz falha OIDC para uma mensagem segura', () => {

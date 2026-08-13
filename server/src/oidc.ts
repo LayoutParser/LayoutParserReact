@@ -2,11 +2,13 @@ import { createHash, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto'
 
 import { ConfidentialClientApplication } from '@azure/msal-node';
 import type { FastifyInstance } from 'fastify';
+import * as openidClient from 'openid-client';
 
-import type { SessionIdentity } from './auth.js';
-import type { AppConfig, EntraConfig } from './config.js';
+import type { AuthProvider, SessionIdentity } from './auth.js';
+import type { AppConfig, EntraConfig, GoogleConfig } from './config.js';
 
 const OIDC_SCOPES = ['openid', 'profile', 'email'];
+const GOOGLE_ISSUER = new URL('https://accounts.google.com');
 const AUTH_VALUE_PATTERN = /^[A-Za-z0-9_-]{20,512}$/;
 const SESSION_KEY_INFO = Buffer.from('LayoutParserReact/BFF/session/v1', 'utf8');
 const AUTH_LOGIN_RATE_LIMIT = { max: 20, timeWindow: 60_000 } as const;
@@ -14,6 +16,7 @@ const AUTH_CALLBACK_RATE_LIMIT = { max: 60, timeWindow: 60_000 } as const;
 const AUTH_LOGOUT_RATE_LIMIT = { max: 30, timeWindow: 60_000 } as const;
 
 export interface OidcTransaction {
+  readonly provider: AuthProvider;
   readonly state: string;
   readonly nonce: string;
   readonly codeVerifier: string;
@@ -50,9 +53,10 @@ function base64UrlRandom(byteLength: number): string {
   return randomBytes(byteLength).toString('base64url');
 }
 
-function createTransaction(returnTo: string): OidcTransaction {
+function createTransaction(provider: AuthProvider, returnTo: string): OidcTransaction {
   const codeVerifier = base64UrlRandom(48);
   return {
+    provider,
     state: base64UrlRandom(32),
     nonce: base64UrlRandom(32),
     codeVerifier,
@@ -114,7 +118,7 @@ function readRoles(claims: TokenClaims): readonly string[] {
   ].slice(0, 50);
 }
 
-function identityFromClaims(
+function identityFromEntraClaims(
   claims: TokenClaims,
   fallbackUsername: string | undefined,
   fallbackSubject: string,
@@ -132,7 +136,20 @@ function identityFromClaims(
     throw new Error('O token autenticado não contém uma identidade utilizável.');
   }
 
-  return { name, roles: readRoles(claims), subject, tenantId };
+  return { provider: 'entra', name, roles: readRoles(claims), subject, tenantId };
+}
+
+function identityFromGoogleClaims(claims: TokenClaims): SessionIdentity {
+  const name = readStringClaim(claims, 'name') ?? readStringClaim(claims, 'email');
+  const subject = readStringClaim(claims, 'sub');
+
+  if (!name || !subject) {
+    throw new Error('O token autenticado não contém uma identidade utilizável.');
+  }
+
+  // O Google não emite papéis (roles) de aplicação; autorização fina segue via
+  // BFF_ADMIN_USERS/BFF_ADMIN_ROLES com base no e-mail/nome, igual ao fluxo Entra.
+  return { provider: 'google', name, roles: [], subject };
 }
 
 class MsalOidcClient implements OidcClient {
@@ -179,7 +196,7 @@ class MsalOidcClient implements OidcClient {
         }
       );
 
-      return identityFromClaims(
+      return identityFromEntraClaims(
         result.idTokenClaims as TokenClaims,
         result.account?.username,
         result.uniqueId,
@@ -193,7 +210,77 @@ class MsalOidcClient implements OidcClient {
   }
 }
 
+/**
+ * Cliente OIDC para "Entrar com Google", provedor alternativo ao Entra. Usa a lib genérica
+ * `openid-client` (mesma família usada por outros OIDC compatíveis) em vez do MSAL, que é
+ * específico da Microsoft. A descoberta do documento OIDC do Google (`/.well-known/...`) é
+ * feita de forma preguiçosa e memorizada: não bloqueia o boot do BFF nem depende de rede em
+ * ambientes onde o Google não está configurado.
+ */
+class GoogleOidcClient implements OidcClient {
+  readonly #configuration: GoogleConfig;
+  #discovery: Promise<openidClient.Configuration> | null = null;
+
+  public constructor(configuration: GoogleConfig) {
+    this.#configuration = configuration;
+  }
+
+  #getConfiguration(): Promise<openidClient.Configuration> {
+    this.#discovery ??= openidClient.discovery(
+      GOOGLE_ISSUER,
+      this.#configuration.clientId,
+      this.#configuration.clientSecret
+    );
+    return this.#discovery;
+  }
+
+  public async getAuthorizationUrl(transaction: OidcTransaction): Promise<string> {
+    const configuration = await this.#getConfiguration();
+    const url = openidClient.buildAuthorizationUrl(configuration, {
+      redirect_uri: this.#configuration.redirectUri,
+      scope: OIDC_SCOPES.join(' '),
+      state: transaction.state,
+      nonce: transaction.nonce,
+      code_challenge: transaction.codeChallenge,
+      code_challenge_method: 'S256',
+      prompt: 'select_account',
+    });
+    return url.href;
+  }
+
+  public async exchangeAuthorizationCode(request: OidcExchangeRequest): Promise<SessionIdentity> {
+    const configuration = await this.#getConfiguration();
+
+    // O estado e o nonce já foram conferidos pela rota antes de chegar aqui; reconstruímos uma
+    // URL sintética apenas com os parâmetros que o openid-client exige para o grant, sem
+    // depender da querystring bruta do navegador.
+    const callbackUrl = new URL(this.#configuration.redirectUri);
+    callbackUrl.searchParams.set('code', request.code);
+    callbackUrl.searchParams.set('state', request.state);
+
+    const tokens = await openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+      pkceCodeVerifier: request.codeVerifier,
+      expectedState: request.state,
+      expectedNonce: request.nonce,
+    });
+
+    const claims = tokens.claims();
+    if (!claims) {
+      throw new Error('A resposta do Google não contém um ID Token.');
+    }
+
+    return identityFromGoogleClaims(claims as TokenClaims);
+  }
+}
+
 export function deriveSessionKey(config: AppConfig): Buffer {
+  // Decisão: a chave de sessão continua derivada apenas do segredo do Entra (quando presente),
+  // sem misturar o segredo do Google. Motivo: ambos os provedores gravam a mesma sessão
+  // criptografada (`identity.provider` diferencia a origem), então uma única chave HKDF é
+  // suficiente; usar dois segredos como salt/info tornaria a rotação de qualquer um deles capaz
+  // de invalidar sessões do outro provedor sem necessidade. Ambientes só com Google (sem Entra)
+  // geram uma chave aleatória por processo, igual ao comportamento hoje sem OIDC configurado —
+  // aceitável porque nesse caso não há segredo estável de longo prazo para derivar a chave.
   if (!config.entra) {
     return randomBytes(32);
   }
@@ -209,21 +296,52 @@ export function deriveSessionKey(config: AppConfig): Buffer {
   );
 }
 
-export function createOidcClient(config: AppConfig): OidcClient | null {
-  return config.entra ? new MsalOidcClient(config.entra) : null;
+export interface OidcClients {
+  readonly entra: OidcClient | null;
+  readonly google: OidcClient | null;
+}
+
+export function createOidcClients(config: AppConfig): OidcClients {
+  return {
+    entra: config.entra ? new MsalOidcClient(config.entra) : null,
+    google: config.google ? new GoogleOidcClient(config.google) : null,
+  };
 }
 
 function errorPageLocation(code: string): string {
   return `/upload?authError=${encodeURIComponent(code)}`;
 }
 
-export function registerAuthenticationRoutes(
+interface ProviderRouteConfig {
+  readonly provider: AuthProvider;
+  readonly loginPath: '/auth/login' | '/auth/google/login';
+  readonly callbackPath: '/auth/callback' | '/auth/google/callback';
+  readonly unavailableMessage: string;
+}
+
+const PROVIDER_ROUTES: Record<AuthProvider, ProviderRouteConfig> = {
+  entra: {
+    provider: 'entra',
+    loginPath: '/auth/login',
+    callbackPath: '/auth/callback',
+    unavailableMessage: 'Autenticação Microsoft não configurada neste ambiente.',
+  },
+  google: {
+    provider: 'google',
+    loginPath: '/auth/google/login',
+    callbackPath: '/auth/google/callback',
+    unavailableMessage: 'Autenticação Google não configurada neste ambiente.',
+  },
+};
+
+function registerProviderRoutes(
   app: FastifyInstance,
   config: AppConfig,
-  client: OidcClient | null
+  client: OidcClient | null,
+  route: ProviderRouteConfig
 ): void {
   app.get<{ Querystring: LoginQuery }>(
-    '/auth/login',
+    route.loginPath,
     { config: { rateLimit: AUTH_LOGIN_RATE_LIMIT } },
     async (request, reply) => {
       reply.header('cache-control', 'no-store');
@@ -231,14 +349,14 @@ export function registerAuthenticationRoutes(
         await reply.code(503).send({
           statusCode: 503,
           error: 'Service Unavailable',
-          message: 'Autenticação Microsoft não configurada neste ambiente.',
+          message: route.unavailableMessage,
           correlationId: request.id,
         });
         return;
       }
 
       const returnTo = normalizeReturnTo(request.query.returnTo, config.publicOrigin);
-      const transaction = createTransaction(returnTo);
+      const transaction = createTransaction(route.provider, returnTo);
       request.session.regenerate();
       request.session.set('oidcTransaction', transaction);
 
@@ -250,6 +368,7 @@ export function registerAuthenticationRoutes(
         request.log.error(
           {
             event: 'auth.login.start_failed',
+            provider: route.provider,
             errorType: error instanceof Error ? error.name : 'UnknownError',
           },
           'Não foi possível iniciar a autenticação OIDC.'
@@ -260,7 +379,7 @@ export function registerAuthenticationRoutes(
   );
 
   app.get<{ Querystring: CallbackQuery }>(
-    '/auth/callback',
+    route.callbackPath,
     { config: { rateLimit: AUTH_CALLBACK_RATE_LIMIT } },
     async (request, reply) => {
       reply.header('cache-control', 'no-store');
@@ -277,6 +396,7 @@ export function registerAuthenticationRoutes(
       if (
         !client ||
         transactionExpired ||
+        transaction.provider !== route.provider ||
         !state ||
         !AUTH_VALUE_PATTERN.test(state) ||
         !safeEqual(state, transaction.state)
@@ -304,12 +424,16 @@ export function registerAuthenticationRoutes(
         });
         const returnTo = transaction.returnTo;
         request.session.set('identity', identity);
-        request.log.info({ event: 'auth.login.completed' }, 'Sessão OIDC criada.');
+        request.log.info(
+          { event: 'auth.login.completed', provider: route.provider },
+          'Sessão OIDC criada.'
+        );
         await reply.redirect(returnTo, 303);
       } catch (error) {
         request.log.warn(
           {
             event: 'auth.login.callback_failed',
+            provider: route.provider,
             errorType: error instanceof Error ? error.name : 'UnknownError',
           },
           'A resposta OIDC foi rejeitada.'
@@ -318,6 +442,15 @@ export function registerAuthenticationRoutes(
       }
     }
   );
+}
+
+export function registerAuthenticationRoutes(
+  app: FastifyInstance,
+  config: AppConfig,
+  clients: OidcClients
+): void {
+  registerProviderRoutes(app, config, clients.entra, PROVIDER_ROUTES.entra);
+  registerProviderRoutes(app, config, clients.google, PROVIDER_ROUTES.google);
 
   app.post(
     '/auth/logout',

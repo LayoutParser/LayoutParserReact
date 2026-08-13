@@ -79,6 +79,42 @@ describe('loadConfig', () => {
     ).toThrowError('credenciais');
   });
 
+  it('trata o Google como provedor alternativo opcional, inclusive em produção', () => {
+    expect(loadConfig({ NODE_ENV: 'development' }).google).toBeNull();
+    expect(loadConfig(productionEnvironment).google).toBeNull();
+
+    const withGoogle = loadConfig({
+      ...productionEnvironment,
+      GOOGLE_CLIENT_ID: '1234567890-abc123def456.apps.googleusercontent.com',
+      GOOGLE_CLIENT_SECRET: 'test-google-secret-with-enough-length',
+    });
+    expect(withGoogle.google).toMatchObject({
+      clientId: '1234567890-abc123def456.apps.googleusercontent.com',
+      redirectUri: 'https://layoutparser.example/auth/google/callback',
+    });
+    // Entra continua configurado normalmente; nenhum provedor substitui o outro.
+    expect(withGoogle.entra).not.toBeNull();
+  });
+
+  it.each([
+    [
+      {
+        GOOGLE_CLIENT_ID: 'not-a-google-client-id',
+        GOOGLE_CLIENT_SECRET: 'test-google-secret-with-enough-length',
+      },
+      'GOOGLE_CLIENT_ID',
+    ],
+    [
+      {
+        GOOGLE_CLIENT_ID: '1234567890-abc123def456.apps.googleusercontent.com',
+        GOOGLE_CLIENT_SECRET: 'short',
+      },
+      'GOOGLE_CLIENT_SECRET',
+    ],
+  ])('recusa configuração Google malformada: %s', (environment, expectedMessage) => {
+    expect(() => loadConfig(environment)).toThrowError(expectedMessage);
+  });
+
   it('valida limites, tipos e padrões administrativos', () => {
     expect(() =>
       loadConfig({ BFF_REQUEST_LIMIT_MIB: '10', BFF_DOCUMENT_LIMIT_MIB: '11' })
