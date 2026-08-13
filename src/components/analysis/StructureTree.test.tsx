@@ -58,4 +58,88 @@ describe('StructureTree', () => {
     expect(lineItem).toHaveAttribute('aria-selected', 'true');
     expect(lineItem).toHaveAttribute('aria-expanded', 'true');
   });
+
+  it('apresenta layouts SAP como hierarquia expansível de segmentos', async () => {
+    const sapFields: Field[] = [
+      { lineName: 'LINHA_EMIT', fieldName: 'CNPJ', value: '02990605001174', sequence: 1 },
+    ];
+    useAppStore.getState().setParseResult({
+      success: true,
+      fields: sapFields,
+      layout: {
+        layoutGuid: 'LAY_sap',
+        layoutType: 'TextPositional',
+        name: 'LAY_MARELLI_TXT_SAP_ENVNFE_4.00_NFe',
+        description: 'Layout IDoc SAP NFe',
+        limitOfCaracters: 0,
+        elements: [
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_control',
+            name: 'LINHA000',
+            description: '',
+            sequence: 1,
+            isRequired: true,
+            initialValue: 'EDI_DC40',
+            elements: [],
+          },
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_ide',
+            name: 'LINHA_IDE',
+            description: '',
+            sequence: 2,
+            isRequired: false,
+            initialValue: 'ZRSDM_NFE_400_IDE000',
+            elements: [],
+          },
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_emit',
+            name: 'LINHA_EMIT',
+            description: '',
+            sequence: 3,
+            isRequired: false,
+            initialValue: 'ZRSDM_NFE_400_EMIT000',
+            elements: [
+              JSON.stringify({
+                Type: 'FieldElementVO',
+                ElementGuid: 'FLD_cnpj',
+                Name: 'CNPJ',
+                Sequence: 1,
+              }),
+              JSON.stringify({
+                Type: 'LineElementVO',
+                ElementGuid: 'LIN_enderemit',
+                Name: 'LINHA_ENDEMIT',
+                Sequence: 2,
+                InitialValue: 'ZRSDM_NFE_400_ENDEREMIT000',
+                Elements: [],
+              }),
+            ],
+          },
+        ],
+      },
+    });
+    useAppStore.getState().setFields(sapFields);
+
+    render(<StructureTree />);
+
+    expect(await screen.findByText('Hierarquia de segmentos')).toBeInTheDocument();
+    expect(screen.getByText('4 segmentos')).toBeInTheDocument();
+
+    const control = screen.getByRole('treeitem', { name: /EDI_DC40/i });
+    expect(control).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(control);
+
+    const emit = await screen.findByRole('treeitem', { name: /ZRSDM_NFE_400_EMIT/i });
+    expect(emit).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('treeitem', { name: /CNPJ/i })).not.toBeInTheDocument();
+
+    fireEvent.click(emit);
+    expect(
+      await screen.findByRole('treeitem', { name: /ZRSDM_NFE_400_ENDEREMIT/i })
+    ).toBeInTheDocument();
+    expect(useFieldStore.getState().highlightedFields).toContain('LINHA_EMIT_CNPJ');
+  });
 });

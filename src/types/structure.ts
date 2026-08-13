@@ -7,8 +7,11 @@ export interface LayoutElement {
   sequence: number;
   name: string;
   isRequired: boolean;
-  elements?: string[]; // Array de JSON strings ou LayoutElement[]
+  elements?: Array<string | LayoutElement>; // A API pode serializar filhos como JSON ou objetos.
   initialValue?: string; // Valor inicial da linha (ex: "000", "001", "HEADER")
+  parentElement?: string;
+  minimalOccurrence?: number;
+  maximumOccurrence?: number;
   // Campos específicos de FieldElementVO
   startValue?: number;
   incrementValue?: number;
@@ -39,4 +42,6 @@ export interface TreeNode {
   children: TreeNode[];
   element: LayoutElement;
   level: number;
+  variant?: 'sap-segment';
+  sourceLineName?: string;
 }

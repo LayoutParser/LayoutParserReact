@@ -61,6 +61,25 @@ comprovados, a edição é bloqueada e o documento precisa ser reprocessado.
 > changes only that field range, preserves the document size and invalidates XML candidates from
 > the previous version. Ambiguous or stale mappings are rejected and require reprocessing.
 
+### Hierarquia SAP IDoc / SAP IDoc hierarchy
+
+Quando o nome do layout termina em `_TXT_SAP_ENVNFE_4.00_NFe`, a aba **TXT Posicional**
+apresenta os `LineElementVO` como uma árvore de segmentos SAP. `EDI_DC40` é o registro de
+controle e a raiz da visualização; os botões `+` permitem navegar pelos segmentos filhos, como
+`ZRSDM_NFE_400_EMIT` e `ZRSDM_NFE_400_ENDEREMIT`. A hierarquia vem dos elementos aninhados do
+próprio layout, sem depender do prefixo específico de um cliente. Os três dígitos técnicos no fim
+do valor inicial são ocultados no rótulo, enquanto os campos posicionais continuam disponíveis no
+painel de campos.
+
+Essa árvore representa o **esquema declarado pelo layout**. Ela não afirma que todos os segmentos
+foram encontrados no TXT processado.
+
+> **EN:** Layout names ending in `_TXT_SAP_ENVNFE_4.00_NFe` render their nested
+> `LineElementVO` entries as an SAP segment tree in the **Positional TXT** tab. `EDI_DC40` is the
+> control-record root, `+` buttons expand child segments, and the final three technical digits are
+> omitted from labels. The tree represents the layout schema, not proof that every segment occurs
+> in the processed document; positional fields remain available in the field panel.
+
 O navegador não executa parsing posicional nem transformação XSLT. O front valida apenas o
 arquivo para dar feedback imediato; a validação autoritativa e as regras de negócio pertencem
 ao gateway e à API.
