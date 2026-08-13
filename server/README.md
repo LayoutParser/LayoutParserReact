@@ -12,16 +12,16 @@ Navegador -> HTTPS/IIS -> 127.0.0.1:3100 (BFF Node) -> LayoutParserApi
 
 ### Rotas
 
-| Rota                 | Comportamento                                                    |
-| -------------------- | ---------------------------------------------------------------- |
-| `GET /health`               | Liveness local, sem consultar nem revelar o upstream.            |
-| `GET /auth/login`           | Inicia OIDC Authorization Code com PKCE (Microsoft Entra).       |
-| `GET /auth/callback`        | Valida a resposta Microsoft e cria a sessão.                     |
-| `GET /auth/google/login`    | Inicia OIDC Authorization Code com PKCE (Google, alternativo).   |
-| `GET /auth/google/callback` | Valida a resposta do Google e cria a sessão.                     |
+| Rota                        | Comportamento                                                           |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `GET /health`               | Liveness local, sem consultar nem revelar o upstream.                   |
+| `GET /auth/login`           | Inicia OIDC Authorization Code com PKCE (Microsoft Entra).              |
+| `GET /auth/callback`        | Valida a resposta Microsoft e cria a sessão.                            |
+| `GET /auth/google/login`    | Inicia OIDC Authorization Code com PKCE (Google, alternativo).          |
+| `GET /auth/google/callback` | Valida a resposta do Google e cria a sessão.                            |
 | `POST /auth/logout`         | Apaga a sessão local (de qualquer provedor) sem afetar a conta externa. |
-| `GET /api/session`          | Rota própria do BFF; nunca é encaminhada para a API.             |
-| `/api/*`                    | Proxy transparente, preservando `/api`, método, query e payload. |
+| `GET /api/session`          | Rota própria do BFF; nunca é encaminhada para a API.                    |
+| `/api/*`                    | Proxy transparente, preservando `/api`, método, query e payload.        |
 
 Entra e Google são provedores **alternativos**: o usuário escolhe um dos dois na tela de login.
 Nenhum substitui o outro, cada um é opcional independentemente (ver variáveis de ambiente
