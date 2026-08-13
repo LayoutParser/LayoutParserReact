@@ -1,0 +1,36 @@
+name: Bug
+description: Comportamento reproduzível diferente do esperado.
+title: '[BUG] '
+labels: ['type: bug']
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Comportamento observado
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reprodução mínima
+      description: Use conteúdo sintético/redigido; não cole TXT/XML, segredo ou log bruto real.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto, ambiente e evidência
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Correção esperada e teste de regressão
+    validations:
+      required: true

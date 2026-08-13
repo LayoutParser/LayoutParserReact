@@ -1,16 +1,23 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
+import { useTransformationStore } from '../../store/useTransformationStore';
 import type { DisplayGroup, Field } from '../../types/field';
+import type { PositionalFieldTarget } from '../../utils/positionalFieldEdit';
+import { resolvePositionalLineIndex } from '../../utils/positionalFieldEdit';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import DocumentHealthBanner from './DocumentHealthBanner';
+import FieldEditor from './FieldEditor/FieldEditor';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
-  const { parseResult, fields, txtContent } = useAppStore();
+  const { parseResult, fields, txtContent, editPositionalField } = useAppStore();
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
+  const { clearCandidates, setDiagnostic, setDiagnosticError } = useTransformationStore();
+  const [editTarget, setEditTarget] = useState<PositionalFieldTarget | null>(null);
+  const [editFeedback, setEditFeedback] = useState<string | null>(null);
 
   // Usar campos do parseResult se fields estiver vazio.
   // Memoizado para estabilizar a identidade do array: o efeito de sincronização mais abaixo
@@ -43,9 +50,31 @@ const FieldDisplay: React.FC = () => {
     }
   }, [searchResults, currentResultIndex, highlightField]);
 
-  const handleFieldClick = (field: Field) => {
+  const handleFieldClick = (field: Field, group: DisplayGroup, fallbackLineIndex: number) => {
     selectField(field);
-    // Não mostrar propriedades, apenas destacar
+    const fieldIndex = actualFields.indexOf(field);
+    if (fieldIndex < 0) {
+      setEditFeedback('Não foi possível identificar o campo selecionado.');
+      return;
+    }
+    const lineIndex = resolvePositionalLineIndex(
+      txtContent,
+      group.lineSequence ?? field.lineSequence,
+      group.occurrence ?? field.occurrence,
+      fallbackLineIndex,
+      displayGroups.length
+    );
+    setEditTarget({ field, fieldIndex, lineIndex });
+  };
+
+  const handleFieldSave = (target: PositionalFieldTarget, value: string) => {
+    editPositionalField(target, value);
+    clearCandidates();
+    setDiagnostic(null);
+    setDiagnosticError(null);
+    setEditFeedback(
+      `${target.field.fieldName} atualizado sem alterar o comprimento do documento. Gere novamente a transformação XML, se necessário.`
+    );
   };
 
   const isFieldHighlighted = (field: Field): boolean => {
@@ -342,6 +371,20 @@ const FieldDisplay: React.FC = () => {
           Substitui o alerta inline que só aparecia quando `validationWarning` vinha
           preenchido — a decisão agora é do `documentHealth`/`validationErrors`. */}
       <DocumentHealthBanner />
+
+      <div className="field-display-edit-help" role="note">
+        <strong>Edição posicional:</strong> selecione um campo para alterar somente o intervalo
+        reservado a ele. O novo valor precisa manter exatamente o mesmo comprimento.
+      </div>
+
+      {editFeedback && (
+        <div className="field-display-edit-feedback" role="status" aria-live="polite">
+          <span>{editFeedback}</span>
+          <button type="button" onClick={() => setEditFeedback(null)} aria-label="Fechar aviso">
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Nota de leitura específica desta aba: o corte das linhas seguintes é comportamento
           do FieldDisplay, não do payload, então não pertence ao banner de saúde. Só aparece
@@ -832,8 +875,8 @@ const FieldDisplay: React.FC = () => {
                           type="button"
                           data-field-id={fieldId}
                           className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''} ${isProblematicField ? 'field-problematic' : ''}`}
-                          onClick={() => handleFieldClick(field)}
-                          aria-label={`Campo ${field.fieldName}: ${field.value || 'vazio'}`}
+                          onClick={() => handleFieldClick(field, groupData, physicalLineIndex)}
+                          aria-label={`Editar campo ${field.fieldName}: ${field.value || 'vazio'}`}
                           title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}${isProblematicField ? ` - ❌ ${problematicField.issue}` : ''}`}
                         >
                           {part.content}
@@ -849,6 +892,13 @@ const FieldDisplay: React.FC = () => {
           </div>
         );
       })}
+      <FieldEditor
+        key={editTarget ? `${editTarget.lineIndex}-${editTarget.fieldIndex}` : 'closed'}
+        content={txtContent}
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSave={handleFieldSave}
+      />
     </div>
   );
 };

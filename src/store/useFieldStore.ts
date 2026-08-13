@@ -26,23 +26,28 @@ export const useFieldStore = create<FieldState>((set, get) => ({
   highlightedFields: new Set<string>(),
 
   setFields: fields => {
-    // Agrupar campos por linha
+    // A ocorrência faz parte da identidade física da linha. Agrupar só por lineName fazia
+    // registros repetidos compartilharem seleção e posição, o que não é seguro para edição.
     const groupsMap = new Map<string, Field[]>();
 
     fields.forEach(field => {
-      if (!groupsMap.has(field.lineName)) {
-        groupsMap.set(field.lineName, []);
+      const key = `${field.lineName}\u0000${field.lineSequence ?? ''}\u0000${field.occurrence ?? 1}`;
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, []);
       }
-      groupsMap.get(field.lineName)!.push(field);
+      groupsMap.get(key)!.push(field);
     });
 
-    const fieldGroups: FieldGroup[] = Array.from(groupsMap.entries())
-      .map(([lineName, fields]) => ({
-        lineName,
-        fields: fields.sort((a, b) => (a.sequence || 0) - (b.sequence || 0)),
-        sequence: fields[0]?.sequence || 0,
-      }))
-      .sort((a, b) => a.sequence - b.sequence);
+    const fieldGroups: FieldGroup[] = Array.from(groupsMap.values()).map(groupFields => ({
+      lineName: groupFields[0]?.lineName ?? 'OUTROS',
+      lineGuid: groupFields[0]?.lineGuid,
+      fields: [...groupFields].sort(
+        (a, b) => (a.startPosition ?? a.sequence ?? 0) - (b.startPosition ?? b.sequence ?? 0)
+      ),
+      sequence: groupFields[0]?.sequence ?? 0,
+      lineSequence: groupFields[0]?.lineSequence,
+      occurrence: groupFields[0]?.occurrence ?? 1,
+    }));
 
     set({ fields, fieldGroups });
   },

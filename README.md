@@ -47,6 +47,20 @@ fornecida, em vez de presumir um diagnóstico.
 > independently. Missing Sysmiddle mapping no longer blocks TCL/XSL. When both paths return no
 > candidate, the UI groups the API warnings by pathway and clearly flags missing diagnostic data.
 
+### Edição segura do TXT posicional / Safe positional TXT editing
+
+Na aba **TXT Posicional**, cada campo com posição e comprimento confirmados pela API pode ser
+selecionado para edição. O novo valor precisa ocupar **exatamente** o mesmo número de posições:
+um CNPJ de 14 posições só aceita outro valor com 14 caracteres. A substituição acontece apenas
+no intervalo daquele campo, mantém o tamanho total do documento e invalida candidatos XML gerados
+para a versão anterior. Se posição, ocorrência, comprimento ou conteúdo atual não puderem ser
+comprovados, a edição é bloqueada e o documento precisa ser reprocessado.
+
+> **EN:** In the **Positional TXT** tab, a field can be edited only when the API supplied a
+> verifiable position and length. The replacement must have exactly the same character count,
+> changes only that field range, preserves the document size and invalidates XML candidates from
+> the previous version. Ambiguous or stale mappings are rejected and require reprocessing.
+
 O navegador não executa parsing posicional nem transformação XSLT. O front valida apenas o
 arquivo para dar feedback imediato; a validação autoritativa e as regras de negócio pertencem
 ao gateway e à API.
@@ -436,20 +450,21 @@ Chamadas HTTP devem permanecer em `src/services`; payloads da API devem possuir 
 
 O repositório possui um harness inspirado no AIOX, adaptado ao front e ao gateway:
 
-| Agente            | Papel                                               |
-| ----------------- | --------------------------------------------------- |
-| `@lp-front-dev`   | React, TypeScript, stores, services e rotas.        |
-| `@lp-ui-ux`       | UX, componentes, CSS e acessibilidade.              |
-| `@lp-qa`          | Gates, testes, cobertura e validação de fluxo.      |
-| `@lp-security`    | Revisão read-only de segurança e supply chain.      |
-| `@lp-contract-qa` | Revisão read-only do contrato front ↔ API.          |
-| `@lp-doc`         | Documentação PT-BR com resumo EN quando necessário. |
-| `@lp-devops`      | CI, deploy, push e integração MCP.                  |
+| Agente                | Papel                                                           |
+| --------------------- | --------------------------------------------------------------- |
+| `@lp-product-manager` | GitHub Projects, backlog, sprints, critérios e rastreabilidade. |
+| `@lp-front-dev`       | React, TypeScript, stores, services e rotas.                    |
+| `@lp-ui-ux`           | UX, componentes, CSS e acessibilidade.                          |
+| `@lp-qa`              | Gates, testes, cobertura e validação de fluxo.                  |
+| `@lp-security`        | Revisão read-only de segurança e supply chain.                  |
+| `@lp-contract-qa`     | Revisão read-only do contrato front ↔ API.                      |
+| `@lp-doc`             | Documentação PT-BR com resumo EN quando necessário.             |
+| `@lp-devops`          | CI, deploy, push e integração MCP.                              |
 
 As regras operacionais estão em [`AGENTS.md`](AGENTS.md), e a visão do harness Claude em
-[`.claude/README.md`](.claude/README.md). O harness inclui comandos de revisão de segurança e
-sincronização de contrato, hooks de feedback rápido/proteção de caminhos sensíveis e memória por
-agente.
+[`.claude/README.md`](.claude/README.md). O harness inclui `/product-sync` para governança do
+backlog, comandos de revisão de segurança e sincronização de contrato, hooks de feedback
+rápido/proteção de caminhos sensíveis e memória por agente.
 
 O MCP **não é implementado neste front**. O servidor MCP pertence ao `LayoutParserApi`, pois a
 API é o hub e a fonte da verdade. Este repositório fornece apenas
