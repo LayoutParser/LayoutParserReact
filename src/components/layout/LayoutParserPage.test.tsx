@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParseRequestError, parseService } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { useAppStore } from '../../store/useAppStore';
+import { useSessionStore } from '../../store/useSessionStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import LayoutParserPage from './LayoutParserPage';
 
@@ -58,11 +59,30 @@ describe('LayoutParserPage', () => {
     vi.clearAllMocks();
     localStorage.clear();
     useAppStore.getState().reset();
+    useSessionStore.getState().reset();
     useTransformationStore.getState().reset();
     vi.mocked(layoutService.searchLayouts).mockResolvedValue({
       success: true,
       layouts: [layout],
     });
+  });
+
+  it('não renderiza "Atualizar Layout" para sessão sem função admin', () => {
+    render(<LayoutParserPage />);
+    expect(screen.queryByRole('button', { name: /Atualizar Layout/ })).not.toBeInTheDocument();
+  });
+
+  it('renderiza "Atualizar Layout" desabilitado para admin até haver busca bem-sucedida', async () => {
+    useSessionStore.setState({ isAdmin: true });
+    render(<LayoutParserPage />);
+
+    const refreshButton = screen.getByRole('button', { name: 'Atualizar Layout' });
+    expect(refreshButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar Layout' }));
+    await screen.findByRole('combobox', { name: 'Selecionar Layout' });
+
+    expect(refreshButton).toBeEnabled();
   });
 
   it('executa o fluxo de catálogo, upload e parse com sucesso', async () => {

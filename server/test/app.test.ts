@@ -279,6 +279,47 @@ describe('LayoutParser BFF', () => {
     expect(logout.headers['set-cookie']).toContain('Max-Age=0');
   });
 
+  it('preserva o returnTo original (não hardcoded em /upload) quando o callback OIDC falha', async () => {
+    // Regressão: o redirect de erro caía sempre em "/upload", perdendo o destino original da
+    // tentativa de login. Como o MainLayout só mostra a home pública em "/", uma falha vinda da
+    // home derrubava o usuário no AuthenticationGate genérico em vez de mostrar o erro na própria
+    // home — parecendo um "loop" de volta para uma tela de login diferente da que ele conhecia.
+    let transaction: OidcTransaction | undefined;
+    const failingExchangeClient: OidcClient = {
+      async getAuthorizationUrl(value) {
+        transaction = value;
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=${value.state}`;
+      },
+      async exchangeAuthorizationCode() {
+        throw new Error('token rejeitado');
+      },
+    };
+    const { app } = await createApp(
+      {
+        BFF_PUBLIC_ORIGIN: 'https://layoutparser.example',
+        ENTRA_TENANT_ID: 'common',
+        ENTRA_CLIENT_ID: testClientId,
+        ENTRA_CLIENT_SECRET: testClientSecret,
+      },
+      { oidcClient: failingExchangeClient }
+    );
+
+    const login = await app.inject({
+      method: 'GET',
+      url: '/auth/login?returnTo=%2Fadmin%3Ftab%3Dmetrics',
+    });
+    const loginCookie = String(login.headers['set-cookie']).split(';', 1)[0];
+
+    const rejected = await app.inject({
+      method: 'GET',
+      url: `/auth/callback?code=test-code&state=${transaction?.state}`,
+      headers: { cookie: loginCookie },
+    });
+
+    expect(rejected.statusCode).toBe(303);
+    expect(rejected.headers.location).toBe('/admin?tab=metrics&authError=login_failed');
+  });
+
   it('aceita POST /auth/logout com Content-Type application/x-www-form-urlencoded e corpo vazio', async () => {
     // Regressão: o form HTML nativo de logout (antes de trocarmos por fetch no front) sempre
     // envia esse content-type, mesmo sem campos. Sem um parser registrado, o Fastify rejeitava
@@ -411,7 +452,7 @@ describe('LayoutParser BFF', () => {
     });
 
     expect(crossProviderCallback.statusCode).toBe(303);
-    expect(crossProviderCallback.headers.location).toBe('/upload?authError=invalid_callback');
+    expect(crossProviderCallback.headers.location).toBe('/?authError=invalid_callback');
   });
 
   it('responde 503 em /auth/google/login quando o Google não está configurado, sem afetar o Entra', async () => {
@@ -473,7 +514,7 @@ describe('LayoutParser BFF', () => {
     });
 
     expect(rejected.statusCode).toBe(303);
-    expect(rejected.headers.location).toBe('/upload?authError=invalid_callback');
+    expect(rejected.headers.location).toBe('/?authError=invalid_callback');
     expect(exchanged).toBe(false);
   });
 
@@ -501,7 +542,7 @@ describe('LayoutParser BFF', () => {
     );
     const startResponse = await failingStart.app.inject({ method: 'GET', url: '/auth/login' });
     expect(startResponse.statusCode).toBe(303);
-    expect(startResponse.headers.location).toBe('/upload?authError=temporarily_unavailable');
+    expect(startResponse.headers.location).toBe('/?authError=temporarily_unavailable');
 
     let transaction: OidcTransaction | undefined;
     const failingExchangeClient: OidcClient = {
@@ -529,7 +570,7 @@ describe('LayoutParser BFF', () => {
       url: `/auth/callback?error=access_denied&state=${transaction?.state}`,
       headers: { cookie: loginCookie },
     });
-    expect(canceled.headers.location).toBe('/upload?authError=access_denied');
+    expect(canceled.headers.location).toBe('/?authError=access_denied');
 
     const secondLogin = await failingExchange.app.inject({ method: 'GET', url: '/auth/login' });
     const secondCookie = String(secondLogin.headers['set-cookie']).split(';', 1)[0];
@@ -538,7 +579,7 @@ describe('LayoutParser BFF', () => {
       url: `/auth/callback?code=test-code&state=${transaction?.state}`,
       headers: { cookie: secondCookie },
     });
-    expect(rejected.headers.location).toBe('/upload?authError=login_failed');
+    expect(rejected.headers.location).toBe('/?authError=login_failed');
   });
 
   it('limita explicitamente tentativas de início de autenticação por minuto', async () => {

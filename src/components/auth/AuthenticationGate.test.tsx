@@ -48,6 +48,25 @@ describe('AuthenticationGate', () => {
     expect(screen.queryByText('invalid_callback')).not.toBeInTheDocument();
   });
 
+  it('mensagem de login_failed não presume qual provedor (Microsoft/Google) falhou', () => {
+    // Regressão: o BFF registra a mesma rota de callback para Entra e Google e devolve o mesmo
+    // authError=login_failed nos dois casos; a mensagem já citou só "Microsoft" e apareceu para
+    // quem tentou entrar com Google.
+    render(
+      <AuthenticationGate
+        status="unauthenticated"
+        returnTo="/upload"
+        authError="login_failed"
+        onRetry={vi.fn()}
+      />
+    );
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(/não foi possível concluir a entrada/i);
+    expect(alert).not.toHaveTextContent(/microsoft/i);
+    expect(alert).not.toHaveTextContent(/google/i);
+  });
+
   it('permite repetir a consulta quando o gateway está indisponível', () => {
     const onRetry = vi.fn();
     render(
