@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import AuthenticationGate from '../components/auth/AuthenticationGate';
+import HomePage from '../components/marketing/HomePage';
 import { sessionService } from '../services/api/sessionService';
 import { useAppStore } from '../store/useAppStore';
 import { useSessionStore } from '../store/useSessionStore';
@@ -59,6 +60,12 @@ export const MainLayout: React.FC = () => {
   }
 
   if (!authenticated) {
+    // A home pública (apresentação do produto + login) só aparece em "/"; demais rotas
+    // protegidas continuam mostrando o gate de autenticação focado em retomar o acesso.
+    if (location.pathname === '/') {
+      return <HomePage returnTo={returnTo} authError={authError} />;
+    }
+
     return (
       <AuthenticationGate
         status="unauthenticated"

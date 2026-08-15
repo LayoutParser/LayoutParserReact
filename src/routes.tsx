@@ -5,6 +5,22 @@ import RouteLoading from './components/shared/RouteLoading';
 
 export const router = createBrowserRouter([
   {
+    path: 'terms',
+    errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteLoading />,
+    lazy: async () => ({
+      Component: (await import('./components/marketing/TermsPage')).default,
+    }),
+  },
+  {
+    path: 'privacy',
+    errorElement: <RouteErrorPage />,
+    hydrateFallbackElement: <RouteLoading />,
+    lazy: async () => ({
+      Component: (await import('./components/marketing/PrivacyPage')).default,
+    }),
+  },
+  {
     path: '/',
     element: <MainLayout />,
     errorElement: <RouteErrorPage />,
