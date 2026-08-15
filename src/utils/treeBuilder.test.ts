@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSapIdocTree, isSapNfeLayoutName } from './treeBuilder';
+import { buildSapIdocTree, isSapIdocLayout, isSapNfeLayoutName } from './treeBuilder';
 
 const field = {
   Type: 'FieldElementVO',
@@ -100,5 +100,21 @@ describe('árvore IDoc SAP', () => {
 
   it('não fabrica uma raiz quando o layout não contém EDI_DC40', () => {
     expect(buildSapIdocTree(sapLayoutElements.slice(1))).toEqual([]);
+  });
+});
+
+describe('isSapIdocLayout', () => {
+  it('confia no detectedType do back-end mesmo com nome de layout que não bate o sufixo NFe', () => {
+    expect(isSapIdocLayout('idoc', 'LAY_QUALQUER_NOME')).toBe(true);
+    expect(isSapIdocLayout('IDOC', undefined)).toBe(true);
+  });
+
+  it('cai para o nome do layout quando detectedType está ausente (compat com API antiga)', () => {
+    expect(isSapIdocLayout(undefined, 'LAY_MARELLI_TXT_SAP_ENVNFE_4.00_NFe')).toBe(true);
+  });
+
+  it('não classifica MQSeries como IDoc SAP nem por tipo nem por nome', () => {
+    expect(isSapIdocLayout('mqseries', 'LAY_CNHI_TXT_MQSERIES_ENVNFE_4.00_NFe')).toBe(false);
+    expect(isSapIdocLayout(undefined, 'LAY_CNHI_TXT_MQSERIES_ENVNFE_4.00_NFe')).toBe(false);
   });
 });
