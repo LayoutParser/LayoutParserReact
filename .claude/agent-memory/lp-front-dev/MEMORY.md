@@ -10,6 +10,10 @@
 - [Baseline moderno](project_modern_front_quality_baseline.md) — stack, testes e gates atuais.
 - Autenticação vigente: `MainLayout` bloqueia conteúdo até `/api/session`; login navega para
   `/auth/login`, logout é POST em `/auth/logout` e nenhum token Microsoft entra no React.
+- [Fluxo OIDC (Entra+Google)](project_oidc_auth_flow.md) — `authError` é genérico entre
+  provedores; `errorRedirectLocation` preserva o `returnTo` original (não mais `/upload` fixo).
+- [Gap de segredos locais](project_local_env_secrets_gap.md) — `server/.env` some entre sessões
+  neste ambiente; confirmar antes de tentar validar OIDC ao vivo.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
