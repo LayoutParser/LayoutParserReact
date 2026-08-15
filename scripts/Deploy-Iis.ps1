@@ -8,6 +8,8 @@ param(
   [Parameter(Mandatory = $true)] [string] $EntraTenantId,
   [Parameter(Mandatory = $true)] [string] $EntraClientId,
   [Parameter(Mandatory = $true)] [string] $EntraClientSecret,
+  [string] $GoogleClientId = '',
+  [string] $GoogleClientSecret = '',
   [string] $AdminRoles = '',
   [string] $FrontendSource = 'dist',
   [string] $ServerSource = 'server',
@@ -185,6 +187,15 @@ if ($EntraClientId -notmatch '^(?i:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89a
 if ([string]::IsNullOrWhiteSpace($EntraClientSecret) -or $EntraClientSecret.Length -lt 16) {
   throw 'ENTRA_CLIENT_SECRET está ausente ou é curto demais.'
 }
+$googleHasAnyValue = -not ([string]::IsNullOrWhiteSpace($GoogleClientId) -and [string]::IsNullOrWhiteSpace($GoogleClientSecret))
+if ($googleHasAnyValue) {
+  if ($GoogleClientId -notmatch '^[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com$') {
+    throw 'GOOGLE_CLIENT_ID deve ser o Client ID emitido pelo Google Cloud Console (*.apps.googleusercontent.com).'
+  }
+  if ([string]::IsNullOrWhiteSpace($GoogleClientSecret) -or $GoogleClientSecret.Length -lt 16) {
+    throw 'GOOGLE_CLIENT_SECRET está ausente ou é curto demais.'
+  }
+}
 if ($BffPort -lt 1 -or $BffPort -gt 65535) { throw 'BFF_PORT inválida.' }
 if ($KeepReleases -lt 2 -or $KeepReleases -gt 20) { throw 'KEEP_RELEASES deve estar entre 2 e 20.' }
 
@@ -293,6 +304,8 @@ $launcher = @(
   "`$env:ENTRA_TENANT_ID = $(ConvertTo-PowerShellLiteral $EntraTenantId)",
   "`$env:ENTRA_CLIENT_ID = $(ConvertTo-PowerShellLiteral $EntraClientId)",
   "`$env:ENTRA_CLIENT_SECRET = $(ConvertTo-PowerShellLiteral $EntraClientSecret)",
+  "`$env:GOOGLE_CLIENT_ID = $(ConvertTo-PowerShellLiteral $GoogleClientId)",
+  "`$env:GOOGLE_CLIENT_SECRET = $(ConvertTo-PowerShellLiteral $GoogleClientSecret)",
   "`$env:BFF_DEV_AUTH_ENABLED = 'false'",
   "Set-Location -LiteralPath $(ConvertTo-PowerShellLiteral $serverTarget)",
   "& $(ConvertTo-PowerShellLiteral $nodeTarget) $(ConvertTo-PowerShellLiteral (Join-Path $serverTarget 'dist/src/index.js'))",
