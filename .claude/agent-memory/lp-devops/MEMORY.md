@@ -7,6 +7,7 @@
 - [Parede de permissão](feedback_parar_em_parede_de_permissao.md) — não contornar elevação ou credenciais.
 - [Verificação independente](feedback_verificar_diagnostico_independente.md) — reproduzir a evidência-chave.
 - [Dependabot](project_dependabot_compatibility_policy.md) — agrupar pares e migrar majors manualmente.
+- [CodeQL/dependency-review sempre vermelhos](project_codeql_dependency_review_need_ghas.md) — falta GHAS no repo privado; falha pré-existente, não regressão.
 - [Páginas legais com placeholder](project_legal_pages_placeholders_pending.md) — `/terms` e `/privacy` esperam e-mail/jurisdição da empresa; não preencher sozinho.
 - [.env do BFF é fail-fast](project_bff_env_failfast_placeholders.md) — placeholder no valor aborta o boot; use comentário e chave vazia.
 
