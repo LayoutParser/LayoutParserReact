@@ -24,7 +24,7 @@ a documented TODO comment in the generated launcher.
 `$SiteName-BFF` task, with `RestartCount 999` and its own persistent log
 (`logs/cloudflared-tunnel.log`, same rotation pattern). It is idempotent by default — running
 again with an existing task is a no-op unless `-Force` is passed (which intentionally issues a
-*new* public URL, since Quick Tunnel URLs aren't stable across cloudflared restarts). After
+_new_ public URL, since Quick Tunnel URLs aren't stable across cloudflared restarts). After
 starting the task it greps the log for the `*.trycloudflare.com` URL and prints it.
 `Deploy-Iis.ps1` gained an optional `-EnableCloudflareTunnel` switch that calls this script
 without `-Force` — so normal deploys never touch it unless explicitly opted in.
