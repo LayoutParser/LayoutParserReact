@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useStructureStore } from '../../store/useStructureStore';
 import { useFieldStore } from '../../store/useFieldStore';
@@ -26,6 +26,18 @@ const StructureTree: React.FC = () => {
   } = useStructureStore();
   const { setFields } = useFieldStore();
   const fieldStoreFields = useFieldStore(s => s.fields);
+
+  // Guarda o timer de scroll pendente para poder cancelá-lo se o componente
+  // desmontar antes dele disparar (evita "document is not defined" após unmount em testes).
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current !== null) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Construir árvore quando parseResult mudar
   useEffect(() => {
@@ -148,7 +160,10 @@ const StructureTree: React.FC = () => {
         highlightField(fieldId);
 
         // Scroll para o primeiro campo
-        setTimeout(() => {
+        if (scrollTimeoutRef.current !== null) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = setTimeout(() => {
           const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
           if (fieldElement) {
             fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -190,7 +205,10 @@ const StructureTree: React.FC = () => {
         highlightField(fieldId);
 
         // Scroll para o campo destacado
-        setTimeout(() => {
+        if (scrollTimeoutRef.current !== null) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = setTimeout(() => {
           const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
           if (fieldElement) {
             fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' });

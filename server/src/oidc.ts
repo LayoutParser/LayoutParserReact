@@ -308,8 +308,17 @@ export function createOidcClients(config: AppConfig): OidcClients {
   };
 }
 
-function errorPageLocation(code: string): string {
-  return `/upload?authError=${encodeURIComponent(code)}`;
+function errorRedirectLocation(returnTo: string, code: string): string {
+  // Preserva o destino original da tentativa de login (ex.: "/" para quem veio da home pública,
+  // ou uma rota protegida específica) em vez de cair sempre em "/upload" — o MainLayout só exibe
+  // a home pública de apresentação quando o pathname é exatamente "/". O hash (se houver) fica
+  // depois da query: senão authError viraria parte do fragmento e nunca apareceria em
+  // location.search.
+  const hashIndex = returnTo.indexOf('#');
+  const path = hashIndex === -1 ? returnTo : returnTo.slice(0, hashIndex);
+  const hash = hashIndex === -1 ? '' : returnTo.slice(hashIndex);
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}authError=${encodeURIComponent(code)}${hash}`;
 }
 
 interface ProviderRouteConfig {
@@ -373,7 +382,10 @@ function registerProviderRoutes(
           },
           'Não foi possível iniciar a autenticação OIDC.'
         );
-        await reply.redirect(errorPageLocation('temporarily_unavailable'), 303);
+        await reply.redirect(
+          errorRedirectLocation(transaction.returnTo, 'temporarily_unavailable'),
+          303
+        );
       }
     }
   );
@@ -401,17 +413,20 @@ function registerProviderRoutes(
         !AUTH_VALUE_PATTERN.test(state) ||
         !safeEqual(state, transaction.state)
       ) {
-        await reply.redirect(errorPageLocation('invalid_callback'), 303);
+        await reply.redirect(
+          errorRedirectLocation(transaction?.returnTo ?? '/', 'invalid_callback'),
+          303
+        );
         return;
       }
 
       if (request.query.error === 'access_denied') {
-        await reply.redirect(errorPageLocation('access_denied'), 303);
+        await reply.redirect(errorRedirectLocation(transaction.returnTo, 'access_denied'), 303);
         return;
       }
 
       if (request.query.error !== undefined || !code) {
-        await reply.redirect(errorPageLocation('login_failed'), 303);
+        await reply.redirect(errorRedirectLocation(transaction.returnTo, 'login_failed'), 303);
         return;
       }
 
@@ -438,7 +453,7 @@ function registerProviderRoutes(
           },
           'A resposta OIDC foi rejeitada.'
         );
-        await reply.redirect(errorPageLocation('login_failed'), 303);
+        await reply.redirect(errorRedirectLocation(transaction.returnTo, 'login_failed'), 303);
       }
     }
   );

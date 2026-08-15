@@ -1,4 +1,5 @@
 import React from 'react';
+import { authenticationMessages } from './authenticationMessages';
 import './AuthenticationGate.css';
 
 interface AuthenticationGateProps {
@@ -8,15 +9,6 @@ interface AuthenticationGateProps {
   infrastructureError?: string | null;
   onRetry: () => void;
 }
-
-const authenticationMessages: Record<string, string> = {
-  access_denied: 'A entrada foi cancelada. Você pode tentar novamente quando estiver pronto.',
-  invalid_callback:
-    'A resposta de autenticação expirou ou não pôde ser validada. Inicie uma nova entrada.',
-  login_failed: 'A Microsoft não conseguiu concluir a entrada. Tente novamente.',
-  temporarily_unavailable:
-    'O serviço de autenticação está temporariamente indisponível. Tente novamente em instantes.',
-};
 
 const AuthenticationGate: React.FC<AuthenticationGateProps> = ({
   status,
