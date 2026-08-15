@@ -59,4 +59,17 @@ describe('AnalysisModeTabs', () => {
       'O caminho TCL/XSL ainda pode ser avaliado'
     );
   });
+
+  it('apresenta a edição do TXT antes da árvore de estrutura na aba TXT Posicional', () => {
+    setSuccessfulParse('not_applicable');
+
+    render(<AnalysisModeTabs />);
+
+    const campos = screen.getByText('Campos posicionais');
+    const arvore = screen.getByText('Árvore estrutural');
+
+    // compareDocumentPosition indica DOCUMENT_POSITION_FOLLOWING quando `arvore` vem DEPOIS de
+    // `campos` no DOM — ou seja, edição do TXT em cima, estrutura hierárquica embaixo.
+    expect(campos.compareDocumentPosition(arvore) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

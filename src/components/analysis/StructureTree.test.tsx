@@ -142,4 +142,93 @@ describe('StructureTree', () => {
     ).toBeInTheDocument();
     expect(useFieldStore.getState().highlightedFields).toContain('LINHA_EMIT_CNPJ');
   });
+
+  it('não aplica a hierarquia de segmentos SAP a um layout MQSeries', async () => {
+    const mqFields: Field[] = [
+      { lineName: 'LINHA_MQ', fieldName: 'Codigo', value: '001', sequence: 1 },
+    ];
+    useAppStore.getState().setParseResult({
+      success: true,
+      detectedType: 'mqseries',
+      fields: mqFields,
+      layout: {
+        layoutGuid: 'LAY_mq',
+        layoutType: 'TextPositional',
+        name: 'LAY_CNHI_TXT_MQSERIES_ENVNFE_4.00_NFe',
+        description: 'Layout MQSeries',
+        limitOfCaracters: 0,
+        elements: [
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_mq',
+            name: 'LINHA_MQ',
+            description: '',
+            sequence: 1,
+            isRequired: true,
+            initialValue: 'LINHA000',
+            elements: [
+              JSON.stringify({
+                Type: 'FieldElementVO',
+                ElementGuid: 'FLD_codigo',
+                Name: 'Codigo',
+                Sequence: 1,
+              }),
+            ],
+          },
+        ],
+      },
+    });
+    useAppStore.getState().setFields(mqFields);
+
+    render(<StructureTree />);
+
+    await screen.findByRole('tree', { name: 'Estrutura do documento' });
+    expect(screen.queryByText('Hierarquia de segmentos')).not.toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: /LINHA_MQ/i })).toBeInTheDocument();
+  });
+
+  it('aplica a hierarquia mesmo com nome de layout genérico quando detectedType é idoc', async () => {
+    const sapFields: Field[] = [
+      { lineName: 'LINHA_EMIT', fieldName: 'CNPJ', value: '02990605001174', sequence: 1 },
+    ];
+    useAppStore.getState().setParseResult({
+      success: true,
+      detectedType: 'idoc',
+      fields: sapFields,
+      layout: {
+        layoutGuid: 'LAY_sap_generico',
+        layoutType: 'TextPositional',
+        name: 'LAY_QUALQUER_NOME_SEM_SUFIXO_SAP',
+        description: 'Layout IDoc detectado pelo back-end',
+        limitOfCaracters: 0,
+        elements: [
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_control',
+            name: 'LINHA000',
+            description: '',
+            sequence: 1,
+            isRequired: true,
+            initialValue: 'EDI_DC40',
+            elements: [],
+          },
+          {
+            type: 'LineElementVO',
+            elementGuid: 'LIN_emit',
+            name: 'LINHA_EMIT',
+            description: '',
+            sequence: 2,
+            isRequired: false,
+            initialValue: 'ZRSDM_NFE_400_EMIT000',
+            elements: [],
+          },
+        ],
+      },
+    });
+    useAppStore.getState().setFields(sapFields);
+
+    render(<StructureTree />);
+
+    expect(await screen.findByText('Hierarquia de segmentos')).toBeInTheDocument();
+  });
 });

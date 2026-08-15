@@ -161,6 +161,28 @@ export const isSapNfeLayoutName = (layoutName?: string): boolean =>
   layoutName?.trim().toUpperCase().endsWith(SAP_NFE_LAYOUT_SUFFIX) ?? false;
 
 /**
+ * Sinal autoritativo de que o BACK-END detectou o documento como IDoc SAP
+ * (`ParseResponse.detectedType`, ex.: `"idoc"`).
+ *
+ * Preferir este sinal ao nome do layout: o nome vem do catálogo (pode ficar desatualizado ou
+ * mal cadastrado — ex.: layout MQSeries reaproveitando um nome antigo com "SAP" no meio), já o
+ * tipo detectado é derivado do CONTEÚDO real do documento pelo parser da API.
+ */
+export const isSapIdocDetectedType = (detectedType?: string): boolean =>
+  detectedType?.trim().toLowerCase() === 'idoc';
+
+/**
+ * Decide se a apresentação hierárquica de segmentos SAP IDoc se aplica a este layout.
+ *
+ * Ordem de prioridade: `detectedType` do back-end (aditivo/opcional — pode faltar em versões
+ * antigas da API) e só then o nome do layout como fallback. `buildSapIdocTree` ainda exige a
+ * presença estrutural do registro de controle EDI_DC40 — então mesmo um falso positivo aqui
+ * (nome/tipo) não fabrica hierarquia para um documento que não tem a estrutura de segmentos SAP.
+ */
+export const isSapIdocLayout = (detectedType?: string, layoutName?: string): boolean =>
+  isSapIdocDetectedType(detectedType) || isSapNfeLayoutName(layoutName);
+
+/**
  * Constrói a árvore de segmentos declarada no layout IDoc SAP.
  *
  * Campos posicionais são deliberadamente ignorados nesta visão: eles continuam disponíveis no
