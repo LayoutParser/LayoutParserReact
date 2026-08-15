@@ -7,10 +7,10 @@ metadata:
 
 Três checks falham de forma permanente neste repo e **não indicam problema no código da PR**:
 
-| Check                                                       | Erro real                                                                |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `Analyze (javascript-typescript)` / `Analyze (actions)`      | "Advanced Security must be enabled for this repository to use code scanning" |
-| `Bloquear dependencias vulneraveis` (dependency-review)      | "Dependency review is not supported on this repository... Dependency graph + GHAS" |
+| Check                                                   | Erro real                                                                          |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `Analyze (javascript-typescript)` / `Analyze (actions)` | "Advanced Security must be enabled for this repository to use code scanning"       |
+| `Bloquear dependencias vulneraveis` (dependency-review) | "Dependency review is not supported on this repository... Dependency graph + GHAS" |
 
 O repo é **privado** e `GET /repos/:owner/:repo` devolve
 `security_and_analysis.advanced_security: null` — ou seja, GHAS não está habilitado. Nessa
