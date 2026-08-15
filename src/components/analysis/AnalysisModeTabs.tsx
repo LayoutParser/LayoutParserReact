@@ -67,11 +67,14 @@ const AnalysisModeTabs: React.FC = () => {
       label: 'TXT Posicional',
       content: (
         <div className="file-visualization">
-          <div className="file-visualization-header">
-            <StructureTree />
-          </div>
+          {/* Edição/alteração do TXT é a área principal da aba e vem primeiro; a árvore de
+              estrutura (hierárquica só para SAP IDoc, plana nos demais casos) é conteúdo
+              secundário e fica abaixo, como nas outras abas do produto. */}
           <div className="file-visualization-content">
             <FieldDisplay />
+          </div>
+          <div className="file-visualization-header">
+            <StructureTree />
           </div>
         </div>
       ),

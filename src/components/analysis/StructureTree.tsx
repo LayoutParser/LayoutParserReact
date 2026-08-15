@@ -6,7 +6,7 @@ import {
   buildSapIdocTree,
   buildTreeFromFields,
   buildTreeFromLayout,
-  isSapNfeLayoutName,
+  isSapIdocLayout,
 } from '../../utils/treeBuilder';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
 import type { TreeNode } from '../../types/structure';
@@ -88,9 +88,14 @@ const StructureTree: React.FC = () => {
     // Senão, usar buildTreeFromFields (mais simples, agrupa por linha)
     let tree: TreeNode[];
 
-    const isSapNfeLayout = isSapNfeLayoutName(parseResult.layout?.name || selectedLayout?.name);
+    // Prioriza o `detectedType` que a API devolve para o documento; o nome do layout é só
+    // fallback (catálogo pode ter cadastro desatualizado). Ver `isSapIdocLayout`.
+    const isSapIdoc = isSapIdocLayout(
+      parseResult.detectedType,
+      parseResult.layout?.name || selectedLayout?.name
+    );
 
-    if (isSapNfeLayout && hasLayoutElements) {
+    if (isSapIdoc && hasLayoutElements) {
       // O layout SAP já declara a hierarquia de segmentos em LineElementVO aninhados. Esta
       // visão apresenta o esquema do IDoc, não afirma que todos os segmentos existem no TXT.
       const sapTree = buildSapIdocTree(layoutElements);
