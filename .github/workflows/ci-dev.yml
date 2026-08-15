@@ -89,6 +89,8 @@ jobs:
           ENTRA_TENANT_ID: ${{ vars.ENTRA_TENANT_ID }}
           ENTRA_CLIENT_ID: ${{ vars.ENTRA_CLIENT_ID }}
           ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Variable DEPLOY_PATH_DEV ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME_DEV ausente.' }
@@ -97,6 +99,8 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:ENTRA_TENANT_ID)) { throw 'Variable ENTRA_TENANT_ID ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_ID)) { throw 'Variable ENTRA_CLIENT_ID ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:ENTRA_CLIENT_SECRET)) { throw 'Secret ENTRA_CLIENT_SECRET ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_CLIENT_ID)) { throw 'Variable GOOGLE_CLIENT_ID ausente.' }
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_CLIENT_SECRET)) { throw 'Secret GOOGLE_CLIENT_SECRET ausente.' }
 
           & ./scripts/Deploy-Iis.ps1 `
             -DeployRoot $env:DEPLOY_ROOT `
@@ -107,4 +111,6 @@ jobs:
             -AdminRoles $env:BFF_ADMIN_ROLES `
             -EntraTenantId $env:ENTRA_TENANT_ID `
             -EntraClientId $env:ENTRA_CLIENT_ID `
-            -EntraClientSecret $env:ENTRA_CLIENT_SECRET
+            -EntraClientSecret $env:ENTRA_CLIENT_SECRET `
+            -GoogleClientId $env:GOOGLE_CLIENT_ID `
+            -GoogleClientSecret $env:GOOGLE_CLIENT_SECRET
