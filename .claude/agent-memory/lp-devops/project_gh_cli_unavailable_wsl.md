@@ -1,41 +1,32 @@
 ---
-name: gh-cli-unavailable-wsl-bash
-description: gh CLI não existe neste ambiente (nem WSL nem Windows) — mas git/ssh via WSL interop (git.exe/ssh.exe) resolvem push/fetch normalmente com as credenciais do lado Windows
+name: gh-cli-and-git-network-ops-wsl
+description: gh CLI e git push do bash/WSL FUNCIONAM neste ambiente desde 2026-08-15 (remote HTTPS + token gh) — corrige a nota antiga de que gh não existia e exigia git.exe
 metadata:
   type: project
 ---
 
-`gh` não está disponível **em lugar nenhum** deste ambiente — nem no bash/WSL nem no Windows.
-Testado em 2026-07-20: `command -v gh`/`where.exe gh` → nada; busca por `gh.exe` em
-`AppData/Local/Programs` e via `powershell.exe Get-Command gh` → nada. Não insista em `gh`,
-não existe instalado.
+**Estado atual (confirmado em 2026-08-15):** operações de rede do git e o `gh` funcionam
+direto do bash/WSL, sem interop.
 
-**O problema real (e a solução) é mais específico — não é falta de credencial, é o shell
-errado:** o `git` **nativo do WSL** (`/usr/bin/git` ou equivalente) não tem `~/.ssh`
-(`/home/<user>/.ssh` não existe) — então `git fetch`/`git push` direto no bash falham com
-`Host key verification failed` / `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or
-directory`. As chaves do usuário **existem**, só que do lado Windows:
-`/mnt/c/Users/<user>/.ssh/id_ed25519` (+ `known_hosts` já populado).
+- `gh` **está instalado** no WSL (`gh version 2.45.0`) e autenticado como
+  `elson-vinicius-lopes`, protocolo HTTPS, escopos `gist`, `project`, `read:org`, `repo`,
+  `workflow`. `gh pr create`/`view` funcionam (usado para abrir a PR #111).
+- O `origin` deste repo é **HTTPS** (`https://github.com/LayoutParser/LayoutParserReact.git`),
+  não SSH. `git fetch`/`git push` nativos do bash funcionam usando a credencial do `gh` —
+  não é mais necessário `git.exe`.
 
-**Why:** o working directory deste repo é `/mnt/c/Users/.../LayoutParserReact` — ou seja, é o
-mesmo filesystem/`.git` acessado tanto pelo Windows quanto pelo WSL (não são clones
-separados), mas cada shell tem seu próprio `$HOME`/`~/.ssh`. O usuário só configurou SSH no
-lado Windows (onde ele mesmo dá push manualmente às vezes).
+**Why:** a versão anterior desta memória (2026-07-20) afirmava que `gh` não existia em lugar
+nenhum e que `git fetch`/`push` do bash falhavam com `Host key verification failed`, exigindo
+`git.exe`/`ssh.exe` via interop. Aquilo era verdade quando o `origin` era SSH e as chaves só
+existiam do lado Windows (`/mnt/c/Users/<user>/.ssh`), com `$HOME` do WSL sem `~/.ssh`. O
+remote migrou para HTTPS e o `gh` foi instalado desde então, o que dissolveu os dois problemas
+de uma vez. Guardo o histórico porque explica por que outras memórias ainda citam `git.exe`.
 
-**How to apply:** para qualquer operação de rede (`fetch`/`push`/`ls-remote`) a partir deste
-agente, **não use o `git` do PATH do bash** — use os binários Windows via WSL interop, que
-funcionam direto porque herdam o ambiente/credenciais do usuário:
-
-```bash
-git.exe fetch --all --prune     # em vez de `git fetch`
-git.exe push -u origin <branch> # em vez de `git push`
-git.exe ls-remote --heads origin
-```
-
-Confirmados disponíveis via interop: `git.exe`
-(`/mnt/c/Users/<user>/AppData/Local/Programs/Git/cmd/git.exe`), `ssh.exe`
-(`/mnt/c/Windows/System32/OpenSSH/ssh.exe`), `powershell.exe` (útil para `Get-Service`/checar
-o runner). Continue usando o `git` nativo do bash para tudo **local** (log/status/diff/show/
-branch/merge-base) — só troque para `git.exe` no momento de tocar a rede. Ver também
-[[project_ci_validation_via_runner_diag_logs]] para como validar o resultado de um CI sem
-`gh` nenhum.
+**How to apply:** use `git` e `gh` nativos do bash normalmente. Só investigue interop se
+aparecer erro de credencial/host key — e, nesse caso, **revalide** (`gh auth status`,
+`git remote -v`) antes de concluir qualquer coisa: este ambiente já mudou uma vez. A restrição
+que continua valendo não é técnica e sim de autoridade: push/PR/merge só com pedido explícito
+do usuário, e nunca contornando uma parede de permissão — ver
+[[feedback_parar_em_parede_de_permissao]]. O `npm`/`node` continuam sendo binários **Windows**
+alcançados por interop, com `WSLENV` vazio — esse ponto **não** mudou, ver
+[[project_node_toolchain_wsl_interop]].
