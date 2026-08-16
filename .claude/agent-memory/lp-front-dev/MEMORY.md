@@ -14,6 +14,10 @@
   provedores; `errorRedirectLocation` preserva o `returnTo` original (não mais `/upload` fixo).
 - [Gap de segredos locais](project_local_env_secrets_gap.md) — `server/.env` some entre sessões
   neste ambiente; confirmar antes de tentar validar OIDC ao vivo.
+- [Árvore XML navegável (PBI #127)](project_xml_navigable_tree_pbi127.md) — implementado em
+  `feat/xml-navigable-tree`; PBI #128 (vínculo TXT↔XML) segue bloqueado por contrato.
+- [Lint de setState em effect](feedback_effect_setstate_lint.md) — `react-hooks/set-state-in-effect`
+  é erro aqui; usar padrão "ajustar estado durante o render" em vez de `useEffect`.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

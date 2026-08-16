@@ -8,12 +8,9 @@ import {
   xmlAnalysisService,
 } from '../../services/api/xmlAnalysisService';
 import { resolveLayoutGuid } from '../../utils/layoutGuid';
-import {
-  copyTextToClipboard,
-  createXmlFileName,
-  formatXmlForDisplay,
-} from '../../utils/xmlDelivery';
+import { copyTextToClipboard, createXmlFileName } from '../../utils/xmlDelivery';
 import { buildTransformationDiagnostics } from '../../utils/transformationDiagnostics';
+import XmlTree from './XmlTree';
 import './XmlTransformationDisplay.css';
 
 const PATHWAY_LABEL: Record<string, string> = {
@@ -63,13 +60,6 @@ const XmlTransformationDisplay: React.FC = () => {
     () => candidates.find(c => c.candidateId === activeCandidateId) ?? candidates[0] ?? null,
     [candidates, activeCandidateId]
   );
-
-  const formattedXml = useMemo(() => {
-    if (activeCandidate) {
-      return formatXmlForDisplay(activeCandidate.transformedXml);
-    }
-    return '';
-  }, [activeCandidate]);
 
   const transformationDiagnostics = useMemo(
     () => buildTransformationDiagnostics(candidatesWarnings),
@@ -135,7 +125,7 @@ const XmlTransformationDisplay: React.FC = () => {
     }
 
     try {
-      // Copiar sempre o valor bruto da API. `formattedXml` existe apenas para leitura na tela.
+      // Copiar sempre o valor bruto da API — a árvore existe apenas para leitura na tela.
       await copyTextToClipboard(activeCandidate.transformedXml);
       setDeliveryFeedback({
         kind: 'success',
@@ -422,16 +412,10 @@ const XmlTransformationDisplay: React.FC = () => {
                 </div>
               )}
 
-              {/* Textarea somente leitura mantém o XML navegável e rolável por teclado sem
-                  apresentar o conteúdo como um campo editável. */}
-              <textarea
-                className="xml-transformation-content"
-                aria-label="Conteúdo XML transformado"
-                value={formattedXml}
-                readOnly
-                rows={18}
-                spellCheck={false}
-              />
+              {/* Árvore navegável (expand/collapse) a partir do XML bruto — parseado via
+                  `DOMParser` nativo, sem dependência nova. O valor copiado/baixado continua
+                  sendo `activeCandidate.transformedXml`, não uma versão derivada da árvore. */}
+              <XmlTree xml={activeCandidate.transformedXml} />
             </div>
           )}
         </>
