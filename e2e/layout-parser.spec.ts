@@ -227,8 +227,11 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
   await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
   await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
 
-  const xml = page.getByRole('textbox', { name: 'Conteúdo XML transformado' });
-  await expect(xml).toHaveValue(/<documento>/);
+  const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
+  const documentoNode = xmlTree.getByRole('treeitem', { name: /documento/ });
+  await expect(documentoNode).toBeVisible();
+  await documentoNode.click();
+  await expect(xmlTree.getByRole('treeitem', { name: /codigo.*ABC/ })).toBeVisible();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar XML' }).click();
@@ -258,9 +261,10 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
 
   await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
   await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
-  await expect(page.getByRole('textbox', { name: 'Conteúdo XML transformado' })).toHaveValue(
-    /<codigo>XYZ<\/codigo>/
-  );
+
+  const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
+  await xmlTree.getByRole('treeitem', { name: /documento/ }).click();
+  await expect(xmlTree.getByRole('treeitem', { name: /codigo.*XYZ/ })).toBeVisible();
 });
 
 test('navega pela hierarquia SAP IDoc declarada no layout', async ({ page }) => {

@@ -1,0 +1,173 @@
+/* Reaproveita o padrão visual/interação de StructureTree.css (expand/collapse, indentação,
+   navegação por teclado), com classes próprias para não colidir com a árvore do TXT. */
+
+.xml-tree {
+  max-height: 60vh;
+  padding: var(--spacing-md);
+  overflow: auto;
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.xml-tree-error,
+.xml-tree-empty {
+  min-height: 8rem;
+  padding: var(--spacing-lg) var(--spacing-md);
+  background: var(--color-canvas);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.xml-tree-error {
+  border-style: solid;
+  border-color: var(--color-danger);
+  color: var(--color-danger-text);
+  text-align: left;
+}
+
+.xml-tree-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.xml-tree-control-btn {
+  min-height: var(--control-height);
+  padding: var(--spacing-sm) 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.xml-tree-control-btn:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.xml-tree-control-btn:focus-visible,
+.xml-tree-node-header:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.xml-tree-root,
+.xml-tree-node,
+.xml-tree-children {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xml-tree-node-header {
+  display: flex;
+  min-height: var(--control-height);
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.xml-tree-node-header:hover {
+  background: var(--color-accent-soft);
+}
+
+.xml-tree-toggle {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(var(--color-accent-rgb), 0.25);
+  border-radius: var(--radius-sm);
+  background: rgba(var(--color-accent-rgb), 0.08);
+  color: var(--color-accent);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.xml-tree-spacer {
+  display: inline-block;
+  width: 24px;
+  flex: 0 0 auto;
+}
+
+.xml-tree-element-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.xml-tree-attribute-name {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.xml-tree-attribute-value {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-regular, normal);
+}
+
+.xml-tree-text {
+  min-width: 0;
+  margin-left: var(--spacing-sm);
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-style: italic;
+}
+
+.xml-tree-children {
+  margin-left: 12px;
+  padding-left: var(--spacing-lg);
+  border-left: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 600px) {
+  .xml-tree {
+    max-height: 52vh;
+    padding: var(--spacing-sm);
+  }
+
+  .xml-tree-children {
+    margin-left: 8px;
+    padding-left: var(--spacing-sm);
+  }
+
+  .xml-tree-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .xml-tree-control-btn {
+    min-height: 44px;
+  }
+}

@@ -119,9 +119,12 @@ describe('XmlTransformationDisplay', () => {
       })
     );
 
-    expect(screen.getByRole('textbox', { name: 'Conteúdo XML transformado' })).toHaveValue(
-      ['<root>', '  <value>123</value>', '</root>'].join('\n')
-    );
+    const tree = screen.getByRole('tree', { name: 'Árvore do XML transformado' });
+    expect(within(tree).getByRole('treeitem', { name: '<root>' })).toBeInTheDocument();
+    // A árvore começa colapsada: o filho só aparece após expandir o nó raiz.
+    expect(within(tree).queryByRole('treeitem', { name: /value/ })).not.toBeInTheDocument();
+    fireEvent.click(within(tree).getByRole('treeitem', { name: '<root>' }));
+    expect(within(tree).getByText('123')).toBeInTheDocument();
   });
 
   it('copia o XML bruto, sem a indentação usada apenas na tela', async () => {
