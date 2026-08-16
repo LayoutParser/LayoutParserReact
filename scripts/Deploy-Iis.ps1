@@ -14,7 +14,8 @@ param(
   [string] $FrontendSource = 'dist',
   [string] $ServerSource = 'server',
   [int] $BffPort = 3100,
-  [int] $KeepReleases = 5
+  [int] $KeepReleases = 5,
+  [switch] $EnableCloudflareTunnel
 )
 
 $ErrorActionPreference = 'Stop'
@@ -258,7 +259,8 @@ $publicOrigin = if ($httpsPort -eq '443') {
 $releasesRoot = Join-Path $deployPath 'releases'
 $runtimeRoot = Join-Path $deployPath 'runtime'
 $stateRoot = Join-Path $deployPath 'state'
-foreach ($directory in @($deployPath, $releasesRoot, $runtimeRoot, $stateRoot)) {
+$logsRoot = Join-Path $deployPath 'logs'
+foreach ($directory in @($deployPath, $releasesRoot, $runtimeRoot, $stateRoot, $logsRoot)) {
   New-Item -ItemType Directory -Path $directory -Force | Out-Null
 }
 
@@ -289,6 +291,9 @@ if (Test-Path -LiteralPath $nodeTarget -PathType Leaf) {
   Copy-Item -LiteralPath $nodeSource -Destination $nodeTarget
 }
 
+$bffLogFile = Join-Path $logsRoot 'bff.log'
+$bffLogFileRotated = Join-Path $logsRoot 'bff.log.old'
+
 $launcherPath = Join-Path $releaseRoot 'Start-Bff.ps1'
 $launcher = @(
   "`$ErrorActionPreference = 'Stop'",
@@ -308,7 +313,24 @@ $launcher = @(
   "`$env:GOOGLE_CLIENT_SECRET = $(ConvertTo-PowerShellLiteral $GoogleClientSecret)",
   "`$env:BFF_DEV_AUTH_ENABLED = 'false'",
   "Set-Location -LiteralPath $(ConvertTo-PowerShellLiteral $serverTarget)",
-  "& $(ConvertTo-PowerShellLiteral $nodeTarget) $(ConvertTo-PowerShellLiteral (Join-Path $serverTarget 'dist/src/index.js'))",
+  '# Logs persistem fora da pasta de release (que é trocada a cada deploy), em',
+  '# um diretório "logs" irmão de runtime/state dentro do DeployRoot.',
+  "`$bffLogFile = $(ConvertTo-PowerShellLiteral $bffLogFile)",
+  "`$bffLogFileRotated = $(ConvertTo-PowerShellLiteral $bffLogFileRotated)",
+  '# Rotação simples: se o log atual passar de 20 MiB, guarda uma única cópia',
+  '# anterior (.old) e recomeça um arquivo novo. TODO: rotação por múltiplos',
+  '# arquivos/compressão se o volume de log crescer além disso.',
+  '$maxBffLogBytes = 20MB',
+  'if ((Test-Path -LiteralPath $bffLogFile) -and (Get-Item -LiteralPath $bffLogFile).Length -gt $maxBffLogBytes) {',
+  '  Move-Item -LiteralPath $bffLogFile -Destination $bffLogFileRotated -Force',
+  '}',
+  '# Scheduled Tasks não têm console; usar "&" direto descarta stdout/stderr do',
+  '# processo Node. O redirecionamento ">> 2>&1" via cmd.exe funciona sem',
+  '# console e preserva o log JSON linha a linha do pino/Fastify.',
+  "`$nodeExe = $(ConvertTo-PowerShellLiteral $nodeTarget)",
+  "`$entryPoint = $(ConvertTo-PowerShellLiteral (Join-Path $serverTarget 'dist/src/index.js'))",
+  '$cmdLine = "`"" + $nodeExe + "`" `"" + $entryPoint + "`" >> `"" + $bffLogFile + "`" 2>&1"',
+  '& cmd.exe /c $cmdLine',
   'exit $LASTEXITCODE'
 )
 Set-Content -LiteralPath $launcherPath -Value $launcher -Encoding UTF8
@@ -378,3 +400,15 @@ foreach ($oldRelease in $oldReleases) {
 }
 
 Write-Host "Deploy concluído: release $releaseName, front HTTPS e BFF saudável."
+
+if ($EnableCloudflareTunnel) {
+  # Provisionamento do túnel Cloudflare é EXPLICITAMENTE opt-in e idempotente: só cria a
+  # Scheduled Task própria na primeira vez (Register-CloudflareTunnel.ps1 não recria task
+  # existente sem -Force), para que a URL pública gerada permaneça estável entre deploys
+  # normais. Deploys sem este parâmetro nunca tocam a task do túnel.
+  $registerTunnelScript = Join-Path $PSScriptRoot 'Register-CloudflareTunnel.ps1'
+  if (-not (Test-Path -LiteralPath $registerTunnelScript -PathType Leaf)) {
+    throw "EnableCloudflareTunnel foi solicitado, mas $registerTunnelScript não foi encontrado."
+  }
+  & $registerTunnelScript -DeployRoot $deployPath -PublicHost $PublicHost
+}
