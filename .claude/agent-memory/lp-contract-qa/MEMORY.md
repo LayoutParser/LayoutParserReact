@@ -8,6 +8,11 @@ Memoria duravel do portao de contratos do LayoutParser React.
 - Registre endpoint/DTO e data da verificacao, nunca documento ou payload real de usuario.
 - Um contrato memorizado nao substitui MCP/OpenAPI/controller atual numa nova auditoria.
 
+## Achados de contrato
+
+- [segmentMappings sempre vazio](project_segmentmappings_dead_field.md) — campo tipado em
+  `transformation.ts` nunca é populado nos pathways reais da API (2026-08-15).
+
 ## Fonte local atual
 
 - `contracts/api-endpoints.json` registra owner, metodo e path consumidos.
