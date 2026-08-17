@@ -32,10 +32,10 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const previousBodyOverflow = document.body.style.overflow;
     previouslyFocusedElementRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    document.body.style.overflow = 'hidden';
+    // Classe CSS em vez de estilo inline: evita violar a CSP (style-src 'self').
+    document.body.classList.add('modal-open');
 
     const dialog = dialogRef.current;
     const firstFocusableElement = dialog?.querySelector<HTMLElement>(FOCUSABLE_ELEMENTS);
@@ -76,7 +76,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousBodyOverflow;
+      document.body.classList.remove('modal-open');
       previouslyFocusedElementRef.current?.focus();
     };
   }, [isOpen, onClose]);

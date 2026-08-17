@@ -19,7 +19,7 @@ describe('Modal', () => {
     const closeButton = screen.getByRole('button', { name: 'Fechar janela' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(closeButton).toHaveFocus();
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.body).toHaveClass('modal-open');
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledOnce();
@@ -30,7 +30,7 @@ describe('Modal', () => {
       </Modal>
     );
     expect(launcher).toHaveFocus();
-    expect(document.body.style.overflow).toBe('');
+    expect(document.body).not.toHaveClass('modal-open');
     launcher.remove();
   });
 
