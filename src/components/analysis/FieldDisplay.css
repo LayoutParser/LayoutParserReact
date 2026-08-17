@@ -113,6 +113,15 @@
   /* Removido padding-left - sequencial agora está inline */
 }
 
+/* Linhas que também renderizam o indicador de ocorrência têm altura maior que a base de
+   2rem estimada acima. Sem esta estimativa própria, `content-visibility: auto` reserva
+   espaço insuficiente para essas linhas antes de entrarem na viewport, e o navegador chega
+   a sobrepor/"espremer" o conteúdo de ocorrências vizinhas até recalcular o layout real —
+   dando a impressão de que os valores de ocorrências diferentes foram concatenados. */
+.field-line-container--occurrence {
+  contain-intrinsic-size: auto 3.4rem;
+}
+
 .field-line-container:hover {
   background: rgba(var(--color-accent-rgb), 0.055);
 }
@@ -343,17 +352,21 @@
   background: var(--color-accent-hover);
 }
 
-/* Indicador de ocorrência múltipla */
+/* Indicador de ocorrência múltipla: cabeçalho de bloco (não rótulo solto no meio do texto),
+   para que cada ocorrência da mesma linha fique visualmente separada das vizinhas. */
 .line-occurrence-indicator {
-  font-size: 10px;
-  color: var(--color-text-muted);
+  display: block;
+  width: 600ch;
+  max-width: 100%;
   margin-bottom: 4px;
-  font-weight: 600;
-  padding: 2px 8px;
-  background-color: var(--color-surface-alt);
+  padding: 3px 8px;
   border-left: 3px solid var(--color-accent);
-  border-radius: 3px;
-  display: inline-block;
+  border-radius: 3px 3px 0 0;
+  background-color: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: normal;
 }
 
 /* Linha com erro de validação */
