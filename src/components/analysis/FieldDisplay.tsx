@@ -788,10 +788,12 @@ const FieldDisplay: React.FC = () => {
         return (
           <div
             key={`${group.lineName}_${occurrence}_${groupIndex}`}
-            className={`field-line-container ${hasLineError ? 'line-with-error' : ''}`}
+            className={`field-line-container ${hasMultipleOccurrences ? 'field-line-container--occurrence' : ''} ${hasLineError ? 'line-with-error' : ''}`}
           >
-            {/* ✅ Indicador de múltiplas ocorrências */}
-            {hasMultipleOccurrences && occurrence > 1 && (
+            {/* ✅ Indicador de múltiplas ocorrências: cabeçalho do bloco, nunca misturado ao
+                conteúdo bruto da linha. Mostrado a partir da 1ª ocorrência quando há mais de
+                uma, para deixar claro que a linha abaixo é só um recorte físico do grupo. */}
+            {hasMultipleOccurrences && (
               <div className="line-occurrence-indicator">
                 {group.lineName} - Ocorrência {occurrence}
               </div>
