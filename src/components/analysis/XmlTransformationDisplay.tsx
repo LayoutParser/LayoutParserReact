@@ -10,6 +10,8 @@ import {
 import { resolveLayoutGuid } from '../../utils/layoutGuid';
 import { copyTextToClipboard, createXmlFileName } from '../../utils/xmlDelivery';
 import { buildTransformationDiagnostics } from '../../utils/transformationDiagnostics';
+import { extractAiFallbackTicket } from '../../utils/aiFallback';
+import { useAiFallbackPolling } from '../../hooks/useAiFallbackPolling';
 import XmlTree from './XmlTree';
 import './XmlTransformationDisplay.css';
 
@@ -65,6 +67,15 @@ const XmlTransformationDisplay: React.FC = () => {
     () => buildTransformationDiagnostics(candidatesWarnings),
     [candidatesWarnings]
   );
+
+  // Sinal de fallback automático de IA (issue #140): a API não devolve um campo estruturado
+  // dedicado, então o ticket é extraído do texto livre em `warnings`. `null` cobre tanto "sem
+  // fallback" quanto "cooldown suprimido"/"falha de pathway" (nenhum dos dois gera ticket).
+  const aiFallbackTicket = useMemo(
+    () => (candidates.length === 0 ? extractAiFallbackTicket(candidatesWarnings) : null),
+    [candidates.length, candidatesWarnings]
+  );
+  const aiFallback = useAiFallbackPolling(aiFallbackTicket);
 
   const handleGenerate = async () => {
     if (!selectedLayout || !txtContent) {
@@ -160,6 +171,50 @@ const XmlTransformationDisplay: React.FC = () => {
       link.remove();
       URL.revokeObjectURL(url);
       setDeliveryFeedback({ kind: 'success', message: 'Download do XML bruto iniciado.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível baixar o XML.';
+      setDeliveryFeedback({ kind: 'error', message });
+    }
+  };
+
+  const handleCopyAiXml = async (transformedXml: string | undefined) => {
+    if (!transformedXml) {
+      setDeliveryFeedback({ kind: 'error', message: 'Não há XML transformado para copiar.' });
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(transformedXml);
+      setDeliveryFeedback({
+        kind: 'success',
+        message: 'XML bruto (sugestão de IA) copiado para a área de transferência.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Não foi possível copiar o XML.';
+      setDeliveryFeedback({ kind: 'error', message });
+    }
+  };
+
+  const handleDownloadAiXml = (transformedXml: string | undefined) => {
+    if (!transformedXml) {
+      setDeliveryFeedback({ kind: 'error', message: 'Não há XML transformado para baixar.' });
+      return;
+    }
+
+    try {
+      const blob = new Blob([transformedXml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = createXmlFileName(selectedLayout?.name ?? 'transformacao', 'ia-sugestao');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setDeliveryFeedback({
+        kind: 'success',
+        message: 'Download do XML bruto (sugestão de IA) iniciado.',
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Não foi possível baixar o XML.';
       setDeliveryFeedback({ kind: 'error', message });
@@ -276,6 +331,117 @@ const XmlTransformationDisplay: React.FC = () => {
                     <li key={warning}>{warning}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {aiFallbackTicket && (
+              <div
+                className="xml-transformation-ai-fallback"
+                role="region"
+                aria-label="Fallback automático de IA"
+                aria-live="polite"
+              >
+                {aiFallback.status === 'running' && (
+                  <p className="xml-transformation-ai-fallback-running" role="status">
+                    A IA está gerando uma sugestão de transformação em segundo plano (sem mapper
+                    Sysmiddle cadastrado para este layout). Isso pode levar minutos — a consulta de
+                    status é feita automaticamente em segundo plano.
+                  </p>
+                )}
+
+                {aiFallback.status === 'failed' && (
+                  <div className="xml-transformation-error" role="alert">
+                    ❌ A geração via IA falhou
+                    {aiFallback.diagnostics?.lastError
+                      ? `: ${aiFallback.diagnostics.lastError}`
+                      : '.'}
+                  </div>
+                )}
+
+                {aiFallback.status === 'not-applicable' && (
+                  <p className="xml-transformation-ai-fallback-empty" role="status">
+                    A IA avaliou este documento e não conseguiu propor uma transformação aplicável.
+                  </p>
+                )}
+
+                {aiFallback.status === 'not-found' && (
+                  <p className="xml-transformation-ai-fallback-empty" role="status">
+                    O ticket do fallback de IA não foi encontrado (pode ter expirado — tickets ficam
+                    disponíveis por até 72h após concluir).
+                  </p>
+                )}
+
+                {aiFallback.error && (
+                  <p className="xml-transformation-ai-fallback-poll-error" role="status">
+                    ⚠️ Falha ao consultar o status da IA, tentando novamente em segundo plano:{' '}
+                    {aiFallback.error}
+                  </p>
+                )}
+
+                {aiFallback.status === 'converged' && aiFallback.candidate && (
+                  <div
+                    className="xml-transformation-ai-candidate"
+                    role="region"
+                    aria-label="Sugestão de transformação gerada por IA"
+                  >
+                    <div className="xml-transformation-ai-candidate-heading">
+                      <h4>Sugestão de transformação (IA)</h4>
+                      {aiFallback.diagnostics?.hasGroundTruth === false ? (
+                        <span
+                          className="xml-transformation-ai-badge xml-transformation-ai-badge--suggestion"
+                          title="Convergência sem gabarito real (nenhum mapper Sysmiddle cadastrado) — apenas XSD válido + validação de negócio. Requer revisão humana antes de qualquer uso em produção."
+                        >
+                          Sugestão de IA — requer revisão humana
+                        </span>
+                      ) : (
+                        <span className="xml-transformation-ai-badge xml-transformation-ai-badge--validated">
+                          Validado contra gabarito
+                        </span>
+                      )}
+                    </div>
+
+                    {aiFallback.diagnostics?.hasGroundTruth === false && (
+                      <p className="xml-transformation-ai-candidate-warning">
+                        Esta transformação foi gerada sem um mapper Sysmiddle cadastrado para
+                        comparação — não há gabarito real por trás da convergência. Trate como ponto
+                        de partida para revisão manual, não como transformação pronta para produção.
+                      </p>
+                    )}
+
+                    <div
+                      className="xml-transformation-delivery-actions"
+                      role="group"
+                      aria-label="Ações do XML sugerido por IA"
+                    >
+                      <button
+                        type="button"
+                        className="xml-transformation-copy-btn"
+                        onClick={() => handleCopyAiXml(aiFallback.candidate?.transformedXml)}
+                      >
+                        Copiar XML
+                      </button>
+                      <button
+                        type="button"
+                        className="xml-transformation-download-btn"
+                        onClick={() => handleDownloadAiXml(aiFallback.candidate?.transformedXml)}
+                      >
+                        Baixar XML
+                      </button>
+                    </div>
+
+                    {deliveryFeedback && (
+                      <p
+                        className={`xml-transformation-delivery-feedback xml-transformation-delivery-feedback--${deliveryFeedback.kind}`}
+                        role={deliveryFeedback.kind === 'error' ? 'alert' : 'status'}
+                        aria-live="polite"
+                      >
+                        {deliveryFeedback.message}
+                      </p>
+                    )}
+
+                    <XmlTree xml={aiFallback.candidate.transformedXml} />
+                  </div>
+                )}
               </div>
             )}
           </div>

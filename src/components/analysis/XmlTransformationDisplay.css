@@ -389,3 +389,65 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Fallback automático de IA (issue #140) — sinalizado via warnings[], não campo estruturado. */
+.xml-transformation-ai-fallback {
+  margin-top: var(--spacing-md);
+}
+
+.xml-transformation-ai-fallback-running,
+.xml-transformation-ai-fallback-empty {
+  margin: 0;
+  padding: var(--spacing-md);
+  background: var(--color-info-bg, var(--color-warning-bg));
+  border-left: 4px solid var(--color-info, var(--color-warning));
+  border-radius: var(--radius-md);
+}
+
+.xml-transformation-ai-fallback-poll-error {
+  margin: var(--spacing-sm) 0 0;
+  color: var(--color-warning-text);
+}
+
+.xml-transformation-ai-candidate {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.xml-transformation-ai-candidate-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.xml-transformation-ai-candidate-heading h4 {
+  margin: 0;
+}
+
+.xml-transformation-ai-badge {
+  padding: 2px var(--spacing-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+}
+
+.xml-transformation-ai-badge--suggestion {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning);
+}
+
+.xml-transformation-ai-badge--validated {
+  background: var(--color-success-bg, var(--color-warning-bg));
+  color: var(--color-success-text, var(--color-warning-text));
+}
+
+.xml-transformation-ai-candidate-warning {
+  margin: 0 0 var(--spacing-md);
+  color: var(--color-warning-text);
+}
