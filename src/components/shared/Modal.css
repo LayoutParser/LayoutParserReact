@@ -1,3 +1,8 @@
+/* Aplicada ao <body> enquanto um modal está aberto, evitando estilo inline (CSP style-src). */
+body.modal-open {
+  overflow: hidden;
+}
+
 .modal-overlay {
   position: fixed;
   z-index: 1000;
