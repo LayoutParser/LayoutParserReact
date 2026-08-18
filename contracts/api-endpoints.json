@@ -16,6 +16,11 @@
       "owner": "LayoutParserApi"
     },
     {
+      "method": "GET",
+      "path": "/api/transformationexecution/execute-candidates/:param/ia-status",
+      "owner": "LayoutParserApi"
+    },
+    {
       "method": "POST",
       "path": "/api/xml-analysis/diagnose-validation-error",
       "owner": "LayoutParserApi"

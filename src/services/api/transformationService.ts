@@ -1,6 +1,7 @@
 import axios from 'axios';
 import apiClient from '../api';
 import type {
+  AiCandidateStatus,
   TransformationCandidatesRequest,
   TransformationCandidatesResponse,
 } from '../../types/transformation';
@@ -11,6 +12,8 @@ import type {
  *
  * Rotas validadas em 2026-07-20 contra um ambiente de integração da API:
  * - POST /api/transformationexecution/execute-candidates -> ver types/transformation.ts
+ * - GET /api/transformationexecution/execute-candidates/{ticket}/ia-status -> polling do
+ *   fallback automático de IA (issue #140), ver types/transformation.ts
  */
 export const transformationService = {
   /**
@@ -34,6 +37,32 @@ export const transformationService = {
         const data = error.response?.data;
         throw new Error(
           data?.error || error.message || 'Erro ao executar transformação XML (multi-candidato)'
+        );
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Consulta o status do job de IA em background (fallback automático quando nenhum candidato
+   * síncrono foi encontrado). Ticket de outro usuário devolve 404 da própria API (nunca 403) —
+   * tratamos isso como `status: 'not-found'` em vez de propagar a exceção, já que é um estado
+   * terminal esperado do polling, não uma falha de infraestrutura.
+   */
+  async getAiCandidateStatus(ticket: string): Promise<AiCandidateStatus> {
+    try {
+      const response = await apiClient.get<AiCandidateStatus>(
+        `/api/transformationexecution/execute-candidates/${encodeURIComponent(ticket)}/ia-status`
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          return { status: 'not-found', candidate: null, diagnostics: null };
+        }
+        const data = error.response?.data;
+        throw new Error(
+          data?.error || error.message || 'Erro ao consultar status do fallback de IA'
         );
       }
       throw error;
