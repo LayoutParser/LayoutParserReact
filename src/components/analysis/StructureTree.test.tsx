@@ -29,6 +29,12 @@ describe('StructureTree', () => {
     useAppStore.getState().setFields(fields);
   });
 
+  // Timeout ampliado (padrão do projeto é 5000ms): localmente este teste roda em
+  // 200-1000ms mesmo sob carga da suíte completa, mas em runners de CI com CPU
+  // limitada a sequência de render + múltiplos fireEvent + waitFor por vezes
+  // ultrapassa o default. Não é lógica quebrada nem condição que nunca resolve
+  // (ver StructureTree.test.tsx execuções repetidas), só menos margem sob
+  // contenção de recursos do runner.
   it('expõe árvore semântica e permite expandir e navegar pelo teclado', async () => {
     render(<StructureTree />);
 
@@ -47,7 +53,7 @@ describe('StructureTree', () => {
 
     fireEvent.keyDown(typeItem, { key: 'End' });
     expect(screen.getByRole('treeitem', { name: /Data/i })).toHaveFocus();
-  });
+  }, 10000);
 
   it('seleciona e alterna a expansão ao ativar a linha', async () => {
     render(<StructureTree />);
