@@ -120,3 +120,57 @@ export interface DiagnoseValidationErrorFailure {
   status: DiagnoseValidationErrorStatus;
   message: string;
 }
+
+// ---------------------------------------------------------------------------------------
+// Fallback automático de IA para execute-candidates (issue #140). Quando nenhum candidato é
+// encontrado pelos pathways síncronos, a API pode enfileirar um job de IA em background e
+// sinalizar isso via texto livre em `TransformationCandidatesResponse.warnings` — não há campo
+// estruturado dedicado. O resultado só existe via polling em GET .../{ticket}/ia-status.
+// ---------------------------------------------------------------------------------------
+
+/**
+ * Candidato de transformação gerado pelo fallback de IA (Ollama).
+ * `pathway` é sempre `'ia'` — distingue de `TransformationCandidate.pathway`
+ * (`'sysmiddle' | 'tcl-xsl'`), que nunca inclui esse valor.
+ */
+export interface AiCandidate {
+  candidateId: string;
+  pathway: 'ia';
+  transformedXml: string;
+  score: number | null;
+  segmentMappings: Record<string, string> | null;
+  validation: unknown | null;
+  failureReason: string | null;
+}
+
+/**
+ * Diagnóstico do job de IA em `GET .../{ticket}/ia-status`.
+ *
+ * `hasGroundTruth` é o campo semântico mais importante: `false` significa que não havia
+ * mapper Sysmiddle cadastrado para comparar (fallback automático "às cegas") — a convergência
+ * então só significa XSD válido + validação de negócio, NUNCA diff canônico contra um gabarito
+ * real. `remainingDiffs` fica 0 mesmo nesse caso; isso é estrutural (não há gabarito para
+ * diferir), não um sinal de qualidade. Tratar como sugestão para revisão humana, nunca como
+ * transformação pronta para produção.
+ */
+export interface AiCandidateDiagnostics {
+  iterations: number;
+  remainingDiffs: number;
+  xsdValid: boolean;
+  lastError: string | null;
+  hasGroundTruth: boolean;
+}
+
+export type AiCandidateStatusValue =
+  'running' | 'converged' | 'failed' | 'not-applicable' | 'not-found';
+
+/**
+ * Resposta de GET /api/transformationexecution/execute-candidates/{ticket}/ia-status.
+ * `candidate` só vem preenchido quando `status === 'converged'`;
+ * `diagnostics.lastError` só vem preenchido quando `status === 'failed'`.
+ */
+export interface AiCandidateStatus {
+  status: AiCandidateStatusValue;
+  candidate: AiCandidate | null;
+  diagnostics: AiCandidateDiagnostics | null;
+}
