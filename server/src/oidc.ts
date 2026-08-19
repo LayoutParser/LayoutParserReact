@@ -1,7 +1,7 @@
 import { createHash, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { ConfidentialClientApplication } from '@azure/msal-node';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import * as openidClient from 'openid-client';
 
 import type { AuthProvider, SessionIdentity } from './auth.js';
@@ -48,6 +48,38 @@ interface CallbackQuery {
 }
 
 type TokenClaims = Record<string, unknown>;
+
+// Observabilidade pura (sem mudar comportamento): classifica um erro como "rede/timeout" vs
+// "outro" para ajudar a distinguir, no log, se uma falha de login veio de conectividade de saída
+// fria (accounts.google.com / login.microsoftonline.com logo após boot/restart do host ou do
+// túnel) ou de outra causa (config, validação de state/nonce, etc.). Heurística best-effort:
+// não tem acesso a stack traces de bibliotecas de terceiros, só aos campos padrão de erro Node.
+function classifyErrorKind(error: unknown): 'network' | 'other' {
+  if (!(error instanceof Error)) {
+    return 'other';
+  }
+
+  const code = (error as NodeJS.ErrnoException).code;
+  const networkCodes = new Set([
+    'ETIMEDOUT',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'UND_ERR_CONNECT_TIMEOUT',
+    'UND_ERR_SOCKET',
+  ]);
+  if (code && networkCodes.has(code)) {
+    return 'network';
+  }
+
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    return classifyErrorKind(cause);
+  }
+
+  return 'other';
+}
 
 function base64UrlRandom(byteLength: number): string {
   return randomBytes(byteLength).toString('base64url');
@@ -155,9 +187,11 @@ function identityFromGoogleClaims(claims: TokenClaims): SessionIdentity {
 class MsalOidcClient implements OidcClient {
   readonly #configuration: EntraConfig;
   readonly #client: ConfidentialClientApplication;
+  readonly #logger: FastifyBaseLogger | undefined;
 
-  public constructor(configuration: EntraConfig) {
+  public constructor(configuration: EntraConfig, logger?: FastifyBaseLogger) {
     this.#configuration = configuration;
+    this.#logger = logger;
     this.#client = new ConfidentialClientApplication({
       auth: {
         clientId: configuration.clientId,
@@ -167,19 +201,44 @@ class MsalOidcClient implements OidcClient {
     });
   }
 
-  public getAuthorizationUrl(transaction: OidcTransaction): Promise<string> {
-    return this.#client.getAuthCodeUrl({
-      scopes: [...OIDC_SCOPES],
-      redirectUri: this.#configuration.redirectUri,
-      state: transaction.state,
-      nonce: transaction.nonce,
-      codeChallenge: transaction.codeChallenge,
-      codeChallengeMethod: 'S256',
-      prompt: 'select_account',
-    });
+  public async getAuthorizationUrl(transaction: OidcTransaction): Promise<string> {
+    // Instrumentação pura (sem alterar comportamento): mede o tempo da chamada ao MSAL, que
+    // internamente busca metadata da autoridade (login.microsoftonline.com) na primeira vez e
+    // pode ficar lenta/falhar em conexão de saída fria (logo após boot do host ou do túnel
+    // Cloudflare). O objetivo é permitir correlacionar, na próxima ocorrência real de login
+    // lento/falho, se este passo específico é o gargalo — sem precisar reproduzir manualmente.
+    const startedAt = Date.now();
+    try {
+      const url = await this.#client.getAuthCodeUrl({
+        scopes: [...OIDC_SCOPES],
+        redirectUri: this.#configuration.redirectUri,
+        state: transaction.state,
+        nonce: transaction.nonce,
+        codeChallenge: transaction.codeChallenge,
+        codeChallengeMethod: 'S256',
+        prompt: 'select_account',
+      });
+      this.#logger?.debug(
+        { event: 'auth.entra.get_auth_code_url', durationMs: Date.now() - startedAt },
+        'URL de autorização Entra obtida.'
+      );
+      return url;
+    } catch (error) {
+      this.#logger?.warn(
+        {
+          event: 'auth.entra.get_auth_code_url_failed',
+          durationMs: Date.now() - startedAt,
+          errorKind: classifyErrorKind(error),
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        },
+        'Falha ao obter a URL de autorização do Entra (possível metadata de autoridade fria).'
+      );
+      throw error;
+    }
   }
 
   public async exchangeAuthorizationCode(request: OidcExchangeRequest): Promise<SessionIdentity> {
+    const startedAt = Date.now();
     try {
       const result = await this.#client.acquireTokenByCode(
         {
@@ -195,6 +254,10 @@ class MsalOidcClient implements OidcClient {
           nonce: request.nonce,
         }
       );
+      this.#logger?.debug(
+        { event: 'auth.entra.acquire_token', durationMs: Date.now() - startedAt },
+        'Token Entra adquirido a partir do código de autorização.'
+      );
 
       return identityFromEntraClaims(
         result.idTokenClaims as TokenClaims,
@@ -202,6 +265,17 @@ class MsalOidcClient implements OidcClient {
         result.uniqueId,
         result.tenantId
       );
+    } catch (error) {
+      this.#logger?.warn(
+        {
+          event: 'auth.entra.acquire_token_failed',
+          durationMs: Date.now() - startedAt,
+          errorKind: classifyErrorKind(error),
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        },
+        'Falha ao trocar o código de autorização Entra por um token.'
+      );
+      throw error;
     } finally {
       // O aplicativo usa o token apenas para validar o login. Não chama Graph nem mantém refresh
       // tokens; limpar o cache evita prolongar credenciais Microsoft na memória do processo.
@@ -219,19 +293,68 @@ class MsalOidcClient implements OidcClient {
  */
 class GoogleOidcClient implements OidcClient {
   readonly #configuration: GoogleConfig;
+  readonly #logger: FastifyBaseLogger | undefined;
   #discovery: Promise<openidClient.Configuration> | null = null;
+  // Contador só de diagnóstico (não influencia nenhuma decisão de negócio): permite ver, nos
+  // logs, quantas vezes a descoberta OIDC do Google foi *tentada* desde o boot do processo.
+  // Se esse número não bater com "1 tentativa bem-sucedida", é sinal de que a promise cacheada
+  // em `#discovery` rejeitou e ficou presa (bug conhecido, ver comentário abaixo) — cada login
+  // subsequente reusaria a mesma rejeição sem nunca tentar de novo sozinho.
+  #discoveryAttempts = 0;
 
-  public constructor(configuration: GoogleConfig) {
+  public constructor(configuration: GoogleConfig, logger?: FastifyBaseLogger) {
     this.#configuration = configuration;
+    this.#logger = logger;
   }
 
   #getConfiguration(): Promise<openidClient.Configuration> {
-    this.#discovery ??= openidClient.discovery(
-      GOOGLE_ISSUER,
-      this.#configuration.clientId,
-      this.#configuration.clientSecret
-    );
-    return this.#discovery;
+    // NOTA (achado nesta investigação, não corrigido aqui — decisão de `@lp-front-dev`): esta
+    // memoização com `??=` cacheia a *promise*, inclusive se ela rejeitar. Uma falha de rede na
+    // primeira tentativa (ex.: saída fria para accounts.google.com logo após restart do host/
+    // túnel) deixa todo login Google subsequente falhando até o processo do BFF reiniciar, já
+    // que `??=` nunca reatribui depois da primeira chamada. Os logs abaixo servem para confirmar
+    // isso na próxima ocorrência real (thisWasCached=true + mesma falha repetida = confirma).
+    const wasAlreadyCached = this.#discovery !== null;
+    if (!wasAlreadyCached) {
+      this.#discoveryAttempts += 1;
+      const attemptNumber = this.#discoveryAttempts;
+      const startedAt = Date.now();
+      this.#discovery = openidClient
+        .discovery(GOOGLE_ISSUER, this.#configuration.clientId, this.#configuration.clientSecret)
+        .then(configuration => {
+          this.#logger?.debug(
+            {
+              event: 'auth.google.discovery_succeeded',
+              attemptNumber,
+              durationMs: Date.now() - startedAt,
+            },
+            'Descoberta OIDC do Google concluída.'
+          );
+          return configuration;
+        })
+        .catch((error: unknown) => {
+          this.#logger?.error(
+            {
+              event: 'auth.google.discovery_failed',
+              attemptNumber,
+              durationMs: Date.now() - startedAt,
+              errorKind: classifyErrorKind(error),
+              errorType: error instanceof Error ? error.name : 'UnknownError',
+            },
+            'Descoberta OIDC do Google falhou; esta promise fica cacheada e todo login Google ' +
+              'seguinte reusará esta mesma falha até o processo do BFF reiniciar.'
+          );
+          throw error;
+        });
+    } else {
+      this.#logger?.debug(
+        { event: 'auth.google.discovery_reused', attemptNumber: this.#discoveryAttempts },
+        'Reusando a descoberta OIDC do Google já iniciada (cache em memória do processo).'
+      );
+    }
+    // Não-nulo em ambos os ramos acima: o `if` acaba de atribuir e o `else` só executa quando já
+    // havia sido atribuído em uma chamada anterior.
+    return this.#discovery as Promise<openidClient.Configuration>;
   }
 
   public async getAuthorizationUrl(transaction: OidcTransaction): Promise<string> {
@@ -258,18 +381,36 @@ class GoogleOidcClient implements OidcClient {
     callbackUrl.searchParams.set('code', request.code);
     callbackUrl.searchParams.set('state', request.state);
 
-    const tokens = await openidClient.authorizationCodeGrant(configuration, callbackUrl, {
-      pkceCodeVerifier: request.codeVerifier,
-      expectedState: request.state,
-      expectedNonce: request.nonce,
-    });
+    const startedAt = Date.now();
+    try {
+      const tokens = await openidClient.authorizationCodeGrant(configuration, callbackUrl, {
+        pkceCodeVerifier: request.codeVerifier,
+        expectedState: request.state,
+        expectedNonce: request.nonce,
+      });
 
-    const claims = tokens.claims();
-    if (!claims) {
-      throw new Error('A resposta do Google não contém um ID Token.');
+      const claims = tokens.claims();
+      if (!claims) {
+        throw new Error('A resposta do Google não contém um ID Token.');
+      }
+
+      this.#logger?.debug(
+        { event: 'auth.google.authorization_code_grant', durationMs: Date.now() - startedAt },
+        'Token Google adquirido a partir do código de autorização.'
+      );
+      return identityFromGoogleClaims(claims as TokenClaims);
+    } catch (error) {
+      this.#logger?.warn(
+        {
+          event: 'auth.google.authorization_code_grant_failed',
+          durationMs: Date.now() - startedAt,
+          errorKind: classifyErrorKind(error),
+          errorType: error instanceof Error ? error.name : 'UnknownError',
+        },
+        'Falha ao trocar o código de autorização Google por um token.'
+      );
+      throw error;
     }
-
-    return identityFromGoogleClaims(claims as TokenClaims);
   }
 }
 
@@ -301,10 +442,10 @@ export interface OidcClients {
   readonly google: OidcClient | null;
 }
 
-export function createOidcClients(config: AppConfig): OidcClients {
+export function createOidcClients(config: AppConfig, logger?: FastifyBaseLogger): OidcClients {
   return {
-    entra: config.entra ? new MsalOidcClient(config.entra) : null,
-    google: config.google ? new GoogleOidcClient(config.google) : null,
+    entra: config.entra ? new MsalOidcClient(config.entra, logger) : null,
+    google: config.google ? new GoogleOidcClient(config.google, logger) : null,
   };
 }
 
@@ -378,6 +519,7 @@ function registerProviderRoutes(
           {
             event: 'auth.login.start_failed',
             provider: route.provider,
+            errorKind: classifyErrorKind(error),
             errorType: error instanceof Error ? error.name : 'UnknownError',
           },
           'Não foi possível iniciar a autenticação OIDC.'
@@ -449,6 +591,7 @@ function registerProviderRoutes(
           {
             event: 'auth.login.callback_failed',
             provider: route.provider,
+            errorKind: classifyErrorKind(error),
             errorType: error instanceof Error ? error.name : 'UnknownError',
           },
           'A resposta OIDC foi rejeitada.'

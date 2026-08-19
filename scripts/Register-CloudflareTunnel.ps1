@@ -70,14 +70,24 @@ $launcher = @(
   '  Move-Item -LiteralPath $logFile -Destination $logFileRotated -Force',
   '}',
   '# Scheduled Tasks não têm console; redirecionar via cmd.exe funciona sem console e',
-  '# preserva a saída do cloudflared (é nela que a URL *.trycloudflare.com aparece).',
+  '# preserva a saída do cloudflared (é nela que a URL *.trycloudflare.com aparece). O cloudflared',
+  '# já emite timestamp próprio em cada linha, mas gravamos também um marcador nosso de início',
+  '# (com o motivo do disparo: boot ou RestartCount do Task Scheduler) para reconstruir a timeline',
+  '# de uma falha sem precisar cruzar formatos de log diferentes.',
+  '$startTimestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"',
   "`$cloudflaredExe = $(ConvertTo-PowerShellLiteral $CloudflaredPath)",
   "`$publicHost = $(ConvertTo-PowerShellLiteral $PublicHost)",
   '$cloudflaredArgs = "tunnel --url https://127.0.0.1:443 --protocol http2 --no-tls-verify " +' +
     '"--origin-server-name `"" + $publicHost + "`" --http-host-header `"" + $publicHost + "`""',
   '$cmdLine = "`"" + $cloudflaredExe + "`" " + $cloudflaredArgs + " >> `"" + $logFile + "`" 2>&1"',
+  'Add-Content -LiteralPath $logFile -Value "[$startTimestamp] --- launcher iniciando cloudflared ' +
+    '(boot da task ou reinício automático via RestartCount) ---"',
   '& cmd.exe /c $cmdLine',
-  'exit $LASTEXITCODE'
+  '$exitCode = $LASTEXITCODE',
+  '$endTimestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"',
+  'Add-Content -LiteralPath $logFile -Value "[$endTimestamp] --- cloudflared encerrou com código ' +
+    '$exitCode; Task Scheduler deve reiniciar automaticamente (RestartCount/RestartInterval) ---"',
+  'exit $exitCode'
 )
 Set-Content -LiteralPath $launcherPath -Value $launcher -Encoding UTF8
 
