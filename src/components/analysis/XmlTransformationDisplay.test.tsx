@@ -4,12 +4,18 @@ import { transformationService } from '../../services/api/transformationService'
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import type { TransformationCandidatesResponse } from '../../types/transformation';
+import { useAiFallbackPolling } from '../../hooks/useAiFallbackPolling';
+import type { UseAiFallbackPollingResult } from '../../hooks/useAiFallbackPolling';
 import XmlTransformationDisplay from './XmlTransformationDisplay';
 
 vi.mock('../../services/api/transformationService', () => ({
   transformationService: {
     executeTransformationCandidates: vi.fn(),
   },
+}));
+
+vi.mock('../../hooks/useAiFallbackPolling', () => ({
+  useAiFallbackPolling: vi.fn(),
 }));
 
 vi.mock('../../services/api/logService', () => ({
@@ -51,8 +57,25 @@ const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard'
 const originalCreateObjectUrl = Object.getOwnPropertyDescriptor(URL, 'createObjectURL');
 const originalRevokeObjectUrl = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL');
 
+const idleAiFallbackResult: UseAiFallbackPollingResult = {
+  status: null,
+  candidate: null,
+  diagnostics: null,
+  error: null,
+};
+
+const fallbackTicketResponse: TransformationCandidatesResponse = {
+  success: true,
+  candidates: [],
+  recommendedCandidateId: null,
+  warnings: [
+    'Nenhum candidato de transformação encontrado para o layout Layout NFe: fallback automático de IA enfileirado (ticket ticket-abc-123), consulte o status em segundo plano.',
+  ],
+};
+
 describe('XmlTransformationDisplay', () => {
   beforeEach(() => {
+    vi.mocked(useAiFallbackPolling).mockReturnValue(idleAiFallbackResult);
     useAppStore.getState().reset();
     useTransformationStore.getState().reset();
     useAppStore.getState().setSelectedLayout({
@@ -241,5 +264,198 @@ describe('XmlTransformationDisplay', () => {
     expect(diagnostic).not.toHaveTextContent(
       'Nenhum candidato de transformação encontrado para o layout Layout NFe'
     );
+  });
+
+  describe('fallback automático de IA (aiFallback)', () => {
+    it('exibe o aviso de execução em segundo plano quando status é running', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'running',
+        candidate: null,
+        diagnostics: null,
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(region).toHaveTextContent('A IA está gerando uma sugestão de transformação');
+    });
+
+    it('exibe erro sem detalhe quando status é failed sem lastError', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'failed',
+        candidate: null,
+        diagnostics: null,
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(within(region).getByRole('alert')).toHaveTextContent('A geração via IA falhou.');
+    });
+
+    it('exibe erro com lastError quando status é failed com diagnostics.lastError', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'failed',
+        candidate: null,
+        diagnostics: {
+          iterations: 3,
+          remainingDiffs: 0,
+          xsdValid: false,
+          lastError: 'XSD inválido: elemento obrigatório ausente',
+          hasGroundTruth: false,
+        },
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(within(region).getByRole('alert')).toHaveTextContent(
+        'A geração via IA falhou: XSD inválido: elemento obrigatório ausente'
+      );
+    });
+
+    it('exibe mensagem quando status é not-applicable', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'not-applicable',
+        candidate: null,
+        diagnostics: null,
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(region).toHaveTextContent('não conseguiu propor uma transformação aplicável');
+    });
+
+    it('exibe mensagem quando status é not-found', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'not-found',
+        candidate: null,
+        diagnostics: null,
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(region).toHaveTextContent('O ticket do fallback de IA não foi encontrado');
+    });
+
+    it('renderiza o candidato sugerido pela IA quando status é converged, com badge de sugestão sem gabarito', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'converged',
+        candidate: {
+          candidateId: 'ia-1',
+          pathway: 'ia',
+          transformedXml: rawXml,
+          score: null,
+          segmentMappings: null,
+          validation: null,
+          failureReason: null,
+        },
+        diagnostics: {
+          iterations: 5,
+          remainingDiffs: 0,
+          xsdValid: true,
+          lastError: null,
+          hasGroundTruth: false,
+        },
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const candidateRegion = await screen.findByRole('region', {
+        name: 'Sugestão de transformação gerada por IA',
+      });
+      expect(candidateRegion).toHaveTextContent('Sugestão de IA — requer revisão humana');
+      const tree = within(candidateRegion).getByRole('tree', {
+        name: 'Árvore do XML transformado',
+      });
+      expect(within(tree).getByRole('treeitem', { name: '<root>' })).toBeInTheDocument();
+    });
+
+    it('renderiza badge de validado quando converged com hasGroundTruth true', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'converged',
+        candidate: {
+          candidateId: 'ia-1',
+          pathway: 'ia',
+          transformedXml: rawXml,
+          score: null,
+          segmentMappings: null,
+          validation: null,
+          failureReason: null,
+        },
+        diagnostics: {
+          iterations: 2,
+          remainingDiffs: 0,
+          xsdValid: true,
+          lastError: null,
+          hasGroundTruth: true,
+        },
+        error: null,
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const candidateRegion = await screen.findByRole('region', {
+        name: 'Sugestão de transformação gerada por IA',
+      });
+      expect(candidateRegion).toHaveTextContent('Validado contra gabarito');
+      expect(candidateRegion).not.toHaveTextContent('requer revisão humana');
+    });
+
+    it('exibe o banner de erro de polling quando aiFallback.error está presente', async () => {
+      vi.mocked(useAiFallbackPolling).mockReturnValue({
+        status: 'running',
+        candidate: null,
+        diagnostics: null,
+        error: 'Erro de rede ao consultar status da IA',
+      });
+      vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+        fallbackTicketResponse
+      );
+
+      render(<XmlTransformationDisplay />);
+      fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+
+      const region = await screen.findByRole('region', { name: 'Fallback automático de IA' });
+      expect(region).toHaveTextContent(
+        'Falha ao consultar o status da IA, tentando novamente em segundo plano: Erro de rede ao consultar status da IA'
+      );
+    });
   });
 });
