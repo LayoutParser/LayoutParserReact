@@ -23,7 +23,7 @@ research into VirtualBox on Windows: **principal is NOT `SYSTEM` by default** �
 mandatory `-RunAsUser` parameter (the Windows account that owns the VM registration). Reason:
 even though VirtualBox 6.0+ ships `VBoxSDS` (a system service that technically allows starting
 VMs without an interactive logon), VM registration (`VirtualBox.xml` + default VM folder) lives
-under the *owning user's* profile, not a machine-wide location — `SYSTEM` would look at its own
+under the _owning user's_ profile, not a machine-wide location — `SYSTEM` would look at its own
 (nonexistent) profile and fail with "machine not found" even with `VBoxSDS` running and healthy.
 Default `-LogonType S4U` (no stored password, works without prior interactive logon, local-only
 command so S4U's lack of network credentials doesn't matter); `-LogonType Password` is offered
@@ -34,12 +34,13 @@ this WSL environment has no access to the production VirtualBox install.
 
 **Login flakiness investigation (ask #3) — hypothesis only, not fixed:**
 Reviewed `server/src/oidc.ts` and `server/src/auth.ts`. Findings:
+
 - `publicOrigin`/OIDC `redirectUri` are computed once at BFF boot from `BFF_PUBLIC_ORIGIN`
   (`server/src/config.ts`), not per-request. If this env var lags behind a Quick Tunnel URL that
-  changed since the last `cloudflared` restart, login fails *consistently* (redirect_uri
+  changed since the last `cloudflared` restart, login fails _consistently_ (redirect_uri
   mismatch), not intermittently — so this alone doesn't explain "fails once, then retry works".
 - **Concrete bug found in `GoogleOidcClient` (`server/src/oidc.ts` ~line 228-235):**
-  `this.#discovery ??= openidClient.discovery(...)` memoizes the discovery *promise* on first
+  `this.#discovery ??= openidClient.discovery(...)` memoizes the discovery _promise_ on first
   call. If that first discovery request to `accounts.google.com` fails (cold outbound network
   right after a host/tunnel restart, DNS warm-up, etc.), the rejected promise stays cached
   forever — every subsequent Google login attempt keeps awaiting the same rejected promise and
