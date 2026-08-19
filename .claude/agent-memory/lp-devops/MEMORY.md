@@ -14,6 +14,7 @@
 - [Plano Cloudflare Quick Tunnel p/ OAuth](project_cloudflare_quick_tunnel_google_oauth_plan.md) — checklist não executado; BFF prod escuta 127.0.0.1:3100.
 - [.env do BFF é fail-fast](project_bff_env_failfast_placeholders.md) — placeholder no valor aborta o boot; use comentário e chave vazia.
 - [Log persistente do BFF + tunnel Cloudflare](project_bff_persistent_logs_and_cloudflare_tunnel_task.md) — `logs/` fora do release; task própria e idempotente para o túnel.
+- [VirtualBox autostart + investigação de login flaky](project_virtualbox_autostart_task_and_login_flakiness_investigation.md) — task S4U/`-RunAsUser` (não SYSTEM); bug de discovery cacheado no GoogleOidcClient; hipótese MSAL cold-start não confirmada.
 
 Arquitetura vigente: front same-origin; IIS HTTPS anônimo encaminha `/auth` e `/api` → BFF Node
 em loopback com Entra OIDC/sessão criptografada → API .NET. `Deploy-Iis.ps1` desabilita Windows
