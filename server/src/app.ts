@@ -169,7 +169,9 @@ export async function buildApp(
     routerOptions: { caseSensitive: false },
   };
   const app: FastifyInstance = Fastify(serverOptions);
-  const defaultOidcClients = createOidcClients(config);
+  // Logger repassado só para instrumentação de diagnóstico (timing/classificação de erro do
+  // fluxo OIDC); não altera nenhuma decisão de autenticação/autorização.
+  const defaultOidcClients = createOidcClients(config, app.log);
   const entraOidcClient =
     options.oidcClient === undefined ? defaultOidcClients.entra : options.oidcClient;
   const googleOidcClient =
