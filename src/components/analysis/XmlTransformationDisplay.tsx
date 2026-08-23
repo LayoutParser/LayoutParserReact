@@ -20,6 +20,26 @@ const PATHWAY_LABEL: Record<string, string> = {
   'tcl-xsl': 'TCL/XSL',
 };
 
+/**
+ * Diferenciador visual entre candidatos do MESMO pathway (ex.: dois candidatos "sysmiddle").
+ *
+ * ⚠️ Bloqueio de contrato: `TransformationCandidate` (src/types/transformation.ts) não expõe
+ * nome amigável do Mapeador nem `layoutOutputTarget` — só `candidateId`, que por convenção do
+ * back-end (ver doc do tipo) é "sysmiddle-{MapperGuid}" ou "tclxsl-1". Sem esses campos no
+ * contrato, o máximo que dá pra mostrar sem inventar dado é um recorte curto do próprio
+ * `candidateId` (o GUID do mapper), só para o usuário distinguir as abas — não é um nome
+ * legível. Pedir à API `mapperName`/`layoutOutputTarget` em `execute-candidates` resolveria de
+ * verdade; até lá, este é o diferenciador possível.
+ */
+const buildCandidateDifferentiator = (candidateId: string, pathway: string): string | null => {
+  const prefix = `${pathway}-`;
+  const suffix = candidateId.startsWith(prefix) ? candidateId.slice(prefix.length) : candidateId;
+  const trimmed = suffix.trim();
+  if (!trimmed || trimmed === candidateId) return null;
+  // GUID de mapper: mostrar só os 8 primeiros caracteres para não estourar o botão.
+  return trimmed.length > 8 ? `${trimmed.slice(0, 8)}…` : trimmed;
+};
+
 interface XmlDeliveryFeedback {
   kind: 'success' | 'error';
   message: string;
@@ -455,23 +475,37 @@ const XmlTransformationDisplay: React.FC = () => {
               role="tablist"
               aria-label="Candidatos de transformação"
             >
-              {candidates.map(candidate => (
-                <button
-                  key={candidate.candidateId}
-                  type="button"
-                  role="tab"
-                  aria-selected={candidate.candidateId === activeCandidate?.candidateId}
-                  className={`xml-transformation-candidate-btn ${
-                    candidate.candidateId === activeCandidate?.candidateId ? 'active' : ''
-                  }`}
-                  onClick={() => {
-                    setActiveCandidateId(candidate.candidateId);
-                    setDeliveryFeedback(null);
-                  }}
-                >
-                  {PATHWAY_LABEL[candidate.pathway] || candidate.pathway}
-                </button>
-              ))}
+              {candidates.map(candidate => {
+                const pathwayLabel = PATHWAY_LABEL[candidate.pathway] || candidate.pathway;
+                const differentiator = buildCandidateDifferentiator(
+                  candidate.candidateId,
+                  candidate.pathway
+                );
+                return (
+                  <button
+                    key={candidate.candidateId}
+                    type="button"
+                    role="tab"
+                    aria-selected={candidate.candidateId === activeCandidate?.candidateId}
+                    className={`xml-transformation-candidate-btn ${
+                      candidate.candidateId === activeCandidate?.candidateId ? 'active' : ''
+                    }`}
+                    title={candidate.candidateId}
+                    onClick={() => {
+                      setActiveCandidateId(candidate.candidateId);
+                      setDeliveryFeedback(null);
+                    }}
+                  >
+                    {pathwayLabel}
+                    {differentiator && (
+                      <span className="xml-transformation-candidate-btn__id">
+                        {' '}
+                        — {differentiator}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 

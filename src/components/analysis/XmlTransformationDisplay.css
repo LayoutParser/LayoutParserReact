@@ -256,6 +256,15 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Diferenciador entre candidatos do mesmo pathway (ex.: dois "Sysmiddle") — só o recorte do
+   candidateId disponível hoje no contrato; ver comentário em XmlTransformationDisplay.tsx. */
+.xml-transformation-candidate-btn__id {
+  opacity: 0.75;
+  font-weight: var(--font-weight-regular, 400);
+  font-family: var(--font-family-mono, monospace);
+  font-size: 0.9em;
+}
+
 .xml-transformation-delivery-actions {
   display: flex;
   flex-wrap: wrap;
