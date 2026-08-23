@@ -123,6 +123,7 @@ jobs:
           ENTRA_CLIENT_SECRET: ${{ secrets.ENTRA_CLIENT_SECRET }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          BFF_DNS_SERVERS: ${{ vars.BFF_DNS_SERVERS }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:DEPLOY_ROOT)) { throw 'Secret DEPLOY_PATH ausente.' }
           if ([string]::IsNullOrWhiteSpace($env:IIS_SITE_NAME)) { throw 'Variable IIS_SITE_NAME ausente.' }
@@ -145,4 +146,5 @@ jobs:
             -EntraClientId $env:ENTRA_CLIENT_ID `
             -EntraClientSecret $env:ENTRA_CLIENT_SECRET `
             -GoogleClientId $env:GOOGLE_CLIENT_ID `
-            -GoogleClientSecret $env:GOOGLE_CLIENT_SECRET
+            -GoogleClientSecret $env:GOOGLE_CLIENT_SECRET `
+            -DnsServers $env:BFF_DNS_SERVERS
