@@ -16,8 +16,15 @@
 // A mitigação real: registrar um `lookup` customizado, baseado em `dns.Resolver` (c-ares, que
 // respeita `setServers`) apontando direto para os servidores DNS corretos, e injetá-lo no
 // dispatcher global do undici via `setGlobalDispatcher(new Agent({ connect: { lookup } }))`.
-// Isso cobre tanto o `fetch` global (usado pelo MSAL Node) quanto qualquer outro cliente HTTP
-// que use o dispatcher padrão do undici.
+//
+// ESCOPO: `setGlobalDispatcher()` é GLOBAL AO PROCESSO — não fica restrito às chamadas OIDC.
+// Ele substitui o dispatcher padrão usado por TODO `fetch` nativo do Node no processo do BFF,
+// incluindo o proxy `/api` → LayoutParserApi (`server/src/app.ts`, registrado via
+// `@fastify/http-proxy`), que herda esse mesmo dispatcher global. Ou seja, ao configurar
+// `BFF_DNS_SERVERS`, tanto as chamadas ao Entra/Google (MSAL Node) quanto a resolução de nome do
+// `LAYOUTPARSER_API_URL` passam a usar exclusivamente os servidores DNS informados aqui — se o
+// upstream da API for um hostname resolvível só por outro DNS (fora da lista), o proxy quebra.
+// Ver checagem de `LAYOUTPARSER_API_URL` em `server/src/config.ts` (`parseUpstreamUrl`).
 
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
