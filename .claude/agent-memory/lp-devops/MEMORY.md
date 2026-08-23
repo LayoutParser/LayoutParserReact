@@ -18,6 +18,7 @@
 - [Cloudflare tunnel NUNCA foi registrado (2026-08-22)](project_cloudflare_tunnel_task_never_registered_2026_08_22.md) — evidência real do host: task/processo/log ausentes; URL do Entra veio de run manual que morreu; registrado com sucesso no mesmo dia com fix `--edge-ip-version 4`.
 - [Bug de extração de URL do tunnel](project_cloudflare_tunnel_url_extraction_regex_bug.md) — regex pegava `api.trycloudflare.com` (endpoint interno) por log append-only + `-First 1`; corrigido para ancorar no último marcador de boot + excluir host da API.
 - [Patch manual BFF_PUBLIC_ORIGIN (2026-08-23)](project_bff_public_origin_manual_patch_2026_08_23.md) — Start-Bff.ps1 do release editado à mão p/ apontar pro Quick Tunnel; some no próximo deploy.
+- [Patch manual BFF_DNS_SERVERS (2026-08-23)](project_bff_dns_servers_manual_patch_2026_08_23.md) — PR #153 agora persiste BFF_DNS_SERVERS opcional no pipeline; patch manual do release ativo montado, pendente de execução pelo usuário.
 
 Arquitetura vigente: front same-origin; IIS HTTPS anônimo encaminha `/auth` e `/api` → BFF Node
 em loopback com Entra OIDC/sessão criptografada → API .NET. `Deploy-Iis.ps1` desabilita Windows
