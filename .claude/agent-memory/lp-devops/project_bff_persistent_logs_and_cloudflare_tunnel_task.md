@@ -1,9 +1,24 @@
 ---
 name: project_bff_persistent_logs_and_cloudflare_tunnel_task
-description: BFF launcher now logs to a persistent file; Cloudflare Quick Tunnel got its own idempotent Scheduled Task, decoupled from normal deploys.
+description: BFF launcher now logs to a persistent file; Cloudflare Quick Tunnel got its own idempotent Scheduled Task SCRIPT — written but NOT yet run on the production host (see 2026-08-22 correction below).
 metadata:
   type: project
 ---
+
+**CORREÇÃO (2026-08-22):** evidência coletada pelo usuário no host de produção mostrou que a
+Scheduled Task `Cloudflared-QuickTunnel` **nunca foi registrada de fato**. `Get-ScheduledTask`
+só retorna `LayoutParserFrontend-BFF`; `Get-Process -Name cloudflared` está vazio;
+`cloudflared-tunnel.log` não existe em lugar nenhum de `C:\`. O binário
+`C:\Program Files (x86)\cloudflared\cloudflared.exe` está instalado. Ou seja: o texto abaixo
+descreve corretamente o _script_ (`scripts/Register-CloudflareTunnel.ps1`, revisado de novo em
+2026-08-19, ver [[project_virtualbox_autostart_task_and_login_flakiness_investigation]]), mas a
+frase "registers ... as its own Scheduled Task" describe a intenção do script, não um fato já
+aplicado em produção. A URL pública que ficou cadastrada como redirect URI no Entra
+(`inspections-martha-excel-capability.trycloudflare.com`) veio de uma execução manual e
+interativa de `cloudflared tunnel --url ...` em algum momento passado — quando essa sessão
+fechou, o processo morreu e nunca voltou, o que explica o login quebrado relatado pelo usuário.
+Antes de reusar qualquer afirmação deste arquivo como "já está em produção", confirme com
+`Get-ScheduledTask -TaskName Cloudflared-QuickTunnel` no host.
 
 Implemented on branch `feat/bff-logs-and-persistent-tunnel` (from `origin/develop`),
 2026-08-15.

@@ -13,8 +13,11 @@
 - [Páginas legais com placeholder](project_legal_pages_placeholders_pending.md) — `/terms` e `/privacy` esperam e-mail/jurisdição da empresa; não preencher sozinho.
 - [Plano Cloudflare Quick Tunnel p/ OAuth](project_cloudflare_quick_tunnel_google_oauth_plan.md) — checklist não executado; BFF prod escuta 127.0.0.1:3100.
 - [.env do BFF é fail-fast](project_bff_env_failfast_placeholders.md) — placeholder no valor aborta o boot; use comentário e chave vazia.
-- [Log persistente do BFF + tunnel Cloudflare](project_bff_persistent_logs_and_cloudflare_tunnel_task.md) — `logs/` fora do release; task própria e idempotente para o túnel.
+- [Log persistente do BFF + script do tunnel Cloudflare](project_bff_persistent_logs_and_cloudflare_tunnel_task.md) — `logs/` fora do release; script idempotente escrito, NUNCA registrado em produção (ver correção 2026-08-22).
 - [VirtualBox autostart + investigação de login flaky](project_virtualbox_autostart_task_and_login_flakiness_investigation.md) — task S4U/`-RunAsUser` (não SYSTEM); bug de discovery cacheado no GoogleOidcClient; hipótese MSAL cold-start não confirmada.
+- [Cloudflare tunnel NUNCA foi registrado (2026-08-22)](project_cloudflare_tunnel_task_never_registered_2026_08_22.md) — evidência real do host: task/processo/log ausentes; URL do Entra veio de run manual que morreu; registrado com sucesso no mesmo dia com fix `--edge-ip-version 4`.
+- [Bug de extração de URL do tunnel](project_cloudflare_tunnel_url_extraction_regex_bug.md) — regex pegava `api.trycloudflare.com` (endpoint interno) por log append-only + `-First 1`; corrigido para ancorar no último marcador de boot + excluir host da API.
+- [Patch manual BFF_PUBLIC_ORIGIN (2026-08-23)](project_bff_public_origin_manual_patch_2026_08_23.md) — Start-Bff.ps1 do release editado à mão p/ apontar pro Quick Tunnel; some no próximo deploy.
 
 Arquitetura vigente: front same-origin; IIS HTTPS anônimo encaminha `/auth` e `/api` → BFF Node
 em loopback com Entra OIDC/sessão criptografada → API .NET. `Deploy-Iis.ps1` desabilita Windows
