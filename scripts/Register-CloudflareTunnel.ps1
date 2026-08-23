@@ -77,8 +77,12 @@ $launcher = @(
   '$startTimestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"',
   "`$cloudflaredExe = $(ConvertTo-PowerShellLiteral $CloudflaredPath)",
   "`$publicHost = $(ConvertTo-PowerShellLiteral $PublicHost)",
+  '# --edge-ip-version 4: neste host, resolução de edge via IPv6 trava até timeout no POST' +
+    ' inicial de "Requesting new quick Tunnel" (rota IPv6 de saída indisponível/bloqueada);' +
+    ' IPv4 funciona normalmente. Ver diagnóstico em' +
+    ' project_cloudflare_tunnel_task_never_registered_2026_08_22.md.',
   '$cloudflaredArgs = "tunnel --url https://127.0.0.1:443 --protocol http2 --no-tls-verify " +' +
-    '"--origin-server-name `"" + $publicHost + "`" --http-host-header `"" + $publicHost + "`""',
+    '"--edge-ip-version 4 --origin-server-name `"" + $publicHost + "`" --http-host-header `"" + $publicHost + "`""',
   '$cmdLine = "`"" + $cloudflaredExe + "`" " + $cloudflaredArgs + " >> `"" + $logFile + "`" 2>&1"',
   'Add-Content -LiteralPath $logFile -Value "[$startTimestamp] --- launcher iniciando cloudflared ' +
     '(boot da task ou reinício automático via RestartCount) ---"',
@@ -116,8 +120,20 @@ Write-Host "Aguardando o cloudflared publicar a URL pública no log ($logFile)..
 Start-Sleep -Seconds 8
 
 if (Test-Path -LiteralPath $logFile) {
-  $urlMatch = Select-String -LiteralPath $logFile -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' |
-    Select-Object -First 1
+  # O log é append-only entre reinícios/execuções; "api.trycloudflare.com" é o endpoint da
+  # API do Cloudflare (usado internamente pelo cloudflared para requisitar o túnel), não a
+  # URL pública — precisa ser excluído do match, senão uma tentativa antiga/falha nas
+  # primeiras linhas do arquivo é capturada em vez da URL real. Também restringimos a busca
+  # às linhas a partir do ÚLTIMO marcador "--- launcher iniciando cloudflared ---" e pegamos
+  # o match mais recente (Select-Object -Last 1), para refletir a execução atual do processo.
+  $allLines = Get-Content -LiteralPath $logFile
+  $lastStartIndex = ($allLines | Select-String -Pattern '--- launcher iniciando cloudflared ---' |
+    Select-Object -Last 1).LineNumber
+  $relevantLines = if ($lastStartIndex) { $allLines[($lastStartIndex - 1)..($allLines.Count - 1)] } else { $allLines }
+  $urlMatch = $relevantLines |
+    Select-String -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' |
+    Where-Object { $_.Matches[0].Value -ne 'https://api.trycloudflare.com' } |
+    Select-Object -Last 1
   if ($urlMatch) {
     Write-Host "URL pública do túnel: $($urlMatch.Matches[0].Value)"
     Write-Host 'Cadastre essa URL como BFF_PUBLIC_ORIGIN / vars.PUBLIC_HOST e nos redirect URIs' `

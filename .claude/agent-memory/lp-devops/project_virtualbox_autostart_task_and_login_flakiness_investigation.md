@@ -9,11 +9,18 @@ Requested 2026-08-19 on branch `feat/ia-fallback-polling` (not a dedicated infra
 did not ask to switch, so the new script was added in place; confirm before it's committed).
 
 **Cloudflare Quick Tunnel restart robustness (ask #1):** reviewed
-`scripts/Register-CloudflareTunnel.ps1` — already correct for the "host reboots, nothing works
-until someone opens PowerShell" problem: Scheduled Task `Cloudflared-QuickTunnel`, `SYSTEM`
-principal, `-AtStartup` trigger, `RestartCount 999`/`RestartInterval 1min`, log rotation to
-`logs/cloudflared-tunnel.log`. No domain purchased yet (confirmed again by user), so Quick
-Tunnel stays; no code change made here. See [[project_bff_persistent_logs_and_cloudflare_tunnel_task]].
+`scripts/Register-CloudflareTunnel.ps1` — the _script_ is already correct for the "host reboots,
+nothing works until someone opens PowerShell" problem: Scheduled Task `Cloudflared-QuickTunnel`,
+`SYSTEM` principal, `-AtStartup` trigger, `RestartCount 999`/`RestartInterval 1min`, log rotation
+to `logs/cloudflared-tunnel.log`. No domain purchased yet (confirmed again by user), so Quick
+Tunnel stays; no code change made here. **CORRECTION (2026-08-22): this review only verified the
+script's logic — it was never confirmed that the task was actually registered on the production
+host.** Evidence gathered 2026-08-22 shows it was NOT: no `Cloudflared-QuickTunnel` Scheduled
+Task, no `cloudflared.exe` process running, no `cloudflared-tunnel.log` anywhere on `C:\`. The
+Entra-registered redirect URI (`inspections-martha-excel-capability.trycloudflare.com`) came
+from a one-off interactive `cloudflared tunnel` run that died when its session closed. See
+[[project_bff_persistent_logs_and_cloudflare_tunnel_task]] for the full correction — verify with
+`Get-ScheduledTask -TaskName Cloudflared-QuickTunnel` before assuming this is live.
 
 **New: `scripts/Register-VirtualBoxAutostart.ps1` (ask #2)** — registers a second, independent
 Scheduled Task (`VirtualBox-Autostart` by default) that runs
