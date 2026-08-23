@@ -230,6 +230,12 @@ class MsalOidcClient implements OidcClient {
           durationMs: Date.now() - startedAt,
           errorKind: classifyErrorKind(error),
           errorType: error instanceof Error ? error.name : 'UnknownError',
+          // Diagnóstico: nesta etapa (metadata da autoridade Entra) o MSAL não recebe nenhum dado
+          // de usuário (code/state/token) — os parâmetros enviados são só client id/secret e
+          // escopos fixos. A mensagem de erro do MSAL (ex.: "fetch failed", timeout) não carrega
+          // esses segredos, então é seguro logar truncada para correlacionar rede lenta vs. outra
+          // causa na próxima ocorrência real.
+          errorMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
         },
         'Falha ao obter a URL de autorização do Entra (possível metadata de autoridade fria).'
       );
@@ -272,6 +278,14 @@ class MsalOidcClient implements OidcClient {
           durationMs: Date.now() - startedAt,
           errorKind: classifyErrorKind(error),
           errorType: error instanceof Error ? error.name : 'UnknownError',
+          // Diagnóstico (achado nesta investigação): o MSAL embrulha falha de rede em
+          // NetworkError, mas o nome/mensagem do erro original de rede (ex.: "fetch failed",
+          // timeout) só existe dentro de `error.message` — nunca em `.cause`/`.code` — então
+          // `classifyErrorKind` sozinho não distingue rede lenta de erro de validação de token.
+          // A mensagem do MSAL aqui é sempre sobre a chamada HTTP ao endpoint de token ou sobre
+          // validação de claims/assinatura; não inclui `code`/`state`/tokens em texto (o MSAL não
+          // ecoa esses valores nas mensagens de erro que produz). Truncado como precaução.
+          errorMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
         },
         'Falha ao trocar o código de autorização Entra por um token.'
       );
@@ -340,6 +354,9 @@ class GoogleOidcClient implements OidcClient {
               durationMs: Date.now() - startedAt,
               errorKind: classifyErrorKind(error),
               errorType: error instanceof Error ? error.name : 'UnknownError',
+              // Mesma lacuna de observabilidade do fluxo Entra: só `client id`/`secret` fixos
+              // trafegam nesta etapa (metadata OIDC do Google), sem dado de usuário na mensagem.
+              errorMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
             },
             'Descoberta OIDC do Google falhou; esta promise fica cacheada e todo login Google ' +
               'seguinte reusará esta mesma falha até o processo do BFF reiniciar.'
@@ -406,6 +423,10 @@ class GoogleOidcClient implements OidcClient {
           durationMs: Date.now() - startedAt,
           errorKind: classifyErrorKind(error),
           errorType: error instanceof Error ? error.name : 'UnknownError',
+          // `openid-client` reporta erros do grant (rede, resposta OAuth de erro, validação de
+          // claims) em `error.message`; não ecoa `code`/`codeVerifier`/tokens em texto na
+          // mensagem. Truncado como precaução, mesmo padrão do fluxo Entra acima.
+          errorMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
         },
         'Falha ao trocar o código de autorização Google por um token.'
       );
