@@ -18,6 +18,10 @@
   `feat/xml-navigable-tree`; PBI #128 (vínculo TXT↔XML) segue bloqueado por contrato.
 - [Lint de setState em effect](feedback_effect_setstate_lint.md) — `react-hooks/set-state-in-effect`
   é erro aqui; usar padrão "ajustar estado durante o render" em vez de `useEffect`.
+- [Investigação edição posicional multi-ocorrência](project_positional_edit_multi_occurrence_investigation.md) —
+  hipótese não confirmada (dado de contrato); precisa do JSON real de `parseResult.fields` antes de mexer em `positionalFieldEdit.ts`.
+- [Candidatos de transformação sem diferenciador](project_transformation_candidate_id_gap.md) —
+  `TransformationCandidate` não tem nome de mapper/`layoutOutputTarget`; só `candidateId`.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
