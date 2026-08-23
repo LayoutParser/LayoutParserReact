@@ -9,7 +9,7 @@ Requested 2026-08-19 on branch `feat/ia-fallback-polling` (not a dedicated infra
 did not ask to switch, so the new script was added in place; confirm before it's committed).
 
 **Cloudflare Quick Tunnel restart robustness (ask #1):** reviewed
-`scripts/Register-CloudflareTunnel.ps1` — the *script* is already correct for the "host reboots,
+`scripts/Register-CloudflareTunnel.ps1` — the _script_ is already correct for the "host reboots,
 nothing works until someone opens PowerShell" problem: Scheduled Task `Cloudflared-QuickTunnel`,
 `SYSTEM` principal, `-AtStartup` trigger, `RestartCount 999`/`RestartInterval 1min`, log rotation
 to `logs/cloudflared-tunnel.log`. No domain purchased yet (confirmed again by user), so Quick

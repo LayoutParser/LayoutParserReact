@@ -10,7 +10,7 @@ Scheduled Task `Cloudflared-QuickTunnel` **nunca foi registrada de fato**. `Get-
 só retorna `LayoutParserFrontend-BFF`; `Get-Process -Name cloudflared` está vazio;
 `cloudflared-tunnel.log` não existe em lugar nenhum de `C:\`. O binário
 `C:\Program Files (x86)\cloudflared\cloudflared.exe` está instalado. Ou seja: o texto abaixo
-descreve corretamente o *script* (`scripts/Register-CloudflareTunnel.ps1`, revisado de novo em
+descreve corretamente o _script_ (`scripts/Register-CloudflareTunnel.ps1`, revisado de novo em
 2026-08-19, ver [[project_virtualbox_autostart_task_and_login_flakiness_investigation]]), mas a
 frase "registers ... as its own Scheduled Task" describe a intenção do script, não um fato já
 aplicado em produção. A URL pública que ficou cadastrada como redirect URI no Entra

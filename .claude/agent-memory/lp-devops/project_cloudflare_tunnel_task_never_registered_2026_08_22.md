@@ -24,7 +24,7 @@ túnel público caiu).
 
 **Por que:** memórias anteriores ([[project_bff_persistent_logs_and_cloudflare_tunnel_task]],
 [[project_virtualbox_autostart_task_and_login_flakiness_investigation]]) descreviam a
-implementação do *script* em termos que soavam como "já registrado em produção" — eram
+implementação do _script_ em termos que soavam como "já registrado em produção" — eram
 descrições da lógica do script, não confirmação de execução real no host. Já foram corrigidas
 com uma nota apontando para este arquivo.
 
