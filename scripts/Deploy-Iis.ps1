@@ -11,6 +11,7 @@ param(
   [string] $GoogleClientId = '',
   [string] $GoogleClientSecret = '',
   [string] $AdminRoles = '',
+  [string] $DnsServers = '',
   [string] $FrontendSource = 'dist',
   [string] $ServerSource = 'server',
   [int] $BffPort = 3100,
@@ -302,6 +303,11 @@ $launcher = @(
   "`$env:BFF_PORT = $(ConvertTo-PowerShellLiteral $BffPort.ToString())",
   "`$env:BFF_PUBLIC_ORIGIN = $(ConvertTo-PowerShellLiteral $publicOrigin)",
   "`$env:LAYOUTPARSER_API_URL = $(ConvertTo-PowerShellLiteral $UpstreamUrl)",
+  # BFF_DNS_SERVERS é opcional: sem valor no pipeline, a linha não é gerada e o BFF mantém a
+  # resolução DNS padrão do Node (server/src/config.ts trata ausência como no-op).
+  $(if (-not [string]::IsNullOrWhiteSpace($DnsServers)) {
+    "`$env:BFF_DNS_SERVERS = $(ConvertTo-PowerShellLiteral $DnsServers)"
+  }),
   "`$env:BFF_TRUSTED_USER_HEADER = 'x-iis-user'",
   "`$env:BFF_TRUSTED_ROLES_HEADER = 'x-iis-roles'",
   "`$env:BFF_ADMIN_USERS = $(ConvertTo-PowerShellLiteral $AdminUsers)",
@@ -333,7 +339,7 @@ $launcher = @(
   '& cmd.exe /c $cmdLine',
   'exit $LASTEXITCODE'
 )
-Set-Content -LiteralPath $launcherPath -Value $launcher -Encoding UTF8
+Set-Content -LiteralPath $launcherPath -Value ($launcher | Where-Object { $null -ne $_ }) -Encoding UTF8
 $launcherAcl = [System.Security.AccessControl.FileSecurity]::new()
 $launcherAcl.SetAccessRuleProtection($true, $false)
 foreach ($sidValue in @('S-1-5-18', 'S-1-5-32-544')) {

@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 const MEBIBYTE = 1024 * 1024;
 const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const DOCUMENT_FIELD_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
@@ -55,6 +57,7 @@ export interface AppConfig {
   readonly entra: EntraConfig | null;
   readonly google: GoogleConfig | null;
   readonly logLevel: LogLevel;
+  readonly dnsServers: readonly string[];
 }
 
 export class ConfigError extends Error {
@@ -197,6 +200,20 @@ function parseLogLevel(value: string | undefined): LogLevel {
   }
 
   return selected as LogLevel;
+}
+
+// Servidores DNS fixos, opcionais, usados para contornar a resolução multi-homed lenta do SO em
+// hosts com múltiplas interfaces de rede ativas (ver server/src/dnsOverride.ts). Sem a variável,
+// o comportamento padrão do Node é mantido — só afeta hosts explicitamente configurados.
+function parseDnsServers(value: string | undefined): readonly string[] {
+  const servers = parseCsv(value);
+  for (const server of servers) {
+    if (isIP(server) === 0) {
+      throw new ConfigError(`BFF_DNS_SERVERS contém um endereço IP inválido: ${server}.`);
+    }
+  }
+
+  return servers;
 }
 
 function lowercaseSet(values: readonly string[]): ReadonlySet<string> {
@@ -419,5 +436,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     entra,
     google,
     logLevel: parseLogLevel(environment.BFF_LOG_LEVEL),
+    dnsServers: parseDnsServers(environment.BFF_DNS_SERVERS),
   };
 }
