@@ -1,8 +1,20 @@
 ---
 name: project-cloudflare-quick-tunnel-google-oauth-plan
-description: Plano (não executado) de expor o BFF de produção via Cloudflare Quick Tunnel para obter domínio real aceito como redirect URI no Google OAuth
+description: HISTÓRICO/OBSOLETO — plano de expor o BFF via Cloudflare Quick Tunnel; substituído por binding HTTPS direto com layoutparser.duckdns.org (removido em 2026-08-26)
 metadata:
   type: project
+---
+
+**OBSOLETO desde 2026-08-26.** Produção migrou para binding HTTPS direto no IIS via
+`layoutparser.duckdns.org` (DuckDNS), com `PUBLIC_HOST` validado em `Deploy-Iis.ps1`. O
+Cloudflare Quick Tunnel deixou de ser necessário e foi removido: `scripts/Register-CloudflareTunnel.ps1`
+excluído do repo, e o switch `-EnableCloudflareTunnel`/bloco opt-in retirado de
+`scripts/Deploy-Iis.ps1`. No servidor de produção, a Scheduled Task `Cloudflared-QuickTunnel`
+deve ser removida (`Unregister-ScheduledTask -TaskName 'Cloudflared-QuickTunnel' -Confirm:$false`)
+e o log `cloudflared-tunnel.log` pode ser arquivado/limpo. Nenhuma variável/secret `CLOUDFLARE_*`
+foi encontrada nos GitHub Environments `development`/`production` — nada pendente de limpeza lá.
+Mantido abaixo o registro histórico do plano original, só para referência.
+
 ---
 
 Levantamento feito em 2026-08-15: usuário quer, eventualmente, rodar `cloudflared tunnel --url
