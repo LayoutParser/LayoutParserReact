@@ -15,8 +15,7 @@ param(
   [string] $FrontendSource = 'dist',
   [string] $ServerSource = 'server',
   [int] $BffPort = 3100,
-  [int] $KeepReleases = 5,
-  [switch] $EnableCloudflareTunnel
+  [int] $KeepReleases = 5
 )
 
 $ErrorActionPreference = 'Stop'
@@ -406,15 +405,3 @@ foreach ($oldRelease in $oldReleases) {
 }
 
 Write-Host "Deploy concluído: release $releaseName, front HTTPS e BFF saudável."
-
-if ($EnableCloudflareTunnel) {
-  # Provisionamento do túnel Cloudflare é EXPLICITAMENTE opt-in e idempotente: só cria a
-  # Scheduled Task própria na primeira vez (Register-CloudflareTunnel.ps1 não recria task
-  # existente sem -Force), para que a URL pública gerada permaneça estável entre deploys
-  # normais. Deploys sem este parâmetro nunca tocam a task do túnel.
-  $registerTunnelScript = Join-Path $PSScriptRoot 'Register-CloudflareTunnel.ps1'
-  if (-not (Test-Path -LiteralPath $registerTunnelScript -PathType Leaf)) {
-    throw "EnableCloudflareTunnel foi solicitado, mas $registerTunnelScript não foi encontrado."
-  }
-  & $registerTunnelScript -DeployRoot $deployPath -PublicHost $PublicHost
-}
