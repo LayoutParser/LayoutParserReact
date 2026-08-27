@@ -11,7 +11,7 @@
 - [Quality Gates flaky](project_quality_gates_flaky_unhandled_errors.md) — vermelho com testes verdes: "Unhandled Errors" do Vitest; compare runs do mesmo SHA.
 - [Merge em head desatualizado](project_stale_head_merge_drops_commits.md) — commits pós-merge somem sem aviso; confira o fix pelo conteúdo do arquivo na `develop`.
 - [Páginas legais com placeholder](project_legal_pages_placeholders_pending.md) — `/terms` e `/privacy` esperam e-mail/jurisdição da empresa; não preencher sozinho.
-- [Plano Cloudflare Quick Tunnel p/ OAuth](project_cloudflare_quick_tunnel_google_oauth_plan.md) — checklist não executado; BFF prod escuta 127.0.0.1:3100.
+- [Plano Cloudflare Quick Tunnel p/ OAuth](project_cloudflare_quick_tunnel_google_oauth_plan.md) — OBSOLETO desde 2026-08-26: produção usa `layoutparser.duckdns.org` (HTTPS direto no IIS); script/switch do tunnel removidos do repo.
 - [.env do BFF é fail-fast](project_bff_env_failfast_placeholders.md) — placeholder no valor aborta o boot; use comentário e chave vazia.
 - [Log persistente do BFF + script do tunnel Cloudflare](project_bff_persistent_logs_and_cloudflare_tunnel_task.md) — `logs/` fora do release; script idempotente escrito, NUNCA registrado em produção (ver correção 2026-08-22).
 - [VirtualBox autostart + investigação de login flaky](project_virtualbox_autostart_task_and_login_flakiness_investigation.md) — task S4U/`-RunAsUser` (não SYSTEM); bug de discovery cacheado no GoogleOidcClient; hipótese MSAL cold-start não confirmada.

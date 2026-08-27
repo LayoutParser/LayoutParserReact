@@ -7,12 +7,13 @@ import type { DisplayGroup, Field } from '../../types/field';
 import type { PositionalFieldTarget } from '../../utils/positionalFieldEdit';
 import { resolvePositionalLineIndex } from '../../utils/positionalFieldEdit';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
+import DocumentEditActions from './DocumentEditActions/DocumentEditActions';
 import DocumentHealthBanner from './DocumentHealthBanner';
 import FieldEditor from './FieldEditor/FieldEditor';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
-  const { parseResult, fields, txtContent, editPositionalField } = useAppStore();
+  const { parseResult, fields, txtContent, documentSource, editPositionalField } = useAppStore();
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
   const { clearCandidates, setDiagnostic, setDiagnosticError } = useTransformationStore();
@@ -376,6 +377,8 @@ const FieldDisplay: React.FC = () => {
         <strong>Edição posicional:</strong> selecione um campo para alterar somente o intervalo
         reservado a ele. O novo valor precisa manter exatamente o mesmo comprimento.
       </div>
+
+      <DocumentEditActions />
 
       {editFeedback && (
         <div className="field-display-edit-feedback" role="status" aria-live="polite">
@@ -898,6 +901,7 @@ const FieldDisplay: React.FC = () => {
         key={editTarget ? `${editTarget.lineIndex}-${editTarget.fieldIndex}` : 'closed'}
         content={txtContent}
         target={editTarget}
+        encoding={documentSource?.encoding}
         onClose={() => setEditTarget(null)}
         onSave={handleFieldSave}
       />
