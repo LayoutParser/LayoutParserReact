@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { transformationService } from '../../services/api/transformationService';
+import { xmlAnalysisService } from '../../services/api/xmlAnalysisService';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import type { TransformationCandidatesResponse } from '../../types/transformation';
@@ -217,6 +218,85 @@ describe('XmlTransformationDisplay', () => {
     expect(clickedAnchor?.download).toBe('Layout-NFe-tclxsl-1.xml');
     expect(clickedAnchor?.href).toBe('blob:xml-transformado');
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:xml-transformado');
+  });
+
+  it('apresenta erro quando o navegador recusa copiar o XML', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Permissão de clipboard negada.'));
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+      candidatesResponse
+    );
+
+    render(<XmlTransformationDisplay />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Copiar XML' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Permissão de clipboard negada');
+  });
+
+  it('apresenta erro quando o navegador não consegue iniciar o download', async () => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => {
+        throw new Error('Falha ao criar URL temporária.');
+      }),
+    });
+    vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue(
+      candidatesResponse
+    );
+
+    render(<XmlTransformationDisplay />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Baixar XML' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Falha ao criar URL temporária');
+  });
+
+  it('seleciona o candidato com falha e exibe o diagnóstico retornado pela IA', async () => {
+    vi.mocked(transformationService.executeTransformationCandidates).mockResolvedValue({
+      success: true,
+      candidates: [
+        {
+          ...candidatesResponse.candidates[0]!,
+          candidateId: 'tcl-xsl-primeiro',
+        },
+        {
+          ...candidatesResponse.candidates[0]!,
+          candidateId: 'sysmiddle-12345678-abcd',
+          pathway: 'sysmiddle',
+          failureReason: 'Elemento obrigatório ausente.',
+        },
+      ],
+      recommendedCandidateId: null,
+      warnings: [],
+    });
+    vi.mocked(xmlAnalysisService.diagnoseValidationError).mockResolvedValue({
+      success: true,
+      diagnostic: {
+        summary: 'O mapper não gerou a identificação da nota.',
+        suggestedFix: 'Revise a regra que preenche infNFe/@Id.',
+        confidence: 0.82,
+      },
+    });
+
+    render(<XmlTransformationDisplay />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar Transformação XML' }));
+    const sysmiddleTab = await screen.findByRole('tab', { name: /Sysmiddle/ });
+    fireEvent.click(sysmiddleTab);
+    fireEvent.click(screen.getByRole('button', { name: 'Diagnosticar erro com IA' }));
+
+    await waitFor(() =>
+      expect(xmlAnalysisService.diagnoseValidationError).toHaveBeenCalledWith(
+        expect.objectContaining({ errorMessage: 'Elemento obrigatório ausente.' })
+      )
+    );
+    const diagnostic = await screen.findByRole('region', { name: 'Diagnóstico de IA' });
+    expect(diagnostic).toHaveTextContent('O mapper não gerou a identificação da nota.');
+    expect(diagnostic).toHaveTextContent('Revise a regra que preenche infNFe/@Id.');
   });
 
   it('encerra o loading e apresenta falha de infraestrutura', async () => {

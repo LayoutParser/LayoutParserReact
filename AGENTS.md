@@ -30,8 +30,8 @@ Contexto completo: [`README.md`](README.md). Contrato consumido: [`src/types/api
 
 ## 2. Stack & estrutura (resumo)
 
-- **Vite 8** (porta 3000, proxy `/api`), **React 19**, **react-router-dom 7.18**, **Zustand 4.4**, **Axios 1.19**.
-- **Node 20+ + Fastify 5** em `server/`; o BFF é a única fronteira do navegador com a API em produção.
+- **Vite 8** (porta 3000, proxy `/api`), **React 19**, **react-router-dom 7.18**, **Zustand 5**, **Axios 1.19**.
+- **Node 24.15+ (<25) + Fastify 5** em `server/`; o BFF é a única fronteira do navegador com a API em produção.
 - **TS strict** com `noUnusedLocals`/`noUnusedParameters`; alias `@/*` → `src/*`.
 - Camadas: `components/` (por feature) · `store/` (Zustand) · `services/` (HTTP, **único lugar** que fala com a API) · `types/` · `utils/`.
 - Detalhe: [`.claude/rules/frontend-standards.md`](.claude/rules/frontend-standards.md).

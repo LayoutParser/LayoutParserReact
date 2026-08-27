@@ -55,4 +55,32 @@ describe('FieldEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Reprocesse o documento');
     expect(screen.getByRole('button', { name: 'Aplicar no TXT' })).toBeDisabled();
   });
+
+  it('bloqueia valor que mudaria o tamanho em bytes no encoding original', () => {
+    const shortTarget: PositionalFieldTarget = {
+      fieldIndex: 0,
+      lineIndex: 0,
+      field: {
+        lineName: 'LINHA001',
+        fieldName: 'UF',
+        value: 'AA',
+        startPosition: 1,
+        length: 2,
+      },
+    };
+    render(
+      <FieldEditor
+        content={`AA${' '.repeat(598)}`}
+        target={shortTarget}
+        encoding="utf-8"
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Novo valor'), { target: { value: 'áA' } });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('mesmo tamanho no encoding original');
+    expect(screen.getByRole('button', { name: 'Aplicar no TXT' })).toBeDisabled();
+  });
 });

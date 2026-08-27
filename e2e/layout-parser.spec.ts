@@ -259,12 +259,44 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
     page.getByRole('tabpanel', { name: 'TXT Posicional' }).getByRole('status')
   ).toContainText('Código atualizado');
 
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Baixar TXT editado' }).click();
+  const editedDownload = await downloadPromise;
+  expect(editedDownload.suggestedFilename()).toBe('documento-editado.txt');
+
   await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
   await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
 
   const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
   await xmlTree.getByRole('treeitem', { name: /documento/ }).click();
   await expect(xmlTree.getByRole('treeitem', { name: /codigo.*XYZ/ })).toBeVisible();
+});
+
+test('desfaz e revalida o TXT editado pela API', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page);
+  await processSyntheticDocument(page);
+
+  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  await page.getByLabel('Novo valor').fill('XYZ');
+  await page.getByRole('button', { name: 'Aplicar no TXT' }).click();
+
+  const actions = page.getByRole('region', { name: 'Ações do TXT editado' });
+  await expect(actions).toContainText('1 alteração(ões) nesta sessão');
+  await actions.getByRole('button', { name: 'Desfazer última alteração' }).click();
+  await expect(actions.getByRole('status')).toContainText('Alteração de Código desfeita');
+  await expect(page.getByRole('button', { name: 'Editar campo Código: ABC' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  await page.getByLabel('Novo valor').fill('XYZ');
+  await page.getByRole('button', { name: 'Aplicar no TXT' }).click();
+  await actions.getByRole('button', { name: 'Reprocessar e revalidar' }).click();
+
+  await expect(actions.getByRole('status')).toContainText(
+    'Documento reprocessado e revalidado sem erros posicionais'
+  );
+  await expect(actions).toContainText('Nenhuma alteração pendente');
+  await expect(page.getByRole('button', { name: 'Editar campo Código: ABC' })).toBeVisible();
 });
 
 test('navega pela hierarquia SAP IDoc declarada no layout', async ({ page }) => {

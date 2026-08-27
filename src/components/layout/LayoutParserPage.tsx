@@ -13,6 +13,7 @@ import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
 import type { ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
+import { inspectDocumentSource } from '../../utils/documentEncoding';
 import { ALLOWED_UPLOAD_EXTENSIONS, validateUploadFile } from '../../utils/uploadValidation';
 import './LayoutParserPage.css';
 
@@ -37,10 +38,9 @@ const LayoutParserPage: React.FC = () => {
     setUploadError,
     setUploadProgress,
     setParseError,
-    setParseResult,
-    setTxtContent,
-    setFields,
     setSelectedLayout,
+    replaceParsedDocument,
+    clearParsedDocument,
   } = useAppStore();
 
   React.useEffect(
@@ -203,20 +203,15 @@ const LayoutParserPage: React.FC = () => {
         layoutName: layoutToUse.name,
       };
 
-      const result = await parseService.parseFiles(request, {
-        signal: abortController.signal,
-        onUploadProgress: setUploadProgress,
-      });
+      const [result, documentSource] = await Promise.all([
+        parseService.parseFiles(request, {
+          signal: abortController.signal,
+          onUploadProgress: setUploadProgress,
+        }),
+        inspectDocumentSource(txtFile),
+      ]);
 
-      setParseResult(result);
-      if (result.text) {
-        setTxtContent(result.text);
-      }
-      if (result.fields && result.fields.length > 0) {
-        setFields(result.fields);
-      } else {
-        setFields([]);
-      }
+      replaceParsedDocument(result, documentSource);
     } catch (error) {
       if (uploadAbortRef.current?.signal.aborted) {
         setUploadError('Processamento cancelado. Nenhum resultado novo foi aplicado.');
@@ -234,9 +229,7 @@ const LayoutParserPage: React.FC = () => {
         // segundo — o nome do arquivo no seletor já era o novo. Isso viola direto a regra de
         // produto da spec: quando a falha é nossa (`parser_defect`), não se apresenta arquivo
         // nenhum. E mesmo nos 422 o documento exibido não é o que o usuário acabou de enviar.
-        setParseResult(null);
-        setFields([]);
-        setTxtContent('');
+        clearParsedDocument();
         setParseError(error.toInfo());
         logService.warn('Falha de parse classificada no front-end', {
           kind: error.kind,

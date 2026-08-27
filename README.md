@@ -52,14 +52,19 @@ fornecida, em vez de presumir um diagnóstico.
 Na aba **TXT Posicional**, cada campo com posição e comprimento confirmados pela API pode ser
 selecionado para edição. O novo valor precisa ocupar **exatamente** o mesmo número de posições:
 um CNPJ de 14 posições só aceita outro valor com 14 caracteres. A substituição acontece apenas
-no intervalo daquele campo, mantém o tamanho total do documento e invalida candidatos XML gerados
-para a versão anterior. Se posição, ocorrência, comprimento ou conteúdo atual não puderem ser
-comprovados, a edição é bloqueada e o documento precisa ser reprocessado.
+no intervalo daquele campo e também precisa manter o mesmo tamanho em bytes no encoding original.
+O histórico fica somente na sessão e permite desfazer alterações; o TXT editado pode ser baixado
+sem mudar encoding ou tamanho e reenviado à API pelo botão **Reprocessar e revalidar**, que substitui
+campos, erros e demais estados derivados pela nova resposta. Qualquer edição invalida candidatos XML
+gerados para a versão anterior. Se posição, ocorrência, comprimento, encoding ou conteúdo atual não
+puderem ser comprovados, a operação falha de forma segura e o documento precisa ser reprocessado.
 
 > **EN:** In the **Positional TXT** tab, a field can be edited only when the API supplied a
 > verifiable position and length. The replacement must have exactly the same character count,
-> changes only that field range, preserves the document size and invalidates XML candidates from
-> the previous version. Ambiguous or stale mappings are rejected and require reprocessing.
+> changes only that field range and must keep the same byte length in the original encoding.
+> Session-only undo, encoding/size-preserving download and API reprocessing are available; a new
+> parse response replaces fields, validation errors and other derived state. Ambiguous, stale or
+> encoding-unsafe changes are rejected, and XML candidates from the previous version are cleared.
 
 ### Hierarquia SAP IDoc / SAP IDoc hierarchy
 
