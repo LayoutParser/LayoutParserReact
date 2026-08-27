@@ -1,5 +1,9 @@
 import React, { useId, useMemo, useState } from 'react';
 
+import {
+  assertEncodedReplacementSize,
+  type DocumentEncoding,
+} from '../../../utils/documentEncoding';
 import type { PositionalFieldTarget } from '../../../utils/positionalFieldEdit';
 import { inspectPositionalField } from '../../../utils/positionalFieldEdit';
 import Button from '../../shared/Button';
@@ -9,11 +13,18 @@ import './FieldEditor.css';
 interface FieldEditorProps {
   content: string;
   target: PositionalFieldTarget | null;
+  encoding?: DocumentEncoding;
   onClose: () => void;
   onSave: (target: PositionalFieldTarget, value: string) => void;
 }
 
-const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onSave }) => {
+const FieldEditor: React.FC<FieldEditorProps> = ({
+  content,
+  target,
+  encoding,
+  onClose,
+  onSave,
+}) => {
   const helpId = useId();
   const errorId = useId();
   const inspection = useMemo(
@@ -29,7 +40,17 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onS
   const isExactLength = value.length === expectedLength;
   const hasControlCharacter = /[\u0000-\u001f\u007f]/.test(value);
   const isUnchanged = inspection?.editable && value === inspection.currentValue;
-  const canSave = inspection?.editable && isExactLength && !hasControlCharacter && !isUnchanged;
+  let encodingError: string | null = null;
+  if (inspection?.editable && encoding && isExactLength) {
+    try {
+      assertEncodedReplacementSize(inspection.currentValue, value, encoding);
+    } catch (error) {
+      encodingError =
+        error instanceof Error ? error.message : 'O valor não respeita o encoding original.';
+    }
+  }
+  const canSave =
+    inspection?.editable && isExactLength && !hasControlCharacter && !encodingError && !isUnchanged;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -64,7 +85,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onS
             </label>
             <input
               id="field-editor-value"
-              className={`field-editor__input ${!isExactLength || hasControlCharacter ? 'field-editor__input--invalid' : ''}`}
+              className={`field-editor__input ${!isExactLength || hasControlCharacter || encodingError ? 'field-editor__input--invalid' : ''}`}
               value={value}
               minLength={expectedLength}
               maxLength={expectedLength}
@@ -72,8 +93,8 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onS
                 setValue(event.target.value);
                 setSaveError(null);
               }}
-              aria-describedby={`${helpId}${saveError ? ` ${errorId}` : ''}`}
-              aria-invalid={!isExactLength || hasControlCharacter}
+              aria-describedby={`${helpId}${saveError || encodingError ? ` ${errorId}` : ''}`}
+              aria-invalid={!isExactLength || hasControlCharacter || Boolean(encodingError)}
               autoComplete="off"
               spellCheck={false}
             />
@@ -91,6 +112,11 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onS
                 Quebras de linha e caracteres de controle não são permitidos.
               </p>
             )}
+            {encodingError && (
+              <p className="field-editor__error" id={errorId} role="alert">
+                {encodingError}
+              </p>
+            )}
           </>
         ) : (
           <p className="field-editor__error" role="alert">
@@ -99,7 +125,7 @@ const FieldEditor: React.FC<FieldEditorProps> = ({ content, target, onClose, onS
         )}
 
         {saveError && (
-          <p className="field-editor__error" id={errorId} role="alert">
+          <p className="field-editor__error" id={encodingError ? undefined : errorId} role="alert">
             {saveError}
           </p>
         )}
