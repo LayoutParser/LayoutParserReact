@@ -417,3 +417,39 @@
 /* A regra `.validation-error-alert` (e o keyframe `slideDown`, sem nenhum outro consumidor no
    projeto) saiu junto com o alerta inline que este arquivo estilizava: o aviso de defeito
    agora é o DocumentHealthBanner, com CSS próprio. */
+.field-occurrence-list-trigger {
+  display: none;
+}
+
+.field-occurrence-list {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.field-occurrence-list > button {
+  display: grid;
+  min-height: 44px;
+  gap: 0.2rem;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .field-occurrence-list-trigger {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    margin: var(--spacing-xs) 0;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-accent);
+    font-weight: var(--font-weight-semibold);
+  }
+}

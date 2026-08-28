@@ -53,4 +53,15 @@ describe('LayoutCombobox', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     await waitFor(() => expect(trigger).toHaveFocus());
   });
+
+  it('impede troca de layout enquanto o processamento está em andamento', () => {
+    render(
+      <LayoutCombobox layouts={layouts} selectedLayout={layouts[0]} onSelect={vi.fn()} disabled />
+    );
+
+    const trigger = screen.getByRole('combobox');
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
 });

@@ -24,7 +24,7 @@ describe('parseXmlToTree', () => {
 
     const infNFe = root?.children[0];
     expect(infNFe?.name).toBe('infNFe');
-    expect(infNFe?.attributes).toEqual([
+    expect(infNFe?.attributes).toMatchObject([
       { id: '/NFe[0]/infNFe[0]/@Id', kind: 'attribute', name: 'Id', value: 'NFe123' },
     ]);
 
@@ -43,6 +43,20 @@ describe('parseXmlToTree', () => {
       '/NFe[0]/det[0]',
       '/NFe[0]/det[1]',
       '/NFe[0]/det[2]',
+    ]);
+  });
+
+  it('canonicaliza namespace default com o prefixo contratual e ocorrências 1-based', () => {
+    const xml =
+      '<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><det><prod /></det><det><prod /></det></NFe>';
+    const { root } = parseXmlToTree(xml, {
+      nfe: 'http://www.portalfiscal.inf.br/nfe',
+    });
+
+    expect(root?.xpath).toBe('/nfe:NFe');
+    expect(root?.children.map(child => [child.xpath, child.xpathOccurrence])).toEqual([
+      ['/nfe:NFe/nfe:det', 1],
+      ['/nfe:NFe/nfe:det', 2],
     ]);
   });
 });

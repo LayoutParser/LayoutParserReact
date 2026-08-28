@@ -2,9 +2,80 @@ import axios from 'axios';
 import apiClient from '../api';
 import type {
   AiCandidateStatus,
+  FieldMapping,
+  FieldMappingConfidence,
+  FieldMappingKind,
+  FieldMappingNodeKind,
+  TransformationCandidate,
   TransformationCandidatesRequest,
   TransformationCandidatesResponse,
 } from '../../types/transformation';
+
+const FIELD_MAPPING_KINDS: FieldMappingKind[] = ['Direct', 'Transformed', 'Concatenated', 'Static'];
+const FIELD_MAPPING_CONFIDENCES: FieldMappingConfidence[] = ['Authoritative', 'BestEffort'];
+const FIELD_MAPPING_NODE_KINDS: FieldMappingNodeKind[] = ['Element', 'Attribute', 'Text'];
+
+const normalizeEnum = <T extends string>(
+  value: T | number,
+  values: readonly T[],
+  fallback: T
+): T => {
+  if (typeof value === 'number') return values[value] ?? fallback;
+  return values.find(candidate => candidate.toLowerCase() === value.toLowerCase()) ?? fallback;
+};
+
+type FieldMappingWire = Omit<FieldMapping, 'kind' | 'confidence' | 'targets' | 'limitations'> & {
+  kind: FieldMappingKind | number;
+  confidence: FieldMappingConfidence | number;
+  limitations?: string[] | null;
+  targets: Array<
+    Omit<FieldMapping['targets'][number], 'nodeKind' | 'xmlOccurrence'> & {
+      nodeKind: FieldMappingNodeKind | number;
+      xmlOccurrence?: number | null;
+    }
+  >;
+};
+
+type TransformationCandidateWire = Omit<TransformationCandidate, 'fieldMappings'> & {
+  fieldMappings?: FieldMappingWire[] | null;
+};
+
+type TransformationCandidatesWireResponse = Omit<
+  TransformationCandidatesResponse,
+  'candidates' | 'recommendedCandidateId' | 'warnings' | 'pathwayDiagnostics' | 'correlationId'
+> & {
+  candidates: TransformationCandidateWire[];
+  recommendedCandidateId?: string | null;
+  warnings?: string[];
+  pathwayDiagnostics?: TransformationCandidatesResponse['pathwayDiagnostics'];
+  correlationId?: string | null;
+};
+
+const normalizeFieldMapping = (mapping: FieldMappingWire): FieldMapping => ({
+  ...mapping,
+  kind: normalizeEnum(mapping.kind, FIELD_MAPPING_KINDS, 'Transformed'),
+  confidence: normalizeEnum(mapping.confidence, FIELD_MAPPING_CONFIDENCES, 'BestEffort'),
+  limitations: mapping.limitations ?? null,
+  targets: mapping.targets.map(target => ({
+    ...target,
+    nodeKind: normalizeEnum(target.nodeKind, FIELD_MAPPING_NODE_KINDS, 'Element'),
+    xmlOccurrence: target.xmlOccurrence ?? null,
+  })),
+});
+
+const normalizeCandidate = (candidate: TransformationCandidateWire): TransformationCandidate => ({
+  ...candidate,
+  segmentMappings: candidate.segmentMappings ?? null,
+  fieldMappings:
+    candidate.fieldMappings === undefined || candidate.fieldMappings === null
+      ? null
+      : candidate.fieldMappings.map(normalizeFieldMapping),
+  sectionMappings: candidate.sectionMappings ?? null,
+  xmlNamespaces: candidate.xmlNamespaces ?? null,
+  score: candidate.score ?? null,
+  validation: candidate.validation ?? null,
+  failureReason: candidate.failureReason ?? null,
+});
 
 /**
  * Serviço para o fluxo "XML Transformação Final": executa a avaliação multi-candidato e a
@@ -27,11 +98,18 @@ export const transformationService = {
     request: TransformationCandidatesRequest
   ): Promise<TransformationCandidatesResponse> {
     try {
-      const response = await apiClient.post<TransformationCandidatesResponse>(
+      const response = await apiClient.post<TransformationCandidatesWireResponse>(
         '/api/transformationexecution/execute-candidates',
         request
       );
-      return response.data;
+      return {
+        ...response.data,
+        candidates: response.data.candidates.map(normalizeCandidate),
+        recommendedCandidateId: response.data.recommendedCandidateId ?? null,
+        warnings: response.data.warnings ?? [],
+        pathwayDiagnostics: response.data.pathwayDiagnostics ?? [],
+        correlationId: response.data.correlationId ?? null,
+      };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const data = error.response?.data;

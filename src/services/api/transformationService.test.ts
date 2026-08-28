@@ -41,13 +41,57 @@ describe('transformationService', () => {
   it('usa a rota real sem hífen e preserva o contrato de candidatos', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({ data: response });
 
-    await expect(transformationService.executeTransformationCandidates(request)).resolves.toEqual(
-      response
-    );
+    await expect(transformationService.executeTransformationCandidates(request)).resolves.toEqual({
+      ...response,
+      pathwayDiagnostics: [],
+      correlationId: null,
+    });
     expect(apiClient.post).toHaveBeenCalledWith(
       '/api/transformationexecution/execute-candidates',
       request
     );
+  });
+
+  it('normaliza enums numéricos e propriedades nulas omitidas no wire atual da API', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: {
+        success: true,
+        candidates: [
+          {
+            candidateId: 'sysmiddle-1',
+            pathway: 'sysmiddle',
+            transformedXml: '<NFe />',
+            fieldMappings: [
+              {
+                mappingId: 'mapping-1',
+                sources: [],
+                targets: [{ xpath: '/nfe:NFe', nodeKind: 0 }],
+                kind: 3,
+                confidence: 1,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const result = await transformationService.executeTransformationCandidates(request);
+
+    expect(result.candidates[0]).toMatchObject({
+      score: null,
+      segmentMappings: null,
+      sectionMappings: null,
+      xmlNamespaces: null,
+      fieldMappings: [
+        {
+          kind: 'Static',
+          confidence: 'BestEffort',
+          limitations: null,
+          targets: [{ nodeKind: 'Element', xmlOccurrence: null }],
+        },
+      ],
+    });
+    expect(result).toMatchObject({ warnings: [], pathwayDiagnostics: [], correlationId: null });
   });
 
   describe('getAiCandidateStatus', () => {

@@ -1,24 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useSearchStore } from '../../store/useSearchStore';
-import { useTransformationStore } from '../../store/useTransformationStore';
+import { useTraceabilityStore } from '../../store/useTraceabilityStore';
 import type { DisplayGroup, Field } from '../../types/field';
-import type { PositionalFieldTarget } from '../../utils/positionalFieldEdit';
-import { resolvePositionalLineIndex } from '../../utils/positionalFieldEdit';
 import { findFirstDesyncLineIndex } from '../../utils/documentHealth';
+import { getFieldPhysicalId } from '../../utils/fieldIdentity';
 import DocumentEditActions from './DocumentEditActions/DocumentEditActions';
 import DocumentHealthBanner from './DocumentHealthBanner';
-import FieldEditor from './FieldEditor/FieldEditor';
+import Modal from '../shared/Modal';
 import './FieldDisplay.css';
 
 const FieldDisplay: React.FC = () => {
-  const { parseResult, fields, txtContent, documentSource, editPositionalField } = useAppStore();
+  const { parseResult, fields, txtContent } = useAppStore();
   const { fieldGroups, selectField, highlightedFields, highlightField } = useFieldStore();
   const { searchResults, currentResultIndex } = useSearchStore();
-  const { clearCandidates, setDiagnostic, setDiagnosticError } = useTransformationStore();
-  const [editTarget, setEditTarget] = useState<PositionalFieldTarget | null>(null);
-  const [editFeedback, setEditFeedback] = useState<string | null>(null);
+  const { requestedFieldId, setInspectorOpen, selectXmlNode, clearFieldFocusRequest } =
+    useTraceabilityStore();
+  const fieldDisplayRef = useRef<HTMLDivElement>(null);
+  const [rovingFieldId, setRovingFieldId] = useState<string | null>(null);
+  const [mobileGroup, setMobileGroup] = useState<DisplayGroup | null>(null);
 
   // Usar campos do parseResult se fields estiver vazio.
   // Memoizado para estabilizar a identidade do array: o efeito de sincronização mais abaixo
@@ -28,6 +29,13 @@ const FieldDisplay: React.FC = () => {
     () => (fields.length > 0 ? fields : parseResult?.fields || []),
     [fields, parseResult?.fields]
   );
+  const effectiveRovingFieldId = actualFields.some(
+    field => getFieldPhysicalId(field) === rovingFieldId
+  )
+    ? rovingFieldId
+    : actualFields[0]
+      ? getFieldPhysicalId(actualFields[0])
+      : null;
 
   // Função comentada - não utilizada (número da linha agora é sequencial)
   // const getLineInitialValue = (lineName: string): string | null => {
@@ -45,49 +53,28 @@ const FieldDisplay: React.FC = () => {
     if (searchResults.length > 0 && currentResultIndex >= 0) {
       const currentResult = searchResults[currentResultIndex];
       if (currentResult) {
-        const fieldId = `${currentResult.field.lineName}_${currentResult.field.fieldName}`;
+        const fieldId = getFieldPhysicalId(currentResult.field);
         highlightField(fieldId);
+        selectField(currentResult.field);
+        setInspectorOpen(true);
       }
     }
-  }, [searchResults, currentResultIndex, highlightField]);
+  }, [searchResults, currentResultIndex, highlightField, selectField, setInspectorOpen]);
 
-  const handleFieldClick = (field: Field, group: DisplayGroup, fallbackLineIndex: number) => {
+  const handleFieldClick = (field: Field) => {
     selectField(field);
-    const fieldIndex = actualFields.indexOf(field);
-    if (fieldIndex < 0) {
-      setEditFeedback('Não foi possível identificar o campo selecionado.');
-      return;
-    }
-    const lineIndex = resolvePositionalLineIndex(
-      txtContent,
-      group.lineSequence ?? field.lineSequence,
-      group.occurrence ?? field.occurrence,
-      fallbackLineIndex,
-      displayGroups.length
-    );
-    setEditTarget({ field, fieldIndex, lineIndex });
-  };
-
-  const handleFieldSave = (target: PositionalFieldTarget, value: string) => {
-    editPositionalField(target, value);
-    clearCandidates();
-    setDiagnostic(null);
-    setDiagnosticError(null);
-    setEditFeedback(
-      `${target.field.fieldName} atualizado sem alterar o comprimento do documento. Gere novamente a transformação XML, se necessário.`
-    );
+    selectXmlNode(null);
+    setInspectorOpen(true);
+    setRovingFieldId(getFieldPhysicalId(field));
   };
 
   const isFieldHighlighted = (field: Field): boolean => {
-    const fieldId = `${field.lineName}_${field.fieldName}`;
-    return highlightedFields.has(fieldId);
+    return highlightedFields.has(getFieldPhysicalId(field));
   };
 
   const isFieldInSearch = (field: Field): boolean => {
-    return searchResults.some(
-      result =>
-        result.field.lineName === field.lineName && result.field.fieldName === field.fieldName
-    );
+    const fieldId = getFieldPhysicalId(field);
+    return searchResults.some(result => getFieldPhysicalId(result.field) === fieldId);
   };
 
   // Sincronizar campos com o store se necessário
@@ -97,6 +84,78 @@ const FieldDisplay: React.FC = () => {
       setFieldsInStore(actualFields);
     }
   }, [actualFields]);
+
+  useEffect(() => {
+    if (!requestedFieldId) return;
+    const requestedButton = Array.from(
+      fieldDisplayRef.current?.querySelectorAll<HTMLButtonElement>('[data-field-id]') ?? []
+    ).find(button => button.dataset.fieldId === requestedFieldId);
+    if (!requestedButton) return;
+
+    setRovingFieldId(requestedFieldId);
+    requestedButton.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    requestedButton.focus();
+    clearFieldFocusRequest();
+  }, [requestedFieldId, clearFieldFocusRequest]);
+
+  const focusFieldButton = (button: HTMLButtonElement | undefined) => {
+    if (!button?.dataset.fieldId) return;
+    setRovingFieldId(button.dataset.fieldId);
+    button.focus();
+  };
+
+  const handleFieldKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const allButtons = Array.from(
+      fieldDisplayRef.current?.querySelectorAll<HTMLButtonElement>('[data-field-id]') ?? []
+    );
+    const currentIndex = allButtons.indexOf(event.currentTarget);
+    if (currentIndex < 0) return;
+
+    if (event.ctrlKey && event.key === 'Home') return focusFieldButton(allButtons[0]);
+    if (event.ctrlKey && event.key === 'End') {
+      return focusFieldButton(allButtons[allButtons.length - 1]);
+    }
+
+    const line = event.currentTarget.closest('.field-line-container');
+    const lineButtons = Array.from(
+      line?.querySelectorAll<HTMLButtonElement>('[data-field-id]') ?? []
+    );
+    const lineIndex = lineButtons.indexOf(event.currentTarget);
+    if (event.key === 'Home') return focusFieldButton(lineButtons[0]);
+    if (event.key === 'End') return focusFieldButton(lineButtons[lineButtons.length - 1]);
+    if (event.key === 'ArrowLeft') {
+      return focusFieldButton(lineButtons[Math.max(0, lineIndex - 1)]);
+    }
+    if (event.key === 'ArrowRight') {
+      return focusFieldButton(lineButtons[Math.min(lineButtons.length - 1, lineIndex + 1)]);
+    }
+
+    const lines = Array.from(
+      fieldDisplayRef.current?.querySelectorAll<HTMLElement>('.field-line-container') ?? []
+    );
+    const currentLineIndex = line instanceof HTMLElement ? lines.indexOf(line) : -1;
+    const targetLine =
+      event.key === 'ArrowUp'
+        ? lines[Math.max(0, currentLineIndex - 1)]
+        : lines[Math.min(lines.length - 1, currentLineIndex + 1)];
+    const targetButtons = Array.from(
+      targetLine?.querySelectorAll<HTMLButtonElement>('[data-field-id]') ?? []
+    );
+    const currentStart = Number(event.currentTarget.dataset.startPosition ?? 0);
+    const nearest = targetButtons.reduce<HTMLButtonElement | undefined>((best, candidate) => {
+      if (!best) return candidate;
+      const candidateDistance = Math.abs(
+        Number(candidate.dataset.startPosition ?? 0) - currentStart
+      );
+      const bestDistance = Math.abs(Number(best.dataset.startPosition ?? 0) - currentStart);
+      return candidateDistance < bestDistance ? candidate : best;
+    }, undefined);
+    focusFieldButton(nearest);
+  };
 
   // Função para extrair número da linha do nome (ex: "LINHA000" -> "000")
   const extractLineNumber = (lineName: string): string => {
@@ -367,27 +426,18 @@ const FieldDisplay: React.FC = () => {
   };
 
   return (
-    <div className="field-display">
+    <div className="field-display" ref={fieldDisplayRef}>
       {/* Estado "200 com defeito": o documento continua abaixo, com os defeitos anotados.
           Substitui o alerta inline que só aparecia quando `validationWarning` vinha
           preenchido — a decisão agora é do `documentHealth`/`validationErrors`. */}
       <DocumentHealthBanner />
 
       <div className="field-display-edit-help" role="note">
-        <strong>Edição posicional:</strong> selecione um campo para alterar somente o intervalo
-        reservado a ele. O novo valor precisa manter exatamente o mesmo comprimento.
+        <strong>Inspeção e edição posicional:</strong> selecione um campo para ver sua origem e seus
+        destinos. A edição é uma ação explícita do inspetor e mantém exatamente o mesmo comprimento.
       </div>
 
       <DocumentEditActions />
-
-      {editFeedback && (
-        <div className="field-display-edit-feedback" role="status" aria-live="polite">
-          <span>{editFeedback}</span>
-          <button type="button" onClick={() => setEditFeedback(null)} aria-label="Fechar aviso">
-            ×
-          </button>
-        </div>
-      )}
 
       {/* Nota de leitura específica desta aba: o corte das linhas seguintes é comportamento
           do FieldDisplay, não do payload, então não pertence ao banner de saúde. Só aparece
@@ -801,6 +851,13 @@ const FieldDisplay: React.FC = () => {
                 {group.lineName} - Ocorrência {occurrence}
               </div>
             )}
+            <button
+              type="button"
+              className="field-occurrence-list-trigger"
+              onClick={() => setMobileGroup(groupData)}
+            >
+              Ver campos de {group.lineName}, ocorrência {occurrence}
+            </button>
             <div className={`field-list-inline ${hasLineError ? 'line-with-error-content' : ''}`}>
               {/* Linha completa com exatamente 600 caracteres */}
               <span
@@ -866,7 +923,7 @@ const FieldDisplay: React.FC = () => {
 
                     if (part.type === 'field' && part.field) {
                       const field = part.field;
-                      const fieldId = `${field.lineName}_${field.fieldName}`;
+                      const fieldId = getFieldPhysicalId(field);
                       const highlighted = isFieldHighlighted(field);
                       const inSearch = isFieldInSearch(field);
 
@@ -876,12 +933,16 @@ const FieldDisplay: React.FC = () => {
 
                       return (
                         <button
-                          key={`field-${partIndex}`}
+                          key={fieldId}
                           type="button"
                           data-field-id={fieldId}
+                          data-start-position={field.startPosition ?? part.start + 1}
+                          tabIndex={effectiveRovingFieldId === fieldId ? 0 : -1}
                           className={`field-inline ${highlighted ? 'highlighted' : ''} ${inSearch ? 'in-search' : ''} ${isProblematicField ? 'field-problematic' : ''}`}
-                          onClick={() => handleFieldClick(field, groupData, physicalLineIndex)}
-                          aria-label={`Editar campo ${field.fieldName}: ${field.value || 'vazio'}`}
+                          onClick={() => handleFieldClick(field)}
+                          onFocus={() => setRovingFieldId(fieldId)}
+                          onKeyDown={handleFieldKeyDown}
+                          aria-label={`Selecionar campo ${field.fieldName}, ocorrência ${field.occurrence ?? occurrence}: ${field.value || 'vazio'}`}
                           title={`${field.fieldName} (Pos: ${part.start + 1}-${part.end}) - Valor: ${field.value || '(vazio)'} - Len: ${field.length || 'N/A'}${isProblematicField ? ` - ❌ ${problematicField.issue}` : ''}`}
                         >
                           {part.content}
@@ -897,14 +958,35 @@ const FieldDisplay: React.FC = () => {
           </div>
         );
       })}
-      <FieldEditor
-        key={editTarget ? `${editTarget.lineIndex}-${editTarget.fieldIndex}` : 'closed'}
-        content={txtContent}
-        target={editTarget}
-        encoding={documentSource?.encoding}
-        onClose={() => setEditTarget(null)}
-        onSave={handleFieldSave}
-      />
+      <Modal
+        isOpen={Boolean(mobileGroup)}
+        onClose={() => setMobileGroup(null)}
+        title={
+          mobileGroup
+            ? `${mobileGroup.lineName} — ocorrência ${mobileGroup.occurrence ?? 1}`
+            : 'Campos da ocorrência'
+        }
+        size="large"
+      >
+        <div className="field-occurrence-list">
+          {mobileGroup?.fields.map(field => (
+            <button
+              key={getFieldPhysicalId(field)}
+              type="button"
+              onClick={() => {
+                handleFieldClick(field);
+                setMobileGroup(null);
+              }}
+            >
+              <strong>{field.fieldName}</strong>
+              <span>{field.value?.trim() || 'Vazio'}</span>
+              <small>
+                Posição {field.startPosition ?? 'N/A'} · {field.length ?? 'N/A'} caracteres
+              </small>
+            </button>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

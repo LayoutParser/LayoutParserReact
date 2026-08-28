@@ -102,3 +102,42 @@ describe('useAppStore.editPositionalField', () => {
     expect(useAppStore.getState().txtContent).toBe(content);
   });
 });
+
+describe('useAppStore.proveniência', () => {
+  beforeEach(() => useAppStore.getState().reset());
+
+  it('grava e remove de forma atômica a origem do resultado processado', () => {
+    const source = {
+      name: 'entrada.txt',
+      mediaType: 'text/plain',
+      lastModified: 123,
+      encoding: 'utf-8' as const,
+      hasBom: false,
+      originalSize: 14,
+    };
+    const provenance = {
+      document: {
+        name: 'entrada.txt',
+        originalSize: 14,
+        lastModified: 123,
+        encoding: 'utf-8' as const,
+      },
+      layout: {
+        layoutGuid: 'layout-1',
+        name: 'Layout Teste',
+      },
+    };
+
+    useAppStore
+      .getState()
+      .replaceParsedDocument({ success: true, text: '12345678901234' }, source, provenance);
+
+    expect(useAppStore.getState().parsedDocumentProvenance).toEqual(provenance);
+    useAppStore.getState().clearParsedDocument();
+    expect(useAppStore.getState()).toMatchObject({
+      parseResult: null,
+      documentSource: null,
+      parsedDocumentProvenance: null,
+    });
+  });
+});
