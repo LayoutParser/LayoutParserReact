@@ -1,28 +1,28 @@
 import { create } from 'zustand';
 import type { Field, FieldGroup } from '../types/field';
+import { getFieldPhysicalId } from '../utils/fieldIdentity';
 
 interface FieldState {
   fields: Field[];
   fieldGroups: FieldGroup[];
   selectedField: Field | null;
+  selectedFieldId: string | null;
   highlightedFields: Set<string>;
 
   setFields: (fields: Field[]) => void;
   selectField: (field: Field | null) => void;
   highlightField: (fieldId: string | null) => void;
   clearHighlights: () => void;
+  reset: () => void;
   getFieldsByLine: (lineName: string) => Field[];
   getFieldById: (fieldId: string) => Field | null;
 }
-
-const generateFieldId = (field: Field): string => {
-  return `${field.lineName}_${field.fieldName}`;
-};
 
 export const useFieldStore = create<FieldState>((set, get) => ({
   fields: [],
   fieldGroups: [],
   selectedField: null,
+  selectedFieldId: null,
   highlightedFields: new Set<string>(),
 
   setFields: fields => {
@@ -53,9 +53,12 @@ export const useFieldStore = create<FieldState>((set, get) => ({
   },
 
   selectField: field => {
-    set({ selectedField: field });
+    const selectedFieldId = field ? getFieldPhysicalId(field) : null;
+    set({ selectedField: field, selectedFieldId });
     if (field) {
-      get().highlightField(generateFieldId(field));
+      get().highlightField(selectedFieldId);
+    } else {
+      get().highlightField(null);
     }
   },
 
@@ -72,15 +75,20 @@ export const useFieldStore = create<FieldState>((set, get) => ({
     set({ highlightedFields: new Set<string>() });
   },
 
+  reset: () =>
+    set({
+      fields: [],
+      fieldGroups: [],
+      selectedField: null,
+      selectedFieldId: null,
+      highlightedFields: new Set<string>(),
+    }),
+
   getFieldsByLine: lineName => {
     return get().fields.filter(field => field.lineName === lineName);
   },
 
   getFieldById: fieldId => {
-    const parts = fieldId.split('_');
-    if (parts.length < 2) return null;
-    const lineName = parts[0];
-    const fieldName = parts.slice(1).join('_');
-    return get().fields.find(f => f.lineName === lineName && f.fieldName === fieldName) || null;
+    return get().fields.find(field => getFieldPhysicalId(field) === fieldId) ?? null;
   },
 }));

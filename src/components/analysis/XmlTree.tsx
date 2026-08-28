@@ -1,59 +1,100 @@
-import React, { useMemo, useState } from 'react';
-import { parseXmlToTree, type XmlElementNode } from '../../utils/xmlTree';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+import {
+  flattenXmlTree,
+  parseXmlToTree,
+  type XmlElementNode,
+  type XmlSelectableNode,
+} from '../../utils/xmlTree';
 import './XmlTree.css';
 
 interface XmlTreeProps {
   /** XML bruto retornado pela API (a mesma string usada em copiar/baixar). */
   xml: string;
   emptyMessage?: string;
+  xmlNamespaces?: Record<string, string> | null;
+  selectedNodeId?: string | null;
+  focusNodeId?: string | null;
+  onSelectNode?: (node: XmlSelectableNode) => void;
+  onFocusRequestHandled?: () => void;
 }
 
-/**
- * Exibe um XML como árvore expansível/colapsável, reaproveitando o padrão visual e de
- * interação (expand/collapse, navegação por teclado, `role="tree"`) já usado por
- * `StructureTree.tsx` para o lado TXT. O parse usa `DOMParser` nativo — zero dependência nova
- * — e é memoizado por string de XML para não reprocessar a árvore a cada re-render.
- */
-const XmlTree: React.FC<XmlTreeProps> = ({ xml, emptyMessage = 'Nenhum XML para exibir.' }) => {
-  const { root, error } = useMemo(() => parseXmlToTree(xml), [xml]);
+const XmlTree: React.FC<XmlTreeProps> = ({
+  xml,
+  emptyMessage = 'Nenhum XML para exibir.',
+  xmlNamespaces = null,
+  selectedNodeId = null,
+  focusNodeId = null,
+  onSelectNode,
+  onFocusRequestHandled,
+}) => {
+  const { root, error } = useMemo(
+    () => parseXmlToTree(xml, xmlNamespaces ?? {}),
+    [xml, xmlNamespaces]
+  );
+  const selectableNodes = useMemo(() => flattenXmlTree(root), [root]);
+  const nodesById = useMemo(
+    () => new Map(selectableNodes.map(node => [node.id, node])),
+    [selectableNodes]
+  );
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(root?.id ?? null);
   const [previousRoot, setPreviousRoot] = useState(root);
+  const [renderedFocusRequest, setRenderedFocusRequest] = useState<string | null>(null);
 
-  // Novo XML (ex.: trocou de candidato): recomeça colapsada, mesmo padrão inicial do
-  // StructureTree. Ajuste feito durante a renderização (não em efeito) para evitar o
-  // re-render em cascata de um `setState` síncrono dentro de `useEffect`.
   if (root !== previousRoot) {
     setPreviousRoot(root);
     setExpandedIds(new Set());
+    setFocusedNodeId(root?.id ?? null);
+  }
+
+  if (focusNodeId && focusNodeId !== renderedFocusRequest && nodesById.has(focusNodeId)) {
+    const ancestors = new Set<string>();
+    let current = nodesById.get(focusNodeId);
+    while (current?.parentId) {
+      ancestors.add(current.parentId);
+      current = nodesById.get(current.parentId);
+    }
+    setExpandedIds(previous => new Set([...previous, ...ancestors]));
+    setFocusedNodeId(focusNodeId);
+    setRenderedFocusRequest(focusNodeId);
+  } else if (!focusNodeId && renderedFocusRequest) {
+    setRenderedFocusRequest(null);
   }
 
   const toggleNode = (nodeId: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
+    setExpandedIds(previous => {
+      const next = new Set(previous);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
       return next;
     });
   };
 
-  const collectIds = (node: XmlElementNode, ids: Set<string>) => {
+  const collectElementIds = (node: XmlElementNode, ids: Set<string>) => {
     ids.add(node.id);
-    node.children.forEach(child => collectIds(child, ids));
+    node.children.forEach(child => collectElementIds(child, ids));
   };
 
-  const expandAll = () => {
-    if (!root) return;
-    const ids = new Set<string>();
-    collectIds(root, ids);
-    setExpandedIds(ids);
+  const focusItem = (nodeId: string) => {
+    setFocusedNodeId(nodeId);
+    requestAnimationFrame(() => itemRefs.current.get(nodeId)?.focus());
   };
 
-  const collapseAll = () => setExpandedIds(new Set());
+  useEffect(() => {
+    if (!focusNodeId || renderedFocusRequest !== focusNodeId) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const item = itemRefs.current.get(focusNodeId);
+        item?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        item?.focus();
+        onFocusRequestHandled?.();
+      });
+    });
+  }, [focusNodeId, renderedFocusRequest, onFocusRequestHandled]);
 
-  const moveTreeItemFocus = (
+  const moveVisibleFocus = (
     currentItem: HTMLButtonElement,
     destination: 'previous' | 'next' | 'first' | 'last'
   ) => {
@@ -63,7 +104,6 @@ const XmlTree: React.FC<XmlTreeProps> = ({ xml, emptyMessage = 'Nenhum XML para 
     const visibleItems = Array.from(tree.querySelectorAll<HTMLButtonElement>('[role="treeitem"]'));
     const currentIndex = visibleItems.indexOf(currentItem);
     if (currentIndex < 0) return;
-
     const destinationIndex =
       destination === 'first'
         ? 0
@@ -72,79 +112,129 @@ const XmlTree: React.FC<XmlTreeProps> = ({ xml, emptyMessage = 'Nenhum XML para 
           : destination === 'previous'
             ? Math.max(0, currentIndex - 1)
             : Math.min(visibleItems.length - 1, currentIndex + 1);
-
-    visibleItems[destinationIndex]?.focus();
+    const item = visibleItems[destinationIndex];
+    if (item?.dataset.xmlNodeId) focusItem(item.dataset.xmlNodeId);
   };
 
-  const handleTreeItemKeyDown = (
+  const handleKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,
-    nodeId: string,
-    hasChildren: boolean,
+    node: XmlSelectableNode,
+    hasDescendants: boolean,
     expanded: boolean
   ) => {
-    if (event.key === 'ArrowRight' && hasChildren && !expanded) {
+    if (event.key === 'ArrowRight' && node.kind === 'element' && hasDescendants) {
       event.preventDefault();
-      toggleNode(nodeId);
-    } else if (event.key === 'ArrowLeft' && hasChildren && expanded) {
+      if (!expanded) {
+        toggleNode(node.id);
+      } else {
+        const firstChild = node.attributes[0] ?? node.textNode ?? node.children[0];
+        if (firstChild) focusItem(firstChild.id);
+      }
+    } else if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      toggleNode(nodeId);
+      if (node.kind === 'element' && expanded) toggleNode(node.id);
+      else if (node.parentId) focusItem(node.parentId);
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
-      moveTreeItemFocus(event.currentTarget, 'next');
+      moveVisibleFocus(event.currentTarget, 'next');
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      moveTreeItemFocus(event.currentTarget, 'previous');
+      moveVisibleFocus(event.currentTarget, 'previous');
     } else if (event.key === 'Home') {
       event.preventDefault();
-      moveTreeItemFocus(event.currentTarget, 'first');
+      moveVisibleFocus(event.currentTarget, 'first');
     } else if (event.key === 'End') {
       event.preventDefault();
-      moveTreeItemFocus(event.currentTarget, 'last');
+      moveVisibleFocus(event.currentTarget, 'last');
     }
   };
 
-  const renderNode = (node: XmlElementNode, level: number): React.ReactNode => {
-    const hasChildren = node.children.length > 0;
-    const expanded = expandedIds.has(node.id);
-
+  const renderTreeItem = (
+    node: XmlSelectableNode,
+    level: number,
+    label: React.ReactNode,
+    hasDescendants = false,
+    descendants: React.ReactNode = null
+  ) => {
+    const expanded = node.kind === 'element' && expandedIds.has(node.id);
+    const selected = selectedNodeId === node.id;
     return (
       <li key={node.id} className="xml-tree-node" role="none">
         <button
+          ref={element => {
+            if (element) itemRefs.current.set(node.id, element);
+            else itemRefs.current.delete(node.id);
+          }}
           type="button"
           role="treeitem"
-          className="xml-tree-node-header"
-          aria-expanded={hasChildren ? expanded : undefined}
-          aria-selected={false}
-          aria-level={level + 1}
-          onClick={() => hasChildren && toggleNode(node.id)}
-          onKeyDown={event => handleTreeItemKeyDown(event, node.id, hasChildren, expanded)}
+          data-xml-node-id={node.id}
+          className={`xml-tree-node-header ${selected ? 'xml-tree-node-header--selected' : ''}`}
+          aria-expanded={hasDescendants ? expanded : undefined}
+          aria-selected={selected}
+          aria-level={level}
+          tabIndex={focusedNodeId === node.id ? 0 : -1}
+          onFocus={() => setFocusedNodeId(node.id)}
+          onClick={event => {
+            if ((event.target as HTMLElement).closest('.xml-tree-toggle')) {
+              toggleNode(node.id);
+              return;
+            }
+            onSelectNode?.(node);
+          }}
+          onKeyDown={event => handleKeyDown(event, node, hasDescendants, expanded)}
         >
-          {hasChildren ? (
+          {hasDescendants ? (
             <span className="xml-tree-toggle" aria-hidden="true">
               {expanded ? '−' : '+'}
             </span>
           ) : (
-            <span className="xml-tree-spacer" />
+            <span className="xml-tree-spacer" aria-hidden="true" />
           )}
-          <span className="xml-tree-element-name">
-            &lt;{node.name}
-            {node.attributes.map(attr => (
-              <span key={attr.id} className="xml-tree-attribute" data-testid="xml-tree-attribute">
-                {' '}
-                <span className="xml-tree-attribute-name">@{attr.name}</span>=
-                <span className="xml-tree-attribute-value">&quot;{attr.value}&quot;</span>
-              </span>
-            ))}
-            &gt;
-          </span>
-          {node.textContent && <span className="xml-tree-text">{node.textContent}</span>}
+          {label}
         </button>
-        {hasChildren && expanded && (
+        {hasDescendants && expanded && (
           <ul className="xml-tree-children" role="group">
-            {node.children.map(child => renderNode(child, level + 1))}
+            {descendants}
           </ul>
         )}
       </li>
+    );
+  };
+
+  const renderElement = (node: XmlElementNode, level: number): React.ReactNode => {
+    const hasDescendants =
+      node.attributes.length > 0 || Boolean(node.textNode) || node.children.length > 0;
+    const descendants = (
+      <>
+        {node.attributes.map(attribute =>
+          renderTreeItem(
+            attribute,
+            level + 1,
+            <span className="xml-tree-attribute" data-testid="xml-tree-attribute">
+              <span className="xml-tree-attribute-name">@{attribute.name}</span>=
+              <span className="xml-tree-attribute-value">&quot;{attribute.value}&quot;</span>
+            </span>
+          )
+        )}
+        {node.textNode &&
+          renderTreeItem(
+            node.textNode,
+            level + 1,
+            <>
+              <span className="xml-tree-text-label">#text</span>
+              <span className="xml-tree-text">{node.textNode.value}</span>
+            </>
+          )}
+        {node.children.map(child => renderElement(child, level + 1))}
+      </>
+    );
+
+    return renderTreeItem(
+      node,
+      level,
+      <span className="xml-tree-element-name">&lt;{node.name}&gt;</span>,
+      hasDescendants,
+      descendants
     );
   };
 
@@ -156,22 +246,32 @@ const XmlTree: React.FC<XmlTreeProps> = ({ xml, emptyMessage = 'Nenhum XML para 
     );
   }
 
-  if (!root) {
-    return <p className="xml-tree-empty">{emptyMessage}</p>;
-  }
+  if (!root) return <p className="xml-tree-empty">{emptyMessage}</p>;
 
   return (
     <div className="xml-tree">
       <div className="xml-tree-controls">
-        <button type="button" onClick={expandAll} className="xml-tree-control-btn">
+        <button
+          type="button"
+          onClick={() => {
+            const ids = new Set<string>();
+            collectElementIds(root, ids);
+            setExpandedIds(ids);
+          }}
+          className="xml-tree-control-btn"
+        >
           Expandir tudo
         </button>
-        <button type="button" onClick={collapseAll} className="xml-tree-control-btn">
+        <button
+          type="button"
+          onClick={() => setExpandedIds(new Set())}
+          className="xml-tree-control-btn"
+        >
           Recolher tudo
         </button>
       </div>
       <ul className="xml-tree-root" role="tree" aria-label="Árvore do XML transformado">
-        {renderNode(root, 0)}
+        {renderElement(root, 1)}
       </ul>
     </div>
   );

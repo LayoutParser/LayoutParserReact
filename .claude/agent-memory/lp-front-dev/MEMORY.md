@@ -14,8 +14,10 @@
   provedores; `errorRedirectLocation` preserva o `returnTo` original (não mais `/upload` fixo).
 - [Gap de segredos locais](project_local_env_secrets_gap.md) — `server/.env` some entre sessões
   neste ambiente; confirmar antes de tentar validar OIDC ao vivo.
-- [Árvore XML navegável (PBI #127)](project_xml_navigable_tree_pbi127.md) — implementado em
-  `feat/xml-navigable-tree`; PBI #128 (vínculo TXT↔XML) segue bloqueado por contrato.
+- [Proveniência e rastreabilidade TXT↔XML](project_provenance_traceability_inspector_2026_08_28.md) —
+  P0, identidade física, contrato #138/#141, inspetor responsivo e navegação bidirecional.
+- [Árvore XML navegável (PBI #127)](project_xml_navigable_tree_pbi127.md) — histórico da árvore
+  standalone; o antigo bloqueio contratual do PBI #128 foi removido em 2026-08-28.
 - [Lint de setState em effect](feedback_effect_setstate_lint.md) — `react-hooks/set-state-in-effect`
   é erro aqui; usar padrão "ajustar estado durante o render" em vez de `useEffect`.
 - [Investigação edição posicional multi-ocorrência](project_positional_edit_multi_occurrence_investigation.md) —

@@ -34,6 +34,14 @@
   flex-direction: column;
 }
 
+.linked-analysis-shell {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--spacing-md);
+}
+
 .analysis-mode-tabs-container > .tabs-header {
   flex: 0 0 auto;
 }
@@ -85,5 +93,11 @@
   .file-visualization-content {
     min-height: 320px;
     border-radius: var(--radius-md);
+  }
+}
+
+@media (max-width: 900px) {
+  .linked-analysis-shell {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

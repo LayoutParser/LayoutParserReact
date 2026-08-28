@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type {
   DiagnoseValidationErrorStatus,
+  PathwayDiagnostic,
   TransformationCandidate,
   ValidationDiagnostic,
 } from '../types/transformation';
@@ -22,6 +23,8 @@ interface TransformationState {
   candidatesError: string | null;
   candidates: TransformationCandidate[];
   candidatesWarnings: string[];
+  pathwayDiagnostics: PathwayDiagnostic[];
+  correlationId: string | null;
   activeCandidateId: string | null; // seleção do usuário; null = usa o primeiro do array (sem ordenar por score)
 
   // Diagnóstico de erro via IA (POST /api/xml-analysis/diagnose-validation-error)
@@ -35,7 +38,12 @@ interface TransformationState {
   setActiveMode: (mode: AnalysisMode | null) => void;
   setLoadingCandidates: (loading: boolean) => void;
   setCandidatesError: (error: string | null) => void;
-  setCandidatesResult: (candidates: TransformationCandidate[], warnings: string[]) => void;
+  setCandidatesResult: (
+    candidates: TransformationCandidate[],
+    warnings: string[],
+    pathwayDiagnostics?: PathwayDiagnostic[],
+    correlationId?: string | null
+  ) => void;
   clearCandidates: () => void;
   setActiveCandidateId: (candidateId: string | null) => void;
 
@@ -53,6 +61,8 @@ const initialState = {
   candidatesError: null,
   candidates: [] as TransformationCandidate[],
   candidatesWarnings: [] as string[],
+  pathwayDiagnostics: [] as PathwayDiagnostic[],
+  correlationId: null,
   activeCandidateId: null,
 
   isDiagnosing: false,
@@ -69,11 +79,13 @@ export const useTransformationStore = create<TransformationState>(set => ({
   setActiveMode: mode => set({ activeMode: mode }),
   setLoadingCandidates: loading => set({ isLoadingCandidates: loading }),
   setCandidatesError: error => set({ candidatesError: error }),
-  setCandidatesResult: (candidates, warnings) =>
+  setCandidatesResult: (candidates, warnings, pathwayDiagnostics = [], correlationId = null) =>
     set({
       hasEvaluatedCandidates: true,
       candidates,
       candidatesWarnings: warnings,
+      pathwayDiagnostics,
+      correlationId,
       // Sem ordenação por score (back-end ainda não preenche de verdade) — seleção padrão é
       // sempre o primeiro item do array, conforme handoff.
       activeCandidateId: candidates[0]?.candidateId ?? null,
@@ -84,6 +96,8 @@ export const useTransformationStore = create<TransformationState>(set => ({
       candidatesError: null,
       candidates: [],
       candidatesWarnings: [],
+      pathwayDiagnostics: [],
+      correlationId: null,
       activeCandidateId: null,
     }),
   setActiveCandidateId: candidateId => set({ activeCandidateId: candidateId }),

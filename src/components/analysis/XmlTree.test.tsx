@@ -21,12 +21,12 @@ describe('XmlTree', () => {
     expect(root).toHaveAttribute('aria-expanded', 'false');
     expect(within(tree).queryByRole('treeitem', { name: /infNFe/ })).not.toBeInTheDocument();
 
-    fireEvent.click(root);
+    fireEvent.click(root.querySelector('.xml-tree-toggle')!);
     expect(root).toHaveAttribute('aria-expanded', 'true');
     const infNFe = within(tree).getByRole('treeitem', { name: /infNFe/ });
     expect(infNFe).toBeInTheDocument();
 
-    fireEvent.click(root);
+    fireEvent.click(root.querySelector('.xml-tree-toggle')!);
     expect(within(tree).queryByRole('treeitem', { name: /infNFe/ })).not.toBeInTheDocument();
   });
 
@@ -34,6 +34,11 @@ describe('XmlTree', () => {
     render(<XmlTree xml="<infNFe Id='NFe123'></infNFe>" />);
 
     const tree = screen.getByRole('tree', { name: 'Árvore do XML transformado' });
+    fireEvent.click(
+      within(tree)
+        .getByRole('treeitem', { name: /infNFe/ })
+        .querySelector('.xml-tree-toggle')!
+    );
     const attribute = within(tree).getByTestId('xml-tree-attribute');
     expect(attribute).toHaveTextContent('@Id');
     expect(attribute.querySelector('.xml-tree-attribute-name')).toHaveTextContent('@Id');

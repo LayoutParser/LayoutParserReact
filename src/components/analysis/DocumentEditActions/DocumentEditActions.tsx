@@ -4,6 +4,7 @@ import { ParseRequestError, parseService } from '../../../services/api';
 import { useAppStore } from '../../../store/useAppStore';
 import { useTransformationStore } from '../../../store/useTransformationStore';
 import { createDocumentFile, createEditedDocumentName } from '../../../utils/documentEncoding';
+import { layoutMatchesProvenance } from '../../../utils/provenance';
 import Button from '../../shared/Button';
 import './DocumentEditActions.css';
 
@@ -17,6 +18,7 @@ const DocumentEditActions: React.FC = () => {
     txtContent,
     selectedLayout,
     documentSource,
+    parsedDocumentProvenance,
     editHistory,
     undoLastPositionalEdit,
     replaceParsedDocument,
@@ -76,7 +78,16 @@ const DocumentEditActions: React.FC = () => {
   };
 
   const handleRevalidate = async () => {
-    if (!documentSource || !selectedLayout) return;
+    if (!documentSource || !selectedLayout || !parsedDocumentProvenance) return;
+
+    if (!layoutMatchesProvenance(selectedLayout, parsedDocumentProvenance)) {
+      setFeedback({
+        kind: 'error',
+        message:
+          'O layout selecionado não é o mesmo que produziu este documento. Processe novamente antes de revalidar.',
+      });
+      return;
+    }
 
     const layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
     if (!layoutContent) {
@@ -106,7 +117,7 @@ const DocumentEditActions: React.FC = () => {
         throw new Error('A API revalidou o documento, mas não devolveu o TXT processado.');
       }
 
-      replaceParsedDocument(result, documentSource);
+      replaceParsedDocument(result, documentSource, parsedDocumentProvenance);
       invalidateTransformation();
       const errorCount = result.validationErrors?.length ?? 0;
       setFeedback({

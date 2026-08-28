@@ -6,6 +6,7 @@ import Tabs from '../shared/Tabs';
 import FieldDisplay from './FieldDisplay';
 import StructureTree from './StructureTree';
 import XmlTransformationDisplay from './XmlTransformationDisplay';
+import LinkedFieldInspector from './LinkedFieldInspector/LinkedFieldInspector';
 import type { ParseResponse } from '../../types/api';
 import './AnalysisModeTabs.css';
 
@@ -113,12 +114,15 @@ const AnalysisModeTabs: React.FC = () => {
           {notApplicableText}
         </div>
       )}
-      <Tabs
-        tabs={tabs}
-        activeTab={activeMode || 'txt-posicional'}
-        onTabChange={tabId => setActiveMode(tabId as AnalysisMode)}
-        className="analysis-mode-tabs-container"
-      />
+      <div className="linked-analysis-shell">
+        <Tabs
+          tabs={tabs}
+          activeTab={activeMode || 'txt-posicional'}
+          onTabChange={tabId => setActiveMode(tabId as AnalysisMode)}
+          className="analysis-mode-tabs-container"
+        />
+        <LinkedFieldInspector />
+      </div>
     </div>
   );
 };

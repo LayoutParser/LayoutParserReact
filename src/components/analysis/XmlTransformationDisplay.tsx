@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import { useFieldStore } from '../../store/useFieldStore';
+import { useTraceabilityStore } from '../../store/useTraceabilityStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { transformationService } from '../../services/api/transformationService';
 import { logService } from '../../services/api/logService';
@@ -12,6 +14,7 @@ import { copyTextToClipboard, createXmlFileName } from '../../utils/xmlDelivery'
 import { buildTransformationDiagnostics } from '../../utils/transformationDiagnostics';
 import { extractAiFallbackTicket } from '../../utils/aiFallback';
 import { useAiFallbackPolling } from '../../hooks/useAiFallbackPolling';
+import { layoutMatchesProvenance } from '../../utils/provenance';
 import XmlTree from './XmlTree';
 import './XmlTransformationDisplay.css';
 
@@ -55,8 +58,11 @@ interface XmlDeliveryFeedback {
  * pode ser custosa no back-end.
  */
 const XmlTransformationDisplay: React.FC = () => {
-  const { selectedLayout, txtContent, parseResult } = useAppStore();
+  const { selectedLayout, txtContent, parseResult, parsedDocumentProvenance } = useAppStore();
   const [deliveryFeedback, setDeliveryFeedback] = useState<XmlDeliveryFeedback | null>(null);
+  const { selectField } = useFieldStore();
+  const { selectedXmlNode, requestedXmlNodeId, selectXmlNode, clearXmlFocusRequest } =
+    useTraceabilityStore();
   const {
     isLoadingCandidates,
     hasEvaluatedCandidates,
@@ -98,8 +104,15 @@ const XmlTransformationDisplay: React.FC = () => {
   const aiFallback = useAiFallbackPolling(aiFallbackTicket);
 
   const handleGenerate = async () => {
-    if (!selectedLayout || !txtContent) {
+    if (!selectedLayout || !txtContent || !parsedDocumentProvenance) {
       setCandidatesError('Documento processado ou layout selecionado não encontrado.');
+      return;
+    }
+
+    if (!layoutMatchesProvenance(selectedLayout, parsedDocumentProvenance)) {
+      setCandidatesError(
+        'O layout atual não corresponde ao layout que produziu este documento. Processe o TXT novamente.'
+      );
       return;
     }
 
@@ -114,12 +127,12 @@ const XmlTransformationDisplay: React.FC = () => {
       // contém Guid.Empty, enquanto o layout efetivamente processado devolve um LAY_* válido.
       const layoutGuid = resolveLayoutGuid(
         parseResult?.layout?.layoutGuid,
-        selectedLayout.layoutGuid
+        parsedDocumentProvenance.layout.layoutGuid
       );
 
       const result = await transformationService.executeTransformationCandidates({
         inputContent: txtContent,
-        layoutName: selectedLayout.name,
+        layoutName: parsedDocumentProvenance.layout.name,
         layoutGuid: layoutGuid ?? null,
         sourceDocumentType: '',
         targetDocumentType: '',
@@ -127,11 +140,16 @@ const XmlTransformationDisplay: React.FC = () => {
         expectedOutput: '',
       });
 
-      setCandidatesResult(result.candidates, result.warnings);
+      setCandidatesResult(
+        result.candidates,
+        result.warnings,
+        result.pathwayDiagnostics,
+        result.correlationId
+      );
 
       if (result.candidates.length === 0) {
         logService.warn('Nenhum candidato de transformação XML gerado', {
-          layoutName: selectedLayout.name,
+          layoutName: parsedDocumentProvenance.layout.name,
           warnings: result.warnings,
         });
       }
@@ -141,7 +159,7 @@ const XmlTransformationDisplay: React.FC = () => {
       setCandidatesError(message);
       setCandidatesResult([], []);
       logService.error('Erro de infraestrutura ao executar transformação XML (multi-candidato)', {
-        layoutName: selectedLayout.name,
+        layoutName: parsedDocumentProvenance.layout.name,
         error: message,
       });
     } finally {
@@ -493,6 +511,8 @@ const XmlTransformationDisplay: React.FC = () => {
                     title={candidate.candidateId}
                     onClick={() => {
                       setActiveCandidateId(candidate.candidateId);
+                      selectXmlNode(null);
+                      clearXmlFocusRequest();
                       setDeliveryFeedback(null);
                     }}
                   >
@@ -615,7 +635,17 @@ const XmlTransformationDisplay: React.FC = () => {
               {/* Árvore navegável (expand/collapse) a partir do XML bruto — parseado via
                   `DOMParser` nativo, sem dependência nova. O valor copiado/baixado continua
                   sendo `activeCandidate.transformedXml`, não uma versão derivada da árvore. */}
-              <XmlTree xml={activeCandidate.transformedXml} />
+              <XmlTree
+                xml={activeCandidate.transformedXml}
+                xmlNamespaces={activeCandidate.xmlNamespaces}
+                selectedNodeId={selectedXmlNode?.id}
+                focusNodeId={requestedXmlNodeId}
+                onFocusRequestHandled={clearXmlFocusRequest}
+                onSelectNode={node => {
+                  selectField(null);
+                  selectXmlNode(node);
+                }}
+              />
             </div>
           )}
         </>

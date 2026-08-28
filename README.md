@@ -36,7 +36,9 @@ O fluxo principal é:
 5. O front apresenta campos, posições, linhas, validações e a árvore estrutural retornada.
 6. Após um parse bem-sucedido, o usuário solicita a avaliação dos candidatos Sysmiddle e TCL/XSL.
    A ausência de mapper Sysmiddle não bloqueia a avaliação TCL/XSL.
-7. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
+7. Quando o candidato fornece rastreabilidade, o inspetor liga a ocorrência física do campo TXT
+   ao elemento, atributo ou texto correspondente no XML.
+8. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
 
 Quando nenhum candidato é produzido, a interface separa os avisos devolvidos pela API por pathway.
 Assim, falhas de mapper/runner Sysmiddle não são confundidas com falhas do pipeline TCL/XSL. Se a
@@ -65,6 +67,40 @@ puderem ser comprovados, a operação falha de forma segura e o documento precis
 > Session-only undo, encoding/size-preserving download and API reprocessing are available; a new
 > parse response replaces fields, validation errors and other derived state. Ambiguous, stale or
 > encoding-unsafe changes are rejected, and XML candidates from the previous version are cleared.
+
+### Proveniência e navegação TXT ↔ XML / Provenance and linked navigation
+
+Cada parse bem-sucedido grava a identidade do arquivo e do layout que produziram o resultado. A
+troca de qualquer um desses insumos invalida campos, histórico, transformação e seleção vinculada;
+se houver edição pendente, o descarte exige confirmação explícita. A transformação e a revalidação
+também conferem esse vínculo antes de enviar dados à API, impedindo combinações acidentais entre um
+TXT antigo e um layout novo.
+
+O **Inspetor de rastreabilidade** consome `fieldMappings`, `sectionMappings` e `xmlNamespaces` do
+candidato ativo:
+
+- `fieldMappings` liga a ocorrência física do campo a elementos, atributos ou texto do XML, sem
+  comparar valores textuais;
+- `sectionMappings` é mostrado apenas como navegação de bloco/seção e nunca autoriza edição de
+  campo;
+- `null`, lista vazia e lista preenchida possuem mensagens diferentes;
+- `Authoritative` aparece como **Declarado no mapeador** e `BestEffort` como **Melhor estimativa**,
+  com todas as limitações visíveis;
+- no desktop, o inspetor ocupa um painel lateral; em telas de até 900 px, abre como bottom sheet;
+- a régua TXT usa foco móvel por setas e mantém somente um campo na ordem de `Tab`; no mobile,
+  cada ocorrência oferece uma lista alternativa com alvos de pelo menos 44 px.
+
+> **Limitação ativa:** a API validou estruturalmente os mappings com fixtures sintéticas, mas a
+> comparação comportamental de pelo menos 20 documentos reais contra o `LowCodeRunner.exe` ainda
+> depende de execução em Windows. Por isso, nem mesmo “Declarado no mapeador” é apresentado como
+> “validado em produção”. Detalhes técnicos: [rastreabilidade TXT↔XML](docs/features/txt-xml-traceability.md).
+
+> **EN:** Each parse stores the exact document/layout provenance. Changing either input clears
+> derived fields, edits, XML candidates and linked selections, with explicit confirmation when
+> edits are pending. The traceability inspector consumes candidate-scoped `fieldMappings`,
+> `sectionMappings` and `xmlNamespaces`, distinguishes unsupported/empty/populated states, labels
+> confidence without overstating validation, and provides keyboard, desktop and mobile navigation.
+> Behavioral comparison against the real Windows-only `LowCodeRunner.exe` is still pending.
 
 ### Hierarquia SAP IDoc / SAP IDoc hierarchy
 
