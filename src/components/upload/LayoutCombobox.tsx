@@ -6,9 +6,15 @@ interface LayoutComboboxProps {
   layouts: Layout[];
   onSelect: (layout: Layout) => void;
   selectedLayout: Layout | null;
+  disabled?: boolean;
 }
 
-const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, selectedLayout }) => {
+const LayoutCombobox: React.FC<LayoutComboboxProps> = ({
+  layouts,
+  onSelect,
+  selectedLayout,
+  disabled = false,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const comboboxRef = useRef<HTMLDivElement>(null);
@@ -25,6 +31,11 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
     const guidMatch = layout.layoutGuid?.toLowerCase().includes(term);
     return nameMatch || guidMatch;
   });
+
+  if (disabled && (isOpen || searchTerm)) {
+    setIsOpen(false);
+    setSearchTerm('');
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -143,6 +154,7 @@ const LayoutCombobox: React.FC<LayoutComboboxProps> = ({ layouts, onSelect, sele
         aria-label={
           selectedLayout ? `Layout selecionado: ${selectedLayout.name}` : 'Selecionar Layout'
         }
+        disabled={disabled}
         onClick={() => setIsOpen(open => !open)}
         onKeyDown={handleTriggerKeyDown}
       >

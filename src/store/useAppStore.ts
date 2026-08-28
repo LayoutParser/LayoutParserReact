@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ParseErrorInfo, ParseResponse, Field } from '../types/api';
 import type { Layout } from '../types/layout';
+import type { ParsedDocumentProvenance } from '../types/provenance';
 import { assertEncodedReplacementSize, type DocumentSource } from '../utils/documentEncoding';
 import {
   applyPositionalFieldEdit,
@@ -34,6 +35,7 @@ interface AppState {
   txtContent: string;
   fields: Field[];
   documentSource: DocumentSource | null;
+  parsedDocumentProvenance: ParsedDocumentProvenance | null;
   editHistory: PositionalEditHistoryEntry[];
 
   // Layout selecionado
@@ -48,7 +50,11 @@ interface AppState {
   setTxtContent: (content: string) => void;
   setFields: (fields: Field[]) => void;
   setSelectedLayout: (layout: Layout | null) => void;
-  replaceParsedDocument: (result: ParseResponse, source: DocumentSource) => void;
+  replaceParsedDocument: (
+    result: ParseResponse,
+    source: DocumentSource,
+    provenance: ParsedDocumentProvenance
+  ) => void;
   clearParsedDocument: () => void;
   editPositionalField: (
     target: PositionalFieldTarget,
@@ -67,6 +73,7 @@ const initialState = {
   txtContent: '',
   fields: [],
   documentSource: null as DocumentSource | null,
+  parsedDocumentProvenance: null as ParsedDocumentProvenance | null,
   editHistory: [] as PositionalEditHistoryEntry[],
   selectedLayout: null,
 };
@@ -82,12 +89,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTxtContent: content => set({ txtContent: content }),
   setFields: fields => set({ fields }),
   setSelectedLayout: layout => set({ selectedLayout: layout }),
-  replaceParsedDocument: (result, source) =>
+  replaceParsedDocument: (result, source, provenance) =>
     set({
       parseResult: result,
       txtContent: result.text ?? '',
       fields: result.fields ?? [],
       documentSource: source,
+      parsedDocumentProvenance: provenance,
       editHistory: [],
       parseError: null,
       uploadError: null,
@@ -98,6 +106,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       txtContent: '',
       fields: [],
       documentSource: null,
+      parsedDocumentProvenance: null,
       editHistory: [],
     }),
   editPositionalField: (target, nextValue) => {

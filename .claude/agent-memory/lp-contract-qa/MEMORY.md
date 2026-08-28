@@ -12,6 +12,8 @@ Memoria duravel do portao de contratos do LayoutParser React.
 
 - [segmentMappings sempre vazio](project_segmentmappings_dead_field.md) — campo tipado em
   `transformation.ts` nunca é populado nos pathways reais da API (2026-08-15).
+- [Contrato field/section mappings](project_field_section_mappings_wire_2026_08_28.md) — contrato
+  entregue, normalização tolerante no front e drift de serialização ainda aberto na API.
 
 ## Fonte local atual
 

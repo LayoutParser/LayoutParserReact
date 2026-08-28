@@ -3,19 +3,27 @@ import { parseService, ParseRequestError } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { logService } from '../../services/api/logService';
 import { useAppStore } from '../../store/useAppStore';
+import { useFieldStore } from '../../store/useFieldStore';
+import { useSearchStore } from '../../store/useSearchStore';
 import { useSessionStore } from '../../store/useSessionStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
+import { useTraceabilityStore } from '../../store/useTraceabilityStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
 import ParseErrorBanner from '../upload/ParseErrorBanner';
 import AnalysisModeTabs from '../analysis/AnalysisModeTabs';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
+import Button from '../shared/Button';
+import Modal from '../shared/Modal';
 import type { ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
 import { inspectDocumentSource } from '../../utils/documentEncoding';
+import { createParsedDocumentProvenance, fileMatchesProvenance } from '../../utils/provenance';
 import { ALLOWED_UPLOAD_EXTENSIONS, validateUploadFile } from '../../utils/uploadValidation';
 import './LayoutParserPage.css';
+
+type PendingInputChange = { kind: 'layout'; layout: Layout } | { kind: 'file'; file: File };
 
 const LayoutParserPage: React.FC = () => {
   const [txtFile, setTxtFile] = useState<File | null>(null);
@@ -26,6 +34,7 @@ const LayoutParserPage: React.FC = () => {
   const [allLayouts, setAllLayouts] = useState<Layout[]>(() => loadLayoutsFromCache() ?? []);
   const [showSearchButton, setShowSearchButton] = useState(() => allLayouts.length === 0);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
+  const [pendingInputChange, setPendingInputChange] = useState<PendingInputChange | null>(null);
 
   const {
     isUploading,
@@ -34,6 +43,8 @@ const LayoutParserPage: React.FC = () => {
     parseError,
     selectedLayout,
     parseResult,
+    parsedDocumentProvenance,
+    editHistory,
     setUploading,
     setUploadError,
     setUploadProgress,
@@ -52,7 +63,7 @@ const LayoutParserPage: React.FC = () => {
 
   // Só para saber qual aba de análise está ativa (ver AnalysisModeTabs) e decidir se a busca
   // de campos faz sentido na tela — não interfere no fluxo de upload/parse abaixo.
-  const { activeMode } = useTransformationStore();
+  const { activeMode, reset: resetTransformation } = useTransformationStore();
 
   // /api/layoutdatabase/refresh-cache é rota admin no BFF (DEFAULT_ADMIN_PATHS); esconder o
   // botão para não-admin evita um controle visível que sempre resulta em 403.
@@ -102,22 +113,72 @@ const LayoutParserPage: React.FC = () => {
     }
   };
 
+  const invalidateParsedDocument = () => {
+    uploadAbortRef.current?.abort();
+    clearParsedDocument();
+    resetTransformation();
+    useFieldStore.getState().reset();
+    useSearchStore.getState().clearSearch();
+    useTraceabilityStore.getState().reset();
+  };
+
+  const applyInputChange = (change: PendingInputChange) => {
+    const changed =
+      change.kind === 'layout'
+        ? change.layout.layoutGuid !== selectedLayout?.layoutGuid ||
+          change.layout.name !== selectedLayout?.name
+        : change.file.name !== txtFile?.name ||
+          change.file.size !== txtFile?.size ||
+          change.file.lastModified !== txtFile?.lastModified;
+
+    if (changed) {
+      invalidateParsedDocument();
+    }
+
+    if (change.kind === 'layout') {
+      setSelectedLayout(change.layout);
+    } else {
+      setTxtFile(change.file);
+    }
+
+    setUploadError(null);
+    setParseError(null);
+    setPendingInputChange(null);
+  };
+
+  const requestInputChange = (change: PendingInputChange) => {
+    if (isUploading) return;
+
+    const changesCurrentInput =
+      change.kind === 'layout'
+        ? change.layout.layoutGuid !== selectedLayout?.layoutGuid ||
+          change.layout.name !== selectedLayout?.name
+        : change.file.name !== txtFile?.name ||
+          change.file.size !== txtFile?.size ||
+          change.file.lastModified !== txtFile?.lastModified;
+
+    if (changesCurrentInput && parseResult && editHistory.length > 0) {
+      setPendingInputChange(change);
+      return;
+    }
+
+    applyInputChange(change);
+  };
+
   const handleLayoutSelect = (layout: Layout) => {
-    setSelectedLayout(layout);
+    requestInputChange({ kind: 'layout', layout });
   };
 
   const handleTxtFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) {
-      setTxtFile(null);
       return;
     }
 
     const validation = validateUploadFile(file, import.meta.env.VITE_MAX_UPLOAD_MB);
 
     if (!validation.isValid) {
-      setTxtFile(null);
       e.currentTarget.value = '';
       if (txtFileInputRef.current) {
         txtFileInputRef.current.value = '';
@@ -127,9 +188,7 @@ const LayoutParserPage: React.FC = () => {
       return;
     }
 
-    setTxtFile(file);
-    setUploadError(null);
-    setParseError(null);
+    requestInputChange({ kind: 'file', file });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,7 +270,14 @@ const LayoutParserPage: React.FC = () => {
         inspectDocumentSource(txtFile),
       ]);
 
-      replaceParsedDocument(result, documentSource);
+      replaceParsedDocument(
+        result,
+        documentSource,
+        createParsedDocumentProvenance(documentSource, layoutToUse)
+      );
+      useFieldStore.getState().reset();
+      useSearchStore.getState().clearSearch();
+      useTraceabilityStore.getState().reset();
     } catch (error) {
       if (uploadAbortRef.current?.signal.aborted) {
         setUploadError('Processamento cancelado. Nenhum resultado novo foi aplicado.');
@@ -277,6 +343,15 @@ const LayoutParserPage: React.FC = () => {
             <div className="structure-content">
               <h2>Estrutura de Layout</h2>
               <DocumentSummary />
+              {parsedDocumentProvenance && (
+                <p className="document-provenance" role="status">
+                  Resultado vinculado a <strong>{parsedDocumentProvenance.document.name}</strong>
+                  {' · '}
+                  {parsedDocumentProvenance.document.originalSize} bytes
+                  {' · layout '}
+                  <strong>{parsedDocumentProvenance.layout.name}</strong>
+                </p>
+              )}
               {/* FieldSearch destaca campos em FieldDisplay (aba "TXT Posicional"). Na aba
                   "XML Transformação Final" esse componente não é renderizado, então buscar
                   não teria nenhum efeito visível — por isso escondemos a busca nesse modo,
@@ -330,6 +405,7 @@ const LayoutParserPage: React.FC = () => {
                   layouts={allLayouts}
                   onSelect={handleLayoutSelect}
                   selectedLayout={selectedLayout}
+                  disabled={isUploading}
                 />
               </div>
             )}
@@ -424,7 +500,9 @@ const LayoutParserPage: React.FC = () => {
 
         {/* Bottom-Right: Visualização do Arquivo (oculta até escolher arquivo) */}
         <div className="l-bottom-right">
-          {parseResult && parseResult.success && txtFile ? (
+          {parseResult &&
+          parseResult.success &&
+          fileMatchesProvenance(txtFile, parsedDocumentProvenance) ? (
             <AnalysisModeTabs />
           ) : (
             <div className="file-visualization-placeholder">
@@ -433,6 +511,40 @@ const LayoutParserPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={Boolean(pendingInputChange)}
+        onClose={() => {
+          setPendingInputChange(null);
+          if (txtFileInputRef.current) txtFileInputRef.current.value = '';
+        }}
+        title="Descartar alterações pendentes?"
+        size="small"
+      >
+        <p>
+          Este TXT possui {editHistory.length} alteração(ões) ainda nesta sessão. Trocar o arquivo
+          ou o layout remove o resultado processado, o histórico de edição e os vínculos com o XML.
+        </p>
+        <div className="pending-input-change-actions">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPendingInputChange(null);
+              if (txtFileInputRef.current) txtFileInputRef.current.value = '';
+            }}
+          >
+            Manter documento atual
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (pendingInputChange) applyInputChange(pendingInputChange);
+            }}
+          >
+            Descartar e trocar
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

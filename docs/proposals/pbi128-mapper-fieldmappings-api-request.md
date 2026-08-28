@@ -1,5 +1,9 @@
 # Pedido à equipe da API .NET — mapeamento campo TXT ↔ tag XML no Mapper Sysmiddle
 
+> **Status em 2026-08-28:** contrato entregue pela API e consumido pelo front. Consulte
+> [`../features/txt-xml-traceability.md`](../features/txt-xml-traceability.md) para a especificação
+> implementada. Este documento permanece como registro do pedido original.
+
 ## 1. Contexto
 
 O PBI #128 do Epic #126 ("Vínculo bidirecional TXT↔XML") está **bloqueado**. A feature

@@ -42,6 +42,18 @@ const prepareDocument = () => {
       hasBom: false,
       originalSize: 600,
     },
+    parsedDocumentProvenance: {
+      document: {
+        name: 'entrada.txt',
+        originalSize: 600,
+        lastModified: 123,
+        encoding: 'utf-8',
+      },
+      layout: {
+        layoutGuid: 'layout-1',
+        name: 'Layout Teste',
+      },
+    },
   });
 };
 

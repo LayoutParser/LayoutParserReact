@@ -8,6 +8,20 @@
   background: var(--color-canvas);
 }
 
+.document-provenance {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.pending-input-change-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
 .l-layout-container {
   display: grid;
   grid-template-columns: clamp(292px, 23vw, 336px) minmax(0, 1fr);

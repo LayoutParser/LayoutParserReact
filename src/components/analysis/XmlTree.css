@@ -94,6 +94,11 @@
   background: var(--color-accent-soft);
 }
 
+.xml-tree-node-header--selected {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
 .xml-tree-toggle {
   display: inline-grid;
   width: 24px;
@@ -126,6 +131,19 @@
 }
 
 .xml-tree-attribute-name {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.xml-tree-attribute,
+.xml-tree-text-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.xml-tree-text-label {
   color: var(--color-accent);
   font-weight: var(--font-weight-semibold);
 }

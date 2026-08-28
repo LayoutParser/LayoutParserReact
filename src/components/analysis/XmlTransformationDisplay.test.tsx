@@ -95,6 +95,20 @@ describe('XmlTransformationDisplay', () => {
         elements: [],
       },
     });
+    useAppStore.setState({
+      parsedDocumentProvenance: {
+        document: {
+          name: 'entrada.txt',
+          originalSize: 15,
+          lastModified: 123,
+          encoding: 'utf-8',
+        },
+        layout: {
+          layoutGuid: '00000000-0000-0000-0000-000000000000',
+          name: 'Layout NFe',
+        },
+      },
+    });
   });
 
   afterEach(() => {
@@ -147,7 +161,12 @@ describe('XmlTransformationDisplay', () => {
     expect(within(tree).getByRole('treeitem', { name: '<root>' })).toBeInTheDocument();
     // A árvore começa colapsada: o filho só aparece após expandir o nó raiz.
     expect(within(tree).queryByRole('treeitem', { name: /value/ })).not.toBeInTheDocument();
-    fireEvent.click(within(tree).getByRole('treeitem', { name: '<root>' }));
+    fireEvent.click(
+      within(tree).getByRole('treeitem', { name: '<root>' }).querySelector('.xml-tree-toggle')!
+    );
+    fireEvent.click(
+      within(tree).getByRole('treeitem', { name: '<value>' }).querySelector('.xml-tree-toggle')!
+    );
     expect(within(tree).getByText('123')).toBeInTheDocument();
   });
 

@@ -39,6 +39,62 @@ export interface TransformationCandidatesRequest {
   expectedOutput: string;
 }
 
+export type FieldMappingKind = 'Direct' | 'Transformed' | 'Concatenated' | 'Static';
+export type FieldMappingConfidence = 'Authoritative' | 'BestEffort';
+export type FieldMappingNodeKind = 'Element' | 'Attribute' | 'Text';
+
+export interface FieldMappingSource {
+  lineGuid: string;
+  lineName: string;
+  fieldGuid: string;
+  fieldName: string;
+  lineOccurrence: number;
+  startPosition: number;
+  length: number;
+}
+
+export interface FieldMappingTarget {
+  xpath: string;
+  nodeKind: FieldMappingNodeKind;
+  xmlOccurrence: number | null;
+}
+
+export interface FieldMapping {
+  mappingId: string;
+  sources: FieldMappingSource[];
+  targets: FieldMappingTarget[];
+  kind: FieldMappingKind;
+  confidence: FieldMappingConfidence;
+  limitations: string[] | null;
+}
+
+export interface SectionMappingSource {
+  lineGuid: string | null;
+  lineName: string;
+  lineOccurrence: number;
+}
+
+export interface SectionMappingTarget {
+  xPath: string;
+  nodeKind: 'element' | 'attribute';
+  xmlOccurrence: number;
+}
+
+export interface SectionMapping {
+  source: SectionMappingSource;
+  targets: SectionMappingTarget[];
+  confidence: 'authoritative' | 'best-effort';
+}
+
+export type XmlNamespaceMap = Record<string, string>;
+
+export interface PathwayDiagnostic {
+  pathway: 'sysmiddle' | 'tcl-xsl' | 'ai-fallback';
+  status: 'candidate_generated' | 'not_applicable' | 'failed';
+  code: string | null;
+  message: string;
+}
+
 /**
  * Um caminho de transformação possível para o mesmo input.
  *
@@ -58,7 +114,12 @@ export interface TransformationCandidate {
   pathway: 'sysmiddle' | 'tcl-xsl';
   transformedXml: string;
   score: number | null;
-  segmentMappings: Record<string, string>;
+  segmentMappings: Record<string, string> | null;
+  /** Ausente no wire equivale a null enquanto a API omitir propriedades nulas. */
+  fieldMappings?: FieldMapping[] | null;
+  /** Relação estrutural por seção; nunca deve ser usada para edição de campo. */
+  sectionMappings?: SectionMapping[] | null;
+  xmlNamespaces?: XmlNamespaceMap | null;
   validation: unknown | null; // shape não explorado; tratar como opaco (mesmo critério do `execute`)
   failureReason: string | null;
 }
@@ -73,6 +134,8 @@ export interface TransformationCandidatesResponse {
   candidates: TransformationCandidate[];
   recommendedCandidateId: string | null;
   warnings: string[];
+  pathwayDiagnostics?: PathwayDiagnostic[];
+  correlationId?: string | null;
 }
 
 /**

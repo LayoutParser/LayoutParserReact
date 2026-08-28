@@ -15,6 +15,8 @@ const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
       },
     })
   );
+
+  await page.route('**/api/logs/client', route => route.fulfill({ status: 204 }));
 };
 
 const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
@@ -52,22 +54,28 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
         fields: [
           {
             lineName: 'LINHA001',
+            lineGuid: 'line-guid-001',
             fieldName: 'Código',
+            fieldGuid: 'field-guid-codigo',
             value: 'ABC',
             startPosition: 10,
             length: 3,
             lineSequence: '000001',
             sequence: 1,
+            occurrence: 1,
             isValid: true,
           },
           {
             lineName: 'LINHA001',
+            lineGuid: 'line-guid-001',
             fieldName: 'Filler',
+            fieldGuid: 'field-guid-filler',
             value: ' '.repeat(588),
             startPosition: 13,
             length: 588,
             lineSequence: '000001',
             sequence: 2,
+            occurrence: 1,
             isValid: true,
           },
         ],
@@ -92,6 +100,34 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
                 transformedXml: `<documento><codigo>${code}</codigo></documento>`,
                 score: null,
                 segmentMappings: {},
+                fieldMappings: [
+                  {
+                    mappingId: 'mapping-codigo',
+                    sources: [
+                      {
+                        lineGuid: 'line-guid-001',
+                        lineName: 'LINHA001',
+                        fieldGuid: 'field-guid-codigo',
+                        fieldName: 'Código',
+                        lineOccurrence: 1,
+                        startPosition: 10,
+                        length: 3,
+                      },
+                    ],
+                    targets: [
+                      {
+                        xpath: '/documento/codigo',
+                        nodeKind: 'Text',
+                        xmlOccurrence: null,
+                      },
+                    ],
+                    kind: 'Direct',
+                    confidence: 'Authoritative',
+                    limitations: null,
+                  },
+                ],
+                sectionMappings: [],
+                xmlNamespaces: null,
                 validation: null,
                 failureReason: null,
               },
@@ -227,11 +263,15 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
   await page.getByRole('tab', { name: 'XML Transformação Final' }).click();
   await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
 
+  await page.getByRole('tab', { name: 'TXT Posicional' }).click();
+  await page.getByRole('button', { name: /Selecionar campo Código.*ABC/ }).click();
+  await expect(page.getByText('Declarado no mapeador', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Ver no XML' }).click();
+
   const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
-  const documentoNode = xmlTree.getByRole('treeitem', { name: /documento/ });
-  await expect(documentoNode).toBeVisible();
-  await documentoNode.click();
-  await expect(xmlTree.getByRole('treeitem', { name: /codigo.*ABC/ })).toBeVisible();
+  const xmlValue = xmlTree.getByRole('treeitem', { name: /#text.*ABC/ });
+  await expect(xmlValue).toBeVisible();
+  await expect(xmlValue).toBeFocused();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar XML' }).click();
@@ -244,7 +284,8 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await mockProcessingApis(page);
   await processSyntheticDocument(page);
 
-  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  await page.getByRole('button', { name: /Selecionar campo Código.*ABC/ }).click();
+  await page.getByRole('button', { name: 'Editar valor' }).click();
   const input = page.getByLabel('Novo valor');
   const save = page.getByRole('button', { name: 'Aplicar no TXT' });
 
@@ -255,9 +296,7 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await input.fill('XYZ');
   await expect(save).toBeEnabled();
   await save.click();
-  await expect(
-    page.getByRole('tabpanel', { name: 'TXT Posicional' }).getByRole('status')
-  ).toContainText('Código atualizado');
+  await expect(page.getByRole('button', { name: /Selecionar campo Código.*XYZ/ })).toBeVisible();
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar TXT editado' }).click();
@@ -268,8 +307,9 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await page.getByRole('button', { name: 'Gerar Transformação XML' }).click();
 
   const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
-  await xmlTree.getByRole('treeitem', { name: /documento/ }).click();
-  await expect(xmlTree.getByRole('treeitem', { name: /codigo.*XYZ/ })).toBeVisible();
+  await xmlTree.getByRole('treeitem', { name: /documento/ }).press('ArrowRight');
+  await xmlTree.getByRole('treeitem', { name: /codigo/ }).press('ArrowRight');
+  await expect(xmlTree.getByRole('treeitem', { name: /#text.*XYZ/ })).toBeVisible();
 });
 
 test('desfaz e revalida o TXT editado pela API', async ({ page }) => {
@@ -277,7 +317,8 @@ test('desfaz e revalida o TXT editado pela API', async ({ page }) => {
   await mockProcessingApis(page);
   await processSyntheticDocument(page);
 
-  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  await page.getByRole('button', { name: /Selecionar campo Código.*ABC/ }).click();
+  await page.getByRole('button', { name: 'Editar valor' }).click();
   await page.getByLabel('Novo valor').fill('XYZ');
   await page.getByRole('button', { name: 'Aplicar no TXT' }).click();
 
@@ -285,9 +326,10 @@ test('desfaz e revalida o TXT editado pela API', async ({ page }) => {
   await expect(actions).toContainText('1 alteração(ões) nesta sessão');
   await actions.getByRole('button', { name: 'Desfazer última alteração' }).click();
   await expect(actions.getByRole('status')).toContainText('Alteração de Código desfeita');
-  await expect(page.getByRole('button', { name: 'Editar campo Código: ABC' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Selecionar campo Código.*ABC/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Editar campo Código: ABC' }).click();
+  await page.getByRole('button', { name: /Selecionar campo Código.*ABC/ }).click();
+  await page.getByRole('button', { name: 'Editar valor' }).click();
   await page.getByLabel('Novo valor').fill('XYZ');
   await page.getByRole('button', { name: 'Aplicar no TXT' }).click();
   await actions.getByRole('button', { name: 'Reprocessar e revalidar' }).click();
@@ -296,7 +338,7 @@ test('desfaz e revalida o TXT editado pela API', async ({ page }) => {
     'Documento reprocessado e revalidado sem erros posicionais'
   );
   await expect(actions).toContainText('Nenhuma alteração pendente');
-  await expect(page.getByRole('button', { name: 'Editar campo Código: ABC' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Selecionar campo Código.*ABC/ })).toBeVisible();
 });
 
 test('navega pela hierarquia SAP IDoc declarada no layout', async ({ page }) => {

@@ -1,5 +1,10 @@
 # Plano — Navegação vinculada bidirecional TXT ↔ XML (estilo XMLSpy)
 
+> **Status em 2026-08-28:** proposta superada pela implementação. A API entregou
+> `sectionMappings`, `fieldMappings` e `xmlNamespaces`; o contrato e o comportamento atual estão
+> documentados em [`../features/txt-xml-traceability.md`](../features/txt-xml-traceability.md).
+> As menções a “bloqueado” abaixo ficam preservadas apenas como histórico de decisão.
+
 ## 1. Estado atual (o que já existe)
 
 **Exibição do XML hoje** — `src/components/analysis/XmlTransformationDisplay.tsx`:
