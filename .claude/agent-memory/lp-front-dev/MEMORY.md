@@ -22,6 +22,10 @@
   hipótese não confirmada (dado de contrato); precisa do JSON real de `parseResult.fields` antes de mexer em `positionalFieldEdit.ts`.
 - [Candidatos de transformação sem diferenciador](project_transformation_candidate_id_gap.md) —
   `TransformationCandidate` não tem nome de mapper/`layoutOutputTarget`; só `candidateId`.
+- [DNS multi-homed no BFF (produção)](project_bff_dns_multihome_lookup_override.md) — `dns.setServers()`
+  não afeta `fetch`/undici; usar lookup customizado + `setGlobalDispatcher`. `BFF_DNS_SERVERS`.
+- [Regressão .mqseries: Len inflado](project_mqseries_field_length_regression.md) — `InformacoesParaEDI`
+  renderiza Len:500 em vez de 81; front só exibe `field.length` da API, causa raiz é dado do backend.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
