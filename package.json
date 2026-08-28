@@ -21,6 +21,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:fixture:mqseries": "tsc -p tsconfig.real-fixture.json --noEmit && vitest run --config vitest.real-fixture.config.ts",
     "test:e2e": "playwright test",
     "contract:check": "node scripts/check-api-contract.mjs",
     "artifacts:validate": "node scripts/validate-production-artifacts.mjs",

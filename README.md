@@ -398,20 +398,21 @@ produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma
 
 ### Front-end
 
-| Comando                  | Verificação                                             |
-| ------------------------ | ------------------------------------------------------- |
-| `npm run lint`           | ESLint, acessibilidade estática e zero warnings.        |
-| `npm run typecheck`      | TypeScript estrito sem emitir arquivos.                 |
-| `npm run test:run`       | Testes unitários e de integração do front.              |
-| `npm run test:coverage`  | Vitest com cobertura V8.                                |
-| `npm run build`          | Type-check e build Vite.                                |
-| `npm run build:dev`      | Build no modo development.                              |
-| `npm run build:prod`     | Build no modo production.                               |
-| `npm run format:check`   | Prettier nos arquivos do front.                         |
-| `npm run test:e2e`       | Fluxo Playwright em desktop e mobile.                   |
-| `npm run contract:check` | Contrato local e OpenAPI opcional.                      |
-| `npm run audit`          | Auditoria npm, bloqueando severidade moderada ou maior. |
-| `npm run quality`        | Gate agregado do front, BFF, artefatos e contrato.      |
+| Comando                         | Verificação                                             |
+| ------------------------------- | ------------------------------------------------------- |
+| `npm run lint`                  | ESLint, acessibilidade estática e zero warnings.        |
+| `npm run typecheck`             | TypeScript estrito sem emitir arquivos.                 |
+| `npm run test:run`              | Testes unitários e de integração do front.              |
+| `npm run test:coverage`         | Vitest com cobertura V8.                                |
+| `npm run test:fixture:mqseries` | Aceitação opt-in com o par MQSeries real privado.       |
+| `npm run build`                 | Type-check e build Vite.                                |
+| `npm run build:dev`             | Build no modo development.                              |
+| `npm run build:prod`            | Build no modo production.                               |
+| `npm run format:check`          | Prettier nos arquivos do front.                         |
+| `npm run test:e2e`              | Fluxo Playwright em desktop e mobile.                   |
+| `npm run contract:check`        | Contrato local e OpenAPI opcional.                      |
+| `npm run audit`                 | Auditoria npm, bloqueando severidade moderada ou maior. |
+| `npm run quality`               | Gate agregado do front, BFF, artefatos e contrato.      |
 
 ### Gateway Node
 
@@ -434,6 +435,29 @@ npm run test:e2e
 A suíte em [`e2e/`](e2e/) valida o fluxo TXT → transformação → download XML e a restrição da
 área administrativa em perfis desktop e móvel. As APIs são mockadas no navegador para tornar o
 teste determinístico; isso não substitui um teste de integração contra o gateway e a API reais.
+
+### Aceitação com o par MQSeries real
+
+O cenário opt-in [`mqseries-positional.test.ts`](tests/real-fixture/mqseries-positional.test.ts)
+envia o layout e o documento privados de `.codex/temp/teste` diretamente à API local. Ele valida
+o contrato real, os 59 grupos físicos, a recuperação das larguras fixas, a cobertura contínua até
+a posição 600, as quatro ocorrências da `LINHA081`, a remoção das duas entradas agregadas e a
+editabilidade segura dos 703 campos. Nenhum conteúdo ou valor do documento é registrado no teste.
+
+```powershell
+# API padrão: http://127.0.0.1:5100
+npm run test:fixture:mqseries
+
+# Overrides opcionais
+$env:LAYOUTPARSER_REAL_API_URL = 'http://127.0.0.1:5100'
+$env:LAYOUTPARSER_REAL_FIXTURE_DIR = 'C:\caminho\privado\teste'
+npm run test:fixture:mqseries
+```
+
+Os dois arquivos reais permanecem ignorados pelo Git. A suíte falha explicitamente se o par não
+estiver presente, se os tamanhos não corresponderem à fixture homologada ou se a API estiver fora
+do ar; por isso ela não faz parte do gate determinístico da CI. A regressão sanitizada equivalente
+continua em `src/utils` e roda em todo `npm run quality`.
 
 ### Contrato da API
 
