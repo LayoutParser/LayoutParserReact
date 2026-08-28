@@ -21,5 +21,9 @@ date: 2026-08-28
   roving tabindex, setas e foco cruzado. Mobile oferece lista de campos por ocorrência (44 px).
 - Caveat permanente: mappings ainda não foram comparados contra ≥20 execuções reais do
   LowCodeRunner Windows; “Authoritative” aparece como “Declarado no mapeador”, nunca “validado”.
+- Fix complementar no mesmo branch: `parseFieldNormalization.ts` compõe `ParsedField.start` com
+  `LengthField`/GUIDs do layout, mantendo campos vazios com largura editável. Entradas agregadas
+  (`isAggregatedOccurrence` ou `occurrence=0`) são removidas da lista física, evitando a LINHA081
+  duplicada no fim. Sequencial de 6 dígitos repetido é desambiguado pelo código da linha 7–9.
 
 Documento de produto: `docs/features/txt-xml-traceability.md`.

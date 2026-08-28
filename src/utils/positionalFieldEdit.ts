@@ -32,6 +32,7 @@ const fail = (reason: string): PositionalFieldInspection => ({ editable: false, 
 export const resolvePositionalLineIndex = (
   content: string,
   lineSequence: string | undefined,
+  lineName: string | undefined,
   occurrence: number | undefined,
   fallbackIndex: number,
   totalGroups: number
@@ -46,7 +47,28 @@ export const resolvePositionalLineIndex = (
       }
     }
     if (matches.length === 1) return matches[0];
-    if (matches.length > 1) return -1;
+
+    // O sequencial de seis dígitos não é necessariamente único. No MQSeries real, por
+    // exemplo, LINHA000 e LINHA001 podem começar ambas com `000001`. Desambiguar pelo código
+    // estrutural de três dígitos da linha (posições 7–9) mantém a resolução determinística.
+    if (matches.length > 1) {
+      const lineCode = lineName
+        ?.match(/(\d+)$/)?.[1]
+        ?.slice(-3)
+        .padStart(3, '0');
+      if (lineCode) {
+        const structuralMatches = matches.filter(lineIndex => {
+          const lineStart = lineIndex * POSITIONAL_LINE_LENGTH;
+          return content.slice(lineStart + 6, lineStart + 9) === lineCode;
+        });
+        if (structuralMatches.length === 1) return structuralMatches[0];
+
+        const occurrenceIndex =
+          Number.isInteger(occurrence) && (occurrence ?? 0) > 0 ? occurrence! - 1 : 0;
+        if (occurrenceIndex < structuralMatches.length) return structuralMatches[occurrenceIndex];
+      }
+      return -1;
+    }
   }
 
   if (/^\d{3}$/.test(normalizedSequence)) {

@@ -163,6 +163,7 @@ const LinkedFieldInspector: React.FC = () => {
     const lineIndex = resolvePositionalLineIndex(
       txtContent,
       field.lineSequence,
+      field.lineName,
       field.occurrence,
       fallbackLineIndex,
       lineKeys.length

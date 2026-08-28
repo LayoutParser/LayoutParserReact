@@ -68,7 +68,11 @@ const FieldEditor: React.FC<FieldEditorProps> = ({
     <Modal isOpen onClose={onClose} title={`Editar ${target.field.fieldName}`} size="medium">
       <form className="field-editor" onSubmit={handleSubmit}>
         <div className="field-editor__metadata" aria-label="Intervalo do campo">
-          <span>Linha {target.lineIndex + 1}</span>
+          <span>
+            {target.lineIndex >= 0
+              ? `Linha física ${target.lineIndex + 1}`
+              : 'Linha física não identificada'}
+          </span>
           <span>
             Posições {target.field.startPosition ?? 'N/A'}–
             {target.field.startPosition && target.field.length

@@ -52,3 +52,28 @@ API) está realmente errada antes de tocar em `positionalFieldEdit.ts`.
 
 Ver também [[project_xml_transformation_toggle]] para o padrão geral de "leitura usa
 `field.value`, edição faz fail-closed slicing bruto" já documentado para o resto do fluxo.
+
+## Resolução confirmada — 2026-08-28
+
+O contrato real da API foi confirmado em código. `ParsedField` expõe `start`, `length` do valor
+alinhado, `occurrenceCount` e `isAggregatedOccurrence`; a agregação da LINHA081 adiciona uma
+entrada lógica com `occurrence=0` no fim da lista. O front convertia `0` em ocorrência 1 com
+`|| 1`, por isso a concatenação reaparecia como uma LINHA081 física duplicada no final.
+
+Correção no front:
+
+- `parseFieldNormalization.ts` exclui agregados da lista física e recupera largura declarada do
+  `LengthField` para campos vazios (`length` do wire pode ser 0);
+- `start`/`calculatedPositions` viram `startPosition`, com GUIDs recuperados do layout;
+- `resolvePositionalLineIndex` desambigua sequenciais repetidos usando também o código da linha
+  nas posições 7–9;
+- edição continua fail-closed e agora mostra “Linha física não identificada”, nunca “Linha 0”.
+
+Cobertura: testes unitários de normalização/agregado/linha ambígua e Playwright desktop+mobile
+editando um campo vazio de 588 posições.
+
+Reprodução local com o par real em `.codex/temp/teste` (não versionado) confirmou:
+`NroProtocoloAutorizacao` chega como `start=75`, `length=0`, `occurrence=1`,
+`lineSequence=000001`; no layout ele é `Sequence=8`, `LengthField=15`. A mesma resposta contém
+8 fragmentos físicos de LINHA081 e 2 agregados lógicos. Nenhum valor do documento foi registrado
+nesta memória.

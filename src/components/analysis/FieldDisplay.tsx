@@ -231,7 +231,7 @@ const FieldDisplay: React.FC = () => {
           actualFields.forEach(field => {
             const lineName = field.lineName || 'OUTROS';
             const lineSequence = field.lineSequence || extractLineNumber(lineName);
-            const occurrence = field.occurrence || 1;
+            const occurrence = field.occurrence ?? 1;
             // Chave única: lineSequence + occurrence para distinguir múltiplas ocorrências
             const key = `${lineSequence}_${occurrence}_${lineName}`;
 
@@ -270,7 +270,7 @@ const FieldDisplay: React.FC = () => {
                 lineSequence,
                 position,
                 sequential,
-                occurrence: fields[0]?.occurrence || 1,
+                occurrence: fields[0]?.occurrence ?? 1,
               };
             })
             .sort((a, b) => {
@@ -289,7 +289,7 @@ const FieldDisplay: React.FC = () => {
               if (seqA !== seqB) return seqA - seqB;
 
               // Se mesmo sequencial, ordenar por occurrence
-              return (a.occurrence || 1) - (b.occurrence || 1);
+              return (a.occurrence ?? 1) - (b.occurrence ?? 1);
             });
         })();
 
@@ -458,7 +458,7 @@ const FieldDisplay: React.FC = () => {
         const isLine999999 = group.lineName === 'LINHA999999' || group.lineName?.includes('999999');
 
         // ✅ Obter informação de ocorrência para exibição
-        const occurrence = groupData.occurrence || 1;
+        const occurrence = groupData.occurrence ?? 1;
         const hasMultipleOccurrences =
           groupsToRender.filter(g => g.lineName === group.lineName).length > 1;
 
@@ -545,7 +545,7 @@ const FieldDisplay: React.FC = () => {
         if (displayFields.length === 0) {
           return (
             <div
-              key={`${group.lineName}_${groupData.occurrence || 1}_${groupIndex}`}
+              key={`${group.lineName}_${groupData.occurrence ?? 1}_${groupIndex}`}
               className="field-line-container"
             >
               <div className="field-list-inline">

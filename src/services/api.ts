@@ -10,6 +10,7 @@ import type {
 import { SESSION_EXPIRED_EVENT } from '../types/session';
 import { createCorrelationId } from '../utils/correlation';
 import { isParseFailureCause } from '../utils/parseFailure';
+import { normalizeParseResponse } from '../utils/parseFieldNormalization';
 
 // Configuração da API
 //
@@ -199,7 +200,7 @@ export const parseService = {
         },
       });
 
-      return response.data;
+      return normalizeParseResponse(response.data);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const response = error.response;

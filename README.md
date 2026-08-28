@@ -51,8 +51,9 @@ fornecida, em vez de presumir um diagnóstico.
 
 ### Edição segura do TXT posicional / Safe positional TXT editing
 
-Na aba **TXT Posicional**, cada campo com posição e comprimento confirmados pela API pode ser
-selecionado para edição. O novo valor precisa ocupar **exatamente** o mesmo número de posições:
+Na aba **TXT Posicional**, cada campo com posição física confirmada pelo parse e largura fixa
+declarada no layout pode ser selecionado para edição. O novo valor precisa ocupar **exatamente** o
+mesmo número de posições:
 um CNPJ de 14 posições só aceita outro valor com 14 caracteres. A substituição acontece apenas
 no intervalo daquele campo e também precisa manter o mesmo tamanho em bytes no encoding original.
 O histórico fica somente na sessão e permite desfazer alterações; o TXT editado pode ser baixado
@@ -60,9 +61,13 @@ sem mudar encoding ou tamanho e reenviado à API pelo botão **Reprocessar e rev
 campos, erros e demais estados derivados pela nova resposta. Qualquer edição invalida candidatos XML
 gerados para a versão anterior. Se posição, ocorrência, comprimento, encoding ou conteúdo atual não
 puderem ser comprovados, a operação falha de forma segura e o documento precisa ser reprocessado.
+Campos vazios continuam visíveis e editáveis com sua largura declarada. Entradas lógicas agregadas
+pela API (`isAggregatedOccurrence`/`occurrence=0`) não são linhas físicas e ficam fora desta régua.
 
-> **EN:** In the **Positional TXT** tab, a field can be edited only when the API supplied a
-> verifiable position and length. The replacement must have exactly the same character count,
+> **EN:** In the **Positional TXT** tab, a field can be edited only when its parsed physical
+> position and layout-declared fixed width are verifiable. Empty fields remain visible/editable,
+> while API logical aggregates are excluded from the physical ruler. The replacement must have
+> exactly the same character count,
 > changes only that field range and must keep the same byte length in the original encoding.
 > Session-only undo, encoding/size-preserving download and API reprocessing are available; a new
 > parse response replaces fields, validation errors and other derived state. Ambiguous, stale or
