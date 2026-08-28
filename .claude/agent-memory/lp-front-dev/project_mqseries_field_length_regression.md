@@ -35,3 +35,12 @@ issue pública, ver `rules/product-management.md`).
 Ver também [[project_positional_edit_multi_occurrence_investigation]] — mesmo padrão: suspeita
 de `length`/`startPosition` inflados vindos da API para grupos/campos de tamanho variável em
 layouts posicionais, ainda sem JSON real para confirmação definitiva byte a byte.
+
+## Atualização — 2026-08-28
+
+A API passou a distinguir fragmentos físicos e agregados (`occurrenceCount` e
+`isAggregatedOccurrence`) e hoje serializa `ParsedField.length` como tamanho do valor após
+alinhamento — inclusive zero para campo vazio. Para a régua/editabilidade, o front não usa mais
+esse zero como largura: normaliza a largura fixa pelo `LengthField` do layout e remove o agregado
+da lista física. O valor lógico concatenado continua responsabilidade da API/transformação; não é
+uma linha editável.

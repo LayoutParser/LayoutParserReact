@@ -6,6 +6,9 @@ export interface Field {
   value: string;
   startPosition?: number;
   length?: number;
+  // Comprimento do valor já alinhado informado pela API. Pode ser menor que `length`, que no
+  // front representa a largura física declarada do campo e é usada para edição posicional.
+  parsedLength?: number;
   isValid?: boolean;
   hasWarning?: boolean;
   errorMessage?: string;
@@ -17,6 +20,10 @@ export interface Field {
   dataType?: string;
   lineSequence?: string; // Sequência da linha (ex: "000", "001")
   occurrence?: number; // Ocorrência da linha no documento
+  occurrenceCount?: number; // Total de ocorrências físicas da linha/campo
+  // Entrada lógica agregada pela API (ex.: concatenação das LINHA081). Não representa uma
+  // linha física e, portanto, nunca pode ser exibida nem editada no TXT posicional.
+  isAggregatedOccurrence?: boolean;
 }
 
 export interface FieldGroup {

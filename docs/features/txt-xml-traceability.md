@@ -26,6 +26,14 @@ namespaces.
    completo; não compara somente `localName` e não usa o valor do nó.
 5. `sectionMappings` representa linha/seção. Sua `lineOccurrence` não é usada como ocorrência
    física para seleção ou edição.
+6. O wire de parse é normalizado antes de entrar no store: `ParsedField.start` vira
+   `startPosition`; a largura física vem do `LengthField` do layout, porque `ParsedField.length`
+   pode ser zero em campos vazios; o valor original é preservado em `parsedLength` para casar o
+   contrato de `fieldMappings`, e GUIDs também são recuperados da definição estrutural.
+7. `isAggregatedOccurrence=true` ou `occurrence=0` representa valor lógico concatenado, não uma
+   ocorrência física. Essas entradas não aparecem na régua TXT nem podem ser editadas.
+8. Sequenciais de seis dígitos podem se repetir. A linha é resolvida pela combinação
+   `lineSequence + código de linha (posições 7–9) + ocorrência`, sem busca pelo valor.
 
 ## Estados do contrato
 

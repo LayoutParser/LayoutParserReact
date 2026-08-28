@@ -49,16 +49,39 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
           name: 'Layout Demonstração',
           description: 'Fixture sintética',
           limitOfCaracters: 600,
-          elements: [],
+          elements: [
+            {
+              type: 'LineElementVO',
+              elementGuid: 'line-guid-001',
+              description: 'Linha sintética',
+              sequence: 1,
+              name: 'LINHA001',
+              isRequired: true,
+              elements: [
+                JSON.stringify({
+                  Type: 'FieldElementVO',
+                  ElementGuid: 'field-guid-codigo',
+                  Name: 'Código',
+                  Sequence: 1,
+                  LengthField: 3,
+                }),
+                JSON.stringify({
+                  Type: 'FieldElementVO',
+                  ElementGuid: 'field-guid-filler',
+                  Name: 'Filler',
+                  Sequence: 2,
+                  LengthField: 588,
+                }),
+              ],
+            },
+          ],
         },
         fields: [
           {
             lineName: 'LINHA001',
-            lineGuid: 'line-guid-001',
             fieldName: 'Código',
-            fieldGuid: 'field-guid-codigo',
             value: 'ABC',
-            startPosition: 10,
+            start: 10,
             length: 3,
             lineSequence: '000001',
             sequence: 1,
@@ -67,16 +90,29 @@ const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
           },
           {
             lineName: 'LINHA001',
-            lineGuid: 'line-guid-001',
             fieldName: 'Filler',
-            fieldGuid: 'field-guid-filler',
-            value: ' '.repeat(588),
-            startPosition: 13,
-            length: 588,
+            value: '',
+            start: 13,
+            length: 0,
             lineSequence: '000001',
             sequence: 2,
             occurrence: 1,
             isValid: true,
+          },
+        ],
+        lineValidations: [
+          {
+            lineName: 'LINHA001',
+            initialValue: '001',
+            initialValueLength: 3,
+            sequenceFromPreviousLine: 6,
+            fieldsLength: 591,
+            sequenciaLength: 6,
+            totalLength: 600,
+            isValid: true,
+            hasChildren: true,
+            fieldCount: 2,
+            calculatedPositions: { 'Código#1': 10, 'Filler#2': 13 },
           },
         ],
         transformationsStatus: withoutCandidates ? 'processing' : 'completed',
@@ -266,6 +302,9 @@ test('processa TXT e entrega o XML transformado para download', async ({ page })
   await page.getByRole('tab', { name: 'TXT Posicional' }).click();
   await page.getByRole('button', { name: /Selecionar campo Código.*ABC/ }).click();
   await expect(page.getByText('Declarado no mapeador', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Selecionar campo Filler.*vazio/ })
+  ).toHaveAttribute('title', /Len: 588/);
   await page.getByRole('button', { name: 'Ver no XML' }).click();
 
   const xmlTree = page.getByRole('tree', { name: 'Árvore do XML transformado' });
@@ -310,6 +349,28 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await xmlTree.getByRole('treeitem', { name: /documento/ }).press('ArrowRight');
   await xmlTree.getByRole('treeitem', { name: /codigo/ }).press('ArrowRight');
   await expect(xmlTree.getByRole('treeitem', { name: /#text.*XYZ/ })).toBeVisible();
+});
+
+test('edita campo vazio usando a largura fixa declarada no layout', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page);
+  await processSyntheticDocument(page);
+
+  await page.getByRole('button', { name: /Selecionar campo Filler.*vazio/ }).click();
+  await expect(page.getByText('Posições 13–600 · 588 caracteres')).toBeVisible();
+  await page.getByRole('button', { name: 'Editar valor' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Editar Filler' });
+  await expect(dialog).toContainText('Linha física 1');
+  await expect(dialog).toContainText('Posições 13–600');
+  await expect(dialog).toContainText('588 posições');
+
+  await dialog.getByLabel('Novo valor').fill('X'.padEnd(588, ' '));
+  await dialog.getByRole('button', { name: 'Aplicar no TXT' }).click();
+
+  await expect(page.getByRole('region', { name: 'Ações do TXT editado' })).toContainText(
+    '1 alteração(ões) nesta sessão'
+  );
 });
 
 test('desfaz e revalida o TXT editado pela API', async ({ page }) => {

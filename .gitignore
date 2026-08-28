@@ -10,6 +10,7 @@ lerna-debug.log*
 # Artefatos locais dos agentes podem conter documentos TXT/XML reais.
 .claude/tmp*
 .claude/temp/
+.codex/temp/
 
 node_modules
 dist
