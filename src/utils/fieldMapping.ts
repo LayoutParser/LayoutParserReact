@@ -18,13 +18,19 @@ const hasStructuralSuffix = (nodeXpath: string, targetXpath: string): boolean =>
 };
 
 export const fieldMatchesMappingSource = (field: Field, source: FieldMappingSource): boolean => {
+  const sourceLengths = new Set(
+    [field.parsedLength, field.length].filter(
+      (length): length is number =>
+        typeof length === 'number' && Number.isInteger(length) && length > 0
+    )
+  );
   if (
     source.lineOccurrence <= 0 ||
     source.startPosition <= 0 ||
     source.length <= 0 ||
     (field.occurrence ?? 1) !== source.lineOccurrence ||
     field.startPosition !== source.startPosition ||
-    field.length !== source.length
+    !sourceLengths.has(source.length)
   ) {
     return false;
   }

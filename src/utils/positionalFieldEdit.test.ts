@@ -76,17 +76,25 @@ describe('positionalFieldEdit', () => {
     const first = `000001${' '.repeat(POSITIONAL_LINE_LENGTH - 6)}`;
     const second = `000002${' '.repeat(POSITIONAL_LINE_LENGTH - 6)}`;
 
-    expect(resolvePositionalLineIndex(first + second, '000002', 1, 0, 2)).toBe(1);
-    expect(resolvePositionalLineIndex(first + first, '000001', 1, 0, 2)).toBe(-1);
+    expect(resolvePositionalLineIndex(first + second, '000002', 'LINHA002', 1, 0, 2)).toBe(1);
+    expect(resolvePositionalLineIndex(first + first, '000001', 'LINHA001', 1, 0, 2)).toBe(-1);
+  });
+
+  it('desambigua sequenciais repetidos pelo código estrutural da linha', () => {
+    const line000 = `000001000${' '.repeat(POSITIONAL_LINE_LENGTH - 9)}`;
+    const line001 = `000001001${' '.repeat(POSITIONAL_LINE_LENGTH - 9)}`;
+
+    expect(resolvePositionalLineIndex(line000 + line001, '000001', 'LINHA000', 1, 0, 2)).toBe(0);
+    expect(resolvePositionalLineIndex(line000 + line001, '000001', 'LINHA001', 1, 0, 2)).toBe(1);
   });
 
   it('resolve a ocorrência exata pelo código de linha de três posições', () => {
     const first = `000001001${' '.repeat(POSITIONAL_LINE_LENGTH - 9)}`;
     const second = `000002001${' '.repeat(POSITIONAL_LINE_LENGTH - 9)}`;
 
-    expect(resolvePositionalLineIndex(first + second, '001', 1, 0, 2)).toBe(0);
-    expect(resolvePositionalLineIndex(first + second, '001', 2, 0, 2)).toBe(1);
-    expect(resolvePositionalLineIndex(first + second, '001', 3, 0, 2)).toBe(-1);
+    expect(resolvePositionalLineIndex(first + second, '001', 'LINHA001', 1, 0, 2)).toBe(0);
+    expect(resolvePositionalLineIndex(first + second, '001', 'LINHA001', 2, 0, 2)).toBe(1);
+    expect(resolvePositionalLineIndex(first + second, '001', 'LINHA001', 3, 0, 2)).toBe(-1);
   });
 
   describe('segmentos SAP IDoc (lineSequence não numérico, identificado por nome)', () => {
@@ -97,7 +105,7 @@ describe('positionalFieldEdit', () => {
     it('resolve um segmento único pela ordem física do grupo', () => {
       const lines = Array.from({ length: 3 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
 
-      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 0, 3)).toBe(0);
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 'HEADER', 1, 0, 3)).toBe(0);
     });
 
     it('resolve segmento repetido (múltiplas ocorrências do mesmo nome) por índice distinto', () => {
@@ -105,26 +113,32 @@ describe('positionalFieldEdit', () => {
 
       // Duas ocorrências de ZRSDM_NFE_400_ITEM em índices físicos diferentes (1 e 3), cada
       // uma resolvida pelo fallbackIndex já calculado pelo chamador para aquele grupo.
-      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 1, 1, 4)).toBe(1);
-      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 2, 3, 4)).toBe(3);
+      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 'LINHA_ITEM', 1, 1, 4)).toBe(
+        1
+      );
+      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ITEM', 'LINHA_ITEM', 2, 3, 4)).toBe(
+        3
+      );
     });
 
     it('resolve campo dentro de segmento aninhado (ex.: ENDEREMIT dentro de EMIT)', () => {
       const lines = Array.from({ length: 5 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
 
-      expect(resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ENDEREMIT', 1, 2, 5)).toBe(2);
+      expect(
+        resolvePositionalLineIndex(lines, 'ZRSDM_NFE_400_ENDEREMIT', 'LINHA_ENDEREMIT', 1, 2, 5)
+      ).toBe(2);
     });
 
     it('recusa índice fora dos limites físicos do conteúdo atual', () => {
       const lines = Array.from({ length: 2 }, () => ' '.repeat(POSITIONAL_LINE_LENGTH)).join('');
 
-      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 2, 3)).toBe(-1);
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 'HEADER', 1, 2, 3)).toBe(-1);
     });
 
     it('recusa quando o chamador não reporta nenhum grupo', () => {
       const lines = ' '.repeat(POSITIONAL_LINE_LENGTH);
 
-      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 1, 0, 0)).toBe(-1);
+      expect(resolvePositionalLineIndex(lines, 'EDI_DC40', 'HEADER', 1, 0, 0)).toBe(-1);
     });
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Field } from '../types/field';
 import type { FieldMappingSource, FieldMappingTarget } from '../types/transformation';
 import { flattenXmlTree, parseXmlToTree } from './xmlTree';
-import { resolveSourceFields, resolveTargetNodes } from './fieldMapping';
+import { fieldMatchesMappingSource, resolveSourceFields, resolveTargetNodes } from './fieldMapping';
 
 const createField = (occurrence: number): Field => ({
   lineGuid: '{LINE-GUID}',
@@ -18,6 +18,21 @@ const createField = (occurrence: number): Field => ({
 });
 
 describe('fieldMapping', () => {
+  it('usa o comprimento parseado no contrato de mapping sem perder a largura física de edição', () => {
+    const field = { ...createField(1), length: 15, parsedLength: 3 };
+    const source: FieldMappingSource = {
+      lineGuid: 'line-guid',
+      lineName: 'LINHA081',
+      fieldGuid: 'field-guid',
+      fieldName: 'CNPJ',
+      lineOccurrence: 1,
+      startPosition: 42,
+      length: 3,
+    };
+
+    expect(fieldMatchesMappingSource(field, source)).toBe(true);
+  });
+
   it('resolve somente a ocorrência física indicada, sem comparar valor', () => {
     const fields = [1, 2, 3, 4].map(createField);
     const source: FieldMappingSource = {
