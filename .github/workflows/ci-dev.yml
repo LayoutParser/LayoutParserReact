@@ -52,6 +52,26 @@ jobs:
           npm ci --prefix server
           if ($LASTEXITCODE -ne 0) { throw 'npm ci do BFF falhou.' }
 
+      - name: Instalar Chromium para o gate E2E real
+        shell: powershell
+        run: |
+          npx playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Instalação do Chromium para o E2E real falhou.' }
+
+      # Gate de aceitação antes de qualquer build/deploy: usa navegador, front, BFF e API reais.
+      # A fixture fica fora do workspace Git para impedir vazamento do documento corporativo.
+      - name: Gate E2E real do MQSeries
+        shell: powershell
+        env:
+          REAL_E2E_API_URL: ${{ vars.LAYOUTPARSER_API_URL_DEV }}
+          REAL_E2E_FIXTURE_DIR: ${{ vars.REAL_E2E_FIXTURE_DIR }}
+          REAL_E2E_LAYOUT_NAME: ${{ vars.REAL_E2E_LAYOUT_NAME }}
+        run: |
+          npm run test:e2e:real
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Gate E2E real falhou; quality, build e deploy foram bloqueados.'
+          }
+
       - name: Quality gates e builds same-origin
         shell: powershell
         env:
