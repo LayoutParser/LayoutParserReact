@@ -410,6 +410,7 @@ produção foi desenhado para deixar essa variável vazia e usar `/api` na mesma
 | `npm run build:prod`            | Build no modo production.                               |
 | `npm run format:check`          | Prettier nos arquivos do front.                         |
 | `npm run test:e2e`              | Fluxo Playwright em desktop e mobile.                   |
+| `npm run test:e2e:real`         | Fluxo de usuário contra BFF/API e fixture reais.        |
 | `npm run contract:check`        | Contrato local e OpenAPI opcional.                      |
 | `npm run audit`                 | Auditoria npm, bloqueando severidade moderada ou maior. |
 | `npm run quality`               | Gate agregado do front, BFF, artefatos e contrato.      |
@@ -435,6 +436,37 @@ npm run test:e2e
 A suíte em [`e2e/`](e2e/) valida o fluxo TXT → transformação → download XML e a restrição da
 área administrativa em perfis desktop e móvel. As APIs são mockadas no navegador para tornar o
 teste determinístico; isso não substitui um teste de integração contra o gateway e a API reais.
+
+#### Gate E2E real do usuário
+
+O cenário [`mqseries-user-flow.spec.ts`](e2e-real/mqseries-user-flow.spec.ts) não intercepta nem
+simula APIs. Ele inicia o front e o BFF reais, aponta o BFF para a `LayoutParserApi`, abre a página
+como usuário autenticado de desenvolvimento e opera os mesmos controles da interface: busca e
+seleciona o layout, abre o seletor de arquivo, anexa o TXT, processa, seleciona uma tag vazia,
+gera a transformação multi-candidato, volta ao TXT, edita suas 15 posições e reprocessa o
+documento.
+
+Além da UI, o teste exige HTTP 200 e valida que um `X-Correlation-ID` válido, novo por operação e
+imutável atravessou navegador → BFF → API → navegador nas chamadas de sessão, catálogo, parse,
+transformação multi-candidato e reparse. O contrato aceito é o do documento homologado: 59 linhas,
+705 campos e quatro ocorrências físicas da `LINHA081`, sem a ocorrência agregada duplicada no fim.
+
+```powershell
+$env:REAL_E2E_API_URL = 'http://127.0.0.1:5100'
+$env:REAL_E2E_FIXTURE_DIR = 'C:\caminho\privado\teste'
+$env:REAL_E2E_LAYOUT_NAME = 'LAY_TXT_MQSERIES_ENVNFE_4.00_NFe'
+npm run test:e2e:real
+```
+
+No runner Windows, a localização padrão persistente é
+`C:\ProgramData\LayoutParser\e2e-fixtures\mqseries`. O environment `development` pode sobrescrever
+o caminho e o layout pelas variables `REAL_E2E_FIXTURE_DIR` e `REAL_E2E_LAYOUT_NAME`. Screenshots,
+vídeos e traces ficam desabilitados nessa suíte para que uma falha não publique dados privados.
+
+Em [`ci-dev.yml`](.github/workflows/ci-dev.yml), esse cenário roda imediatamente após a instalação
+das dependências. Se ele falhar, os quality gates seguintes, o build e o deploy de desenvolvimento
+não executam; consequentemente, a proteção de `main` não recebe o deployment ativo necessário para
+autorizar a promoção `develop → main`.
 
 ### Aceitação com o par MQSeries real
 
