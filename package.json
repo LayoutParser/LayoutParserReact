@@ -23,6 +23,7 @@
     "test:coverage": "vitest run --coverage",
     "test:fixture:mqseries": "tsc -p tsconfig.real-fixture.json --noEmit && vitest run --config vitest.real-fixture.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:real": "tsc -p tsconfig.e2e.json --noEmit && playwright test --config playwright.real.config.ts",
     "contract:check": "node scripts/check-api-contract.mjs",
     "artifacts:validate": "node scripts/validate-production-artifacts.mjs",
     "audit": "npm audit --audit-level=moderate",
