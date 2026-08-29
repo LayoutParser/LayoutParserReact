@@ -31,6 +31,7 @@ const setSuccessfulParse = (
 
 describe('AnalysisModeTabs', () => {
   beforeEach(() => {
+    localStorage.clear();
     useAppStore.getState().reset();
     useTransformationStore.getState().reset();
   });
@@ -71,5 +72,22 @@ describe('AnalysisModeTabs', () => {
     // compareDocumentPosition indica DOCUMENT_POSITION_FOLLOWING quando `arvore` vem DEPOIS de
     // `campos` no DOM — ou seja, edição do TXT em cima, estrutura hierárquica embaixo.
     expect(campos.compareDocumentPosition(arvore) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('oferece divisores acessíveis para o usuário escolher o tamanho dos painéis', () => {
+    setSuccessfulParse('completed');
+
+    render(<AnalysisModeTabs />);
+
+    expect(
+      screen.getByRole('separator', {
+        name: 'Redimensionar área de análise e inspetor de rastreabilidade',
+      })
+    ).toHaveAttribute('aria-valuenow', '68');
+    expect(
+      screen.getByRole('separator', {
+        name: 'Redimensionar TXT posicional e árvore de estrutura',
+      })
+    ).toHaveAttribute('aria-valuenow', '62');
   });
 });

@@ -351,6 +351,47 @@ test('edita somente o intervalo da tag e transforma o TXT atualizado', async ({ 
   await expect(xmlTree.getByRole('treeitem', { name: /#text.*XYZ/ })).toBeVisible();
 });
 
+test('permite ao usuário escolher o tamanho dos painéis de análise', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockProcessingApis(page);
+  await processSyntheticDocument(page);
+
+  const verticalSplit = page.getByRole('separator', {
+    name: 'Redimensionar TXT posicional e árvore de estrutura',
+  });
+  const txtPanel = page.locator('[aria-label="Visualização e edição do TXT posicional"]');
+  await expect(verticalSplit).toBeVisible();
+  await expect(verticalSplit).toHaveAttribute('aria-valuenow', '62');
+  const txtBeforeResize = await txtPanel.boundingBox();
+
+  await verticalSplit.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(verticalSplit).toHaveAttribute('aria-valuenow', '67');
+  await expect
+    .poll(async () => (await txtPanel.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(txtBeforeResize?.height ?? 0);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('layoutParser.panelSize.txt-structure')))
+    .toBe('67');
+
+  const inspectorSplit = page.getByRole('separator', {
+    name: 'Redimensionar área de análise e inspetor de rastreabilidade',
+  });
+  if ((page.viewportSize()?.width ?? 0) > 900) {
+    const analysisPanel = page.locator('[aria-label="Área principal de análise"]');
+    const analysisBeforeResize = await analysisPanel.boundingBox();
+    await expect(inspectorSplit).toBeVisible();
+    await inspectorSplit.focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(inspectorSplit).toHaveAttribute('aria-valuenow', '63');
+    const analysisAfterResize = await analysisPanel.boundingBox();
+    expect(analysisAfterResize?.width).toBeLessThan(analysisBeforeResize?.width ?? Infinity);
+  } else {
+    await expect(inspectorSplit).toBeHidden();
+    await expect(page.locator('.field-display-edit-help')).toHaveCSS('display', 'grid');
+  }
+});
+
 test('edita campo vazio usando a largura fixa declarada no layout', async ({ page }) => {
   await mockAuthenticatedGateway(page);
   await mockProcessingApis(page);
