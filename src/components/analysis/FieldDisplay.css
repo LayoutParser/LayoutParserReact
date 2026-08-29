@@ -71,6 +71,7 @@
 }
 
 .field-display-edit-help {
+  flex-wrap: wrap;
   justify-content: flex-start;
 }
 
@@ -451,5 +452,20 @@
     background: var(--color-surface);
     color: var(--color-accent);
     font-weight: var(--font-weight-semibold);
+  }
+}
+
+@media (max-width: 600px) {
+  .field-display {
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+  }
+
+  .field-display-edit-help,
+  .field-display-edit-feedback {
+    display: grid;
+    align-items: start;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
   }
 }
