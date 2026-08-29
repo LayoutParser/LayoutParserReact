@@ -1,7 +1,7 @@
 .linked-field-inspector {
   position: sticky;
   top: 0;
-  width: 320px;
+  width: 100%;
   max-height: calc(100vh - 8rem);
   align-self: start;
   overflow: auto;

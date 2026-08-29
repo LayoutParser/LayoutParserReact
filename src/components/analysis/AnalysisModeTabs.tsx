@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import type { AnalysisMode } from '../../store/useTransformationStore';
+import ResizableSplit from '../shared/ResizableSplit/ResizableSplit';
 import Tabs from '../shared/Tabs';
 import FieldDisplay from './FieldDisplay';
 import StructureTree from './StructureTree';
@@ -67,17 +68,31 @@ const AnalysisModeTabs: React.FC = () => {
       id: 'txt-posicional',
       label: 'TXT Posicional',
       content: (
-        <div className="file-visualization">
-          {/* Edição/alteração do TXT é a área principal da aba e vem primeiro; a árvore de
-              estrutura (hierárquica só para SAP IDoc, plana nos demais casos) é conteúdo
-              secundário e fica abaixo, como nas outras abas do produto. */}
-          <div className="file-visualization-content">
-            <FieldDisplay />
-          </div>
-          <div className="file-visualization-header">
-            <StructureTree />
-          </div>
-        </div>
+        /* Edição/alteração do TXT é a área principal da aba e vem primeiro; a árvore de
+           estrutura (hierárquica só para SAP IDoc, plana nos demais casos) é conteúdo
+           secundário e fica abaixo, como nas outras abas do produto. */
+        <ResizableSplit
+          className="file-visualization"
+          direction="rows"
+          primaryLabel="Visualização e edição do TXT posicional"
+          secondaryLabel="Árvore de estrutura do documento"
+          handleLabel="Redimensionar TXT posicional e árvore de estrutura"
+          handleText="TXT / estrutura"
+          storageKey="txt-structure"
+          defaultSize={62}
+          minSize={42}
+          maxSize={72}
+          primary={
+            <div className="file-visualization-content">
+              <FieldDisplay />
+            </div>
+          }
+          secondary={
+            <div className="file-visualization-header">
+              <StructureTree />
+            </div>
+          }
+        />
       ),
     },
   ];
@@ -114,15 +129,27 @@ const AnalysisModeTabs: React.FC = () => {
           {notApplicableText}
         </div>
       )}
-      <div className="linked-analysis-shell">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeMode || 'txt-posicional'}
-          onTabChange={tabId => setActiveMode(tabId as AnalysisMode)}
-          className="analysis-mode-tabs-container"
-        />
-        <LinkedFieldInspector />
-      </div>
+      <ResizableSplit
+        className="linked-analysis-shell"
+        direction="columns"
+        primaryLabel="Área principal de análise"
+        secondaryLabel="Inspetor de rastreabilidade"
+        handleLabel="Redimensionar área de análise e inspetor de rastreabilidade"
+        handleText="Análise / inspetor"
+        storageKey="analysis-inspector"
+        defaultSize={68}
+        minSize={58}
+        maxSize={72}
+        primary={
+          <Tabs
+            tabs={tabs}
+            activeTab={activeMode || 'txt-posicional'}
+            onTabChange={tabId => setActiveMode(tabId as AnalysisMode)}
+            className="analysis-mode-tabs-container"
+          />
+        }
+        secondary={<LinkedFieldInspector />}
+      />
     </div>
   );
 };

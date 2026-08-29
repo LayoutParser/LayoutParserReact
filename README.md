@@ -95,6 +95,13 @@ candidato ativo:
 - a régua TXT usa foco móvel por setas e mantém somente um campo na ordem de `Tab`; no mobile,
   cada ocorrência oferece uma lista alternativa com alvos de pelo menos 44 px.
 
+O espaço de trabalho também é ajustável: o separador horizontal distribui a altura entre a régua
+TXT e a árvore estrutural, enquanto o separador vertical distribui a largura entre a análise e o
+inspetor no desktop. Ambos aceitam arraste, setas do teclado, `Home`/`End` e duplo clique para
+restaurar o padrão. A preferência fica somente no `localStorage`. Em telas de até 900 px, o
+separador lateral desaparece porque o inspetor passa a modal; o ajuste TXT↔estrutura continua
+disponível com área de toque ampliada.
+
 > **Limitação ativa:** a API validou estruturalmente os mappings com fixtures sintéticas, mas a
 > comparação comportamental de pelo menos 20 documentos reais contra o `LowCodeRunner.exe` ainda
 > depende de execução em Windows. Por isso, nem mesmo “Declarado no mapeador” é apresentado como
@@ -106,6 +113,8 @@ candidato ativo:
 > `sectionMappings` and `xmlNamespaces`, distinguishes unsupported/empty/populated states, labels
 > confidence without overstating validation, and provides keyboard, desktop and mobile navigation.
 > Behavioral comparison against the real Windows-only `LowCodeRunner.exe` is still pending.
+> The analysis workspace is user-resizable by pointer or keyboard, persists only local visual
+> preferences and automatically switches the inspector to a modal layout below 900 px.
 
 ### Hierarquia SAP IDoc / SAP IDoc hierarchy
 

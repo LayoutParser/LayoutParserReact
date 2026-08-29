@@ -435,6 +435,7 @@ const FieldDisplay: React.FC = () => {
       <div className="field-display-edit-help" role="note">
         <strong>Inspeção e edição posicional:</strong> selecione um campo para ver sua origem e seus
         destinos. A edição é uma ação explícita do inspetor e mantém exatamente o mesmo comprimento.
+        Ajuste o espaço do TXT pelo separador entre os painéis.
       </div>
 
       <DocumentEditActions />
