@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { ParseResponse } from '../../src/types/api';
@@ -62,12 +62,12 @@ const loadPrivateDocument = async (): Promise<{ name: string; content: Buffer }>
   }
 
   const path = resolve(fixtureDirectory, files[0]!);
-  const metadata = await stat(path);
-  if (metadata.size !== EXPECTED.documentBytes) {
+  const content = await readFile(path);
+  if (content.byteLength !== EXPECTED.documentBytes) {
     throw new Error('O documento privado não corresponde à fixture MQSeries homologada.');
   }
 
-  return { name: basename(path), content: await readFile(path) };
+  return { name: basename(path), content };
 };
 
 const callAutoParse = async (
