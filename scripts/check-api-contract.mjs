@@ -44,8 +44,9 @@ for (const serviceFile of serviceFiles) {
   }
 }
 
-// parseService usa a constante tipada API_CONFIG.endpoints.parse em vez de literal no post.
+// parseService usa constantes tipadas do API_CONFIG em vez de literais nos dois posts.
 discovered.push({ method: 'POST', path: '/api/parse/upload', file: 'src/services/api.ts' });
+discovered.push({ method: 'POST', path: '/api/parse/auto', file: 'src/services/api.ts' });
 
 const missing = discovered.filter(({ method, path: endpointPath }) => {
   const canonicalPath = endpointPath.replace(/:[^/]+/g, ':param');

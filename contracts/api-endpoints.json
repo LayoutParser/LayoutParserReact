@@ -4,6 +4,7 @@
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
     { "method": "POST", "path": "/api/parse/upload", "owner": "LayoutParserApi" },
+    { "method": "POST", "path": "/api/parse/auto", "owner": "LayoutParserApi" },
     { "method": "GET", "path": "/api/layoutdatabase/mqseries-nfe", "owner": "LayoutParserApi" },
     { "method": "POST", "path": "/api/layoutdatabase/refresh-cache", "owner": "LayoutParserApi" },
     { "method": "GET", "path": "/api/monitoring/layouts-analysis", "owner": "LayoutParserApi" },

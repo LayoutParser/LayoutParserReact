@@ -31,6 +31,7 @@ export interface PayloadLimiterOptions {
   readonly requestLimitBytes: number;
   readonly documentLimitBytes: number;
   readonly documentField: string;
+  readonly documentFieldAliases?: readonly string[];
   readonly onLimit?: (kind: 'request' | 'document') => void;
 }
 
@@ -40,6 +41,13 @@ export class PayloadLimitTransform extends Transform {
   private readonly multipartParser: BusboyInstance | null;
   private documentBytes = 0;
   private pendingError: Error | null = null;
+
+  private isDocumentField(fieldName: string): boolean {
+    return (
+      fieldName === this.options.documentField ||
+      this.options.documentFieldAliases?.includes(fieldName) === true
+    );
+  }
 
   private createLimitError(kind: 'request' | 'document'): PayloadLimitError {
     this.options.onLimit?.(kind);
@@ -65,7 +73,7 @@ export class PayloadLimitTransform extends Transform {
 
     this.multipartParser.on('file', (fieldName: string, file: BusboyFileStream) => {
       file.on('data', (chunk: Buffer) => {
-        if (fieldName !== this.options.documentField || this.pendingError) {
+        if (!this.isDocumentField(fieldName) || this.pendingError) {
           return;
         }
 
@@ -75,7 +83,7 @@ export class PayloadLimitTransform extends Transform {
         }
       });
       file.on('limit', () => {
-        if (fieldName === this.options.documentField) {
+        if (this.isDocumentField(fieldName)) {
           this.pendingError = this.createLimitError('document');
         }
       });

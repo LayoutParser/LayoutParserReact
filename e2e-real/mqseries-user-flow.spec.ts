@@ -1,6 +1,6 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { expect, test, type Page, type Response } from '@playwright/test';
+import { expect, test, type Response } from '@playwright/test';
 
 const EXPECTED = {
   documentBytes: 35_400,
@@ -28,13 +28,21 @@ interface ParseMetadata {
   };
 }
 
-interface LayoutCatalog {
+interface AutomaticParsePayload {
   success?: boolean;
-  layouts?: Array<{
-    name?: string;
-    decryptedContent?: string;
-    valueContent?: string;
-  }>;
+  correlationId?: string;
+  detection?: {
+    status?: 'unique' | 'ambiguous' | 'not_found';
+    totalCandidates?: number;
+    selectedLayout?: { layoutGuid?: string; name?: string };
+    candidates?: Array<{
+      rank?: number;
+      layoutGuid?: string;
+      name?: string;
+      matchScore?: number;
+    }>;
+  };
+  parseResult?: ParseMetadata;
 }
 
 interface TransformationResult {
@@ -112,31 +120,8 @@ const assertCorrelationRoundTrip = async (response: Response, label: string): Pr
   return requestId!;
 };
 
-const selectRealLayout = async (page: Page, layoutName: string): Promise<Response> => {
-  const catalogResponsePromise = page.waitForResponse(
-    responsePathIs('/api/layoutdatabase/mqseries-nfe')
-  );
-  await page.getByRole('button', { name: 'Buscar Layout' }).click();
-  const catalogResponse = await catalogResponsePromise;
-  const catalog = (await catalogResponse.json()) as LayoutCatalog;
-  const matchingLayouts = (catalog.layouts ?? []).filter(layout => layout.name === layoutName);
-
-  expect({ success: catalog.success, matchingLayouts: matchingLayouts.length }).toEqual({
-    success: true,
-    matchingLayouts: 1,
-  });
-
-  await page.getByRole('combobox', { name: 'Selecionar Layout' }).click();
-  await page.getByRole('searchbox', { name: 'Buscar layout por nome ou GUID' }).fill(layoutName);
-  await page.getByRole('option', { name: new RegExp(layoutName) }).click();
-  await expect(
-    page.getByRole('combobox', { name: `Layout selecionado: ${layoutName}` })
-  ).toBeVisible();
-  return catalogResponse;
-};
-
-const readParseMetadata = async (response: Response): Promise<ParseMetadata> =>
-  (await response.json()) as ParseMetadata;
+const readAutomaticPayload = async (response: Response): Promise<AutomaticParsePayload> =>
+  (await response.json()) as AutomaticParsePayload;
 
 const expectCorrectParse = (payload: ParseMetadata): void => {
   expect({
@@ -180,20 +165,51 @@ test('usuário processa e edita o MQSeries real com correlação ponta a ponta',
     }
   );
 
-  const catalogResponse = await selectRealLayout(page, layoutName);
-  correlationIds.push(await assertCorrelationRoundTrip(catalogResponse, 'catálogo de layouts'));
-
   const fileChooserPromise = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Selecionar arquivo' }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(document.path);
   await expect(page.locator('#txtFile-status')).toContainText('Arquivo selecionado');
 
-  const parseResponsePromise = page.waitForResponse(responsePathIs('/api/parse/upload'));
+  const detectionResponsePromise = page.waitForResponse(responsePathIs('/api/parse/auto'));
   await page.getByRole('button', { name: 'Processar Documento' }).click();
+  const detectionResponse = await detectionResponsePromise;
+  correlationIds.push(
+    await assertCorrelationRoundTrip(detectionResponse, 'detecção automática de layout')
+  );
+  const detection = await readAutomaticPayload(detectionResponse);
+  const candidates = detection.detection?.candidates ?? [];
+  expect({
+    success: detection.success,
+    status: detection.detection?.status,
+    selectedLayout: detection.detection?.selectedLayout,
+    parseResult: detection.parseResult,
+    candidateCount: candidates.length,
+    expectedCandidateFound: candidates.some(candidate => candidate.name === layoutName),
+  }).toMatchObject({
+    success: true,
+    status: 'ambiguous',
+    selectedLayout: undefined,
+    parseResult: undefined,
+    expectedCandidateFound: true,
+  });
+  expect(candidates.length).toBeGreaterThanOrEqual(2);
+  expect(candidates.length).toBeLessThanOrEqual(5);
+  await expect(page.getByText('Escolha entre os layouts equivalentes')).toBeVisible();
+
+  const expectedCandidateCard = page
+    .locator('.layout-candidate-card')
+    .filter({ hasText: layoutName });
+  await expect(expectedCandidateCard).toHaveCount(1);
+  const parseResponsePromise = page.waitForResponse(responsePathIs('/api/parse/auto'));
+  await expectedCandidateCard.getByRole('button', { name: 'Usar este layout' }).click();
   const parseResponse = await parseResponsePromise;
-  correlationIds.push(await assertCorrelationRoundTrip(parseResponse, 'parse inicial'));
-  expectCorrectParse(await readParseMetadata(parseResponse));
+  correlationIds.push(
+    await assertCorrelationRoundTrip(parseResponse, 'parse após escolha explícita')
+  );
+  const parsed = await readAutomaticPayload(parseResponse);
+  expect(parsed.detection?.selectedLayout?.name).toBe(layoutName);
+  expectCorrectParse(parsed.parseResult ?? {});
 
   const provenance = page.locator('.document-provenance');
   await expect(provenance).toContainText('Resultado vinculado a');
@@ -251,11 +267,11 @@ test('usuário processa e edita o MQSeries real com correlação ponta a ponta',
   const editActions = page.getByRole('region', { name: 'Ações do TXT editado' });
   await expect(editActions).toContainText('1 alteração(ões) nesta sessão');
 
-  const reparseResponsePromise = page.waitForResponse(responsePathIs('/api/parse/upload'));
+  const reparseResponsePromise = page.waitForResponse(responsePathIs('/api/parse/auto'));
   await editActions.getByRole('button', { name: 'Reprocessar e revalidar' }).click();
   const reparseResponse = await reparseResponsePromise;
   correlationIds.push(await assertCorrelationRoundTrip(reparseResponse, 'reparse após edição'));
-  expectCorrectParse(await readParseMetadata(reparseResponse));
+  expectCorrectParse((await readAutomaticPayload(reparseResponse)).parseResult ?? {});
   await expect(editActions.getByRole('status')).toContainText(
     'Documento reprocessado e revalidado sem erros posicionais'
   );

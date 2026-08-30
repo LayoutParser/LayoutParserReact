@@ -11,7 +11,7 @@ vi.mock('../../services/api', async importOriginal => {
   const actual = await importOriginal<typeof import('../../services/api')>();
   return {
     ...actual,
-    parseService: { parseFiles: vi.fn() },
+    parseService: { parseFiles: vi.fn(), parseAutomatically: vi.fn() },
   };
 });
 
@@ -46,6 +46,25 @@ const alternateLayout = {
   decryptedContent: '<layout />',
 };
 
+const automaticCandidate = {
+  rank: 1,
+  layoutGuid: 'ad4fb6f4-9ff5-44fd-988b-3da5ed56b22c',
+  name: 'LAY_TXT_MQSERIES_ENVNFE_4.00_NFe',
+  matchScore: 100,
+  isTied: true,
+  evidence: ['records_matched:59/59'],
+  conflicts: [],
+  limitations: [],
+};
+
+const attachDocument = () => {
+  const fileInput = document.querySelector<HTMLInputElement>('#txtFile');
+  if (!fileInput) throw new Error('Input de arquivo não encontrado.');
+  fireEvent.change(fileInput, {
+    target: { files: [new File(['001CONTEUDO'], 'documento.txt', { type: 'text/plain' })] },
+  });
+};
+
 const selectLayoutAndFile = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Buscar Layout' }));
   await screen.findByRole('combobox', { name: 'Selecionar Layout' });
@@ -53,11 +72,7 @@ const selectLayoutAndFile = async () => {
   fireEvent.click(screen.getByRole('combobox', { name: 'Selecionar Layout' }));
   fireEvent.click(screen.getByRole('option', { name: /Layout Faculdade/ }));
 
-  const fileInput = document.querySelector<HTMLInputElement>('#txtFile');
-  if (!fileInput) throw new Error('Input de arquivo não encontrado.');
-  fireEvent.change(fileInput, {
-    target: { files: [new File(['001CONTEUDO'], 'documento.txt', { type: 'text/plain' })] },
-  });
+  attachDocument();
 };
 
 describe('LayoutParserPage', () => {
@@ -123,6 +138,172 @@ describe('LayoutParserPage', () => {
     expect(screen.getByText(/Resultado vinculado a/)).toHaveTextContent(
       'documento.txt · 11 bytes · layout Layout Faculdade'
     );
+  });
+
+  it('identifica e processa um layout único sem baixar o XML do catálogo', async () => {
+    vi.mocked(parseService.parseAutomatically).mockResolvedValue({
+      success: true,
+      correlationId: 'corr-auto-unique',
+      detection: {
+        status: 'unique',
+        detectedType: 'mqseries',
+        algorithmVersion: 'layout-probe-v1',
+        catalogVersion: 'sha256:catalogo',
+        totalCandidates: 1,
+        truncated: false,
+        selectedLayout: automaticCandidate,
+        candidates: [automaticCandidate],
+      },
+      parseResult: {
+        success: true,
+        text: '001CONTEUDO',
+        layout: {
+          layoutGuid: automaticCandidate.layoutGuid,
+          layoutType: 'TextPositional',
+          name: automaticCandidate.name,
+          description: '',
+          limitOfCaracters: 600,
+          elements: [],
+        },
+        fields: [],
+      },
+    });
+
+    render(<LayoutParserPage />);
+    attachDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
+
+    await waitFor(() => expect(parseService.parseAutomatically).toHaveBeenCalledTimes(1));
+    expect(parseService.parseFiles).not.toHaveBeenCalled();
+    expect(layoutService.searchLayouts).not.toHaveBeenCalled();
+    expect(await screen.findByText('Resultado de análise carregado')).toBeInTheDocument();
+    expect(useAppStore.getState()).toMatchObject({
+      selectedLayout: {
+        layoutGuid: automaticCandidate.layoutGuid,
+        name: automaticCandidate.name,
+      },
+      selectedLayoutSource: 'auto_unique',
+      parsedDocumentProvenance: {
+        detection: {
+          selectionSource: 'auto_unique',
+          correlationId: 'corr-auto-unique',
+          algorithmVersion: 'layout-probe-v1',
+          catalogVersion: 'sha256:catalogo',
+        },
+      },
+    });
+    expect(useAppStore.getState().selectedLayout).not.toHaveProperty('decryptedContent');
+  });
+
+  it('falha fechado quando unique não informa o layout autoritativo selecionado', async () => {
+    vi.mocked(parseService.parseAutomatically).mockResolvedValue({
+      success: true,
+      correlationId: 'corr-invalid-unique',
+      detection: {
+        status: 'unique',
+        detectedType: 'mqseries',
+        algorithmVersion: 'layout-probe-v1',
+        catalogVersion: 'sha256:catalogo',
+        totalCandidates: 1,
+        truncated: false,
+        candidates: [automaticCandidate],
+      },
+      parseResult: {
+        success: true,
+        text: '001CONTEUDO',
+        fields: [],
+      },
+    });
+
+    render(<LayoutParserPage />);
+    attachDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A API não informou qual layout produziu o parse automático.'
+    );
+    expect(useAppStore.getState().parseResult).toBeNull();
+    expect(useAppStore.getState().selectedLayout).toBeNull();
+  });
+
+  it('não pré-seleciona equivalências e só processa após a escolha explícita', async () => {
+    const secondCandidate = {
+      ...automaticCandidate,
+      rank: 2,
+      layoutGuid: 'bd4fb6f4-9ff5-44fd-988b-3da5ed56b22c',
+      name: 'LAY_FIAT_TXT_MQSERIES_ENVNFE_4.00_NFe',
+      matchScore: 99,
+    };
+    vi.mocked(parseService.parseAutomatically)
+      .mockResolvedValueOnce({
+        success: true,
+        correlationId: 'corr-detect',
+        detection: {
+          status: 'ambiguous',
+          detectedType: 'mqseries',
+          algorithmVersion: 'layout-probe-v1',
+          catalogVersion: 'sha256:catalogo',
+          totalCandidates: 2,
+          truncated: false,
+          candidates: [automaticCandidate, secondCandidate],
+        },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        correlationId: 'corr-select',
+        detection: {
+          status: 'ambiguous',
+          detectedType: 'mqseries',
+          algorithmVersion: 'layout-probe-v1',
+          catalogVersion: 'sha256:catalogo',
+          totalCandidates: 2,
+          truncated: false,
+          selectedLayout: secondCandidate,
+          candidates: [automaticCandidate, secondCandidate],
+        },
+        parseResult: {
+          success: true,
+          text: '001CONTEUDO',
+          layout: {
+            layoutGuid: secondCandidate.layoutGuid,
+            layoutType: 'TextPositional',
+            name: secondCandidate.name,
+            description: '',
+            limitOfCaracters: 600,
+            elements: [],
+          },
+          fields: [],
+        },
+      });
+
+    render(<LayoutParserPage />);
+    attachDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
+
+    expect(await screen.findByText('Escolha entre os layouts equivalentes')).toBeInTheDocument();
+    expect(useAppStore.getState().parseResult).toBeNull();
+    expect(useAppStore.getState().selectedLayout).toBeNull();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usar este layout' })[1]!);
+
+    await waitFor(() => expect(parseService.parseAutomatically).toHaveBeenCalledTimes(2));
+    expect(parseService.parseAutomatically).toHaveBeenLastCalledWith(
+      expect.objectContaining({ layoutGuidOverride: secondCandidate.layoutGuid }),
+      expect.any(Object)
+    );
+    expect(await screen.findByText('Resultado de análise carregado')).toBeInTheDocument();
+    expect(useAppStore.getState()).toMatchObject({
+      selectedLayoutSource: 'ranked_candidate',
+      parsedDocumentProvenance: {
+        detection: {
+          selectionSource: 'ranked_candidate',
+          correlationId: 'corr-select',
+          candidateRank: 2,
+          matchScore: 99,
+        },
+      },
+    });
+    expect(screen.getByRole('button', { name: 'Layout em uso' })).toBeDisabled();
   });
 
   it('invalida resultado e transformação ao trocar o layout processado', async () => {

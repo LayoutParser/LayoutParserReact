@@ -107,4 +107,81 @@ describe('parseService', () => {
     expect(listener).toHaveBeenCalledOnce();
     window.removeEventListener(SESSION_EXPIRED_EVENT, listener);
   });
+
+  it('envia apenas o documento e o override explícito para a detecção automática', async () => {
+    server.use(
+      http.post('*/api/parse/auto', async ({ request }) => {
+        const multipartBody = await request.text();
+        expect(request.headers.get('content-type')).toContain('multipart/form-data');
+        expect(multipartBody).toContain('name="documentFile"');
+        expect(multipartBody).toContain('name="layoutGuidOverride"');
+        expect(multipartBody).toContain('layout-guid-2');
+        expect(multipartBody).not.toContain('name="layoutFile"');
+
+        return HttpResponse.json(
+          {
+            success: true,
+            correlationId: '',
+            detection: {
+              status: 'ambiguous',
+              detectedType: 'mqseries',
+              algorithmVersion: 'layout-probe-v1',
+              catalogVersion: 'sha256:catalogo',
+              totalCandidates: 2,
+              truncated: false,
+              selectedLayout: {
+                rank: 2,
+                layoutGuid: 'layout-guid-2',
+                name: 'Layout escolhido',
+                matchScore: 98,
+                isTied: false,
+                evidence: [],
+                conflicts: [],
+                limitations: [],
+              },
+              candidates: [],
+            },
+            parseResult: { success: true, text: '001CONTEUDO', fields: [] },
+          },
+          { headers: { 'X-Correlation-ID': 'corr-auto' } }
+        );
+      })
+    );
+
+    const response = await parseService.parseAutomatically({
+      documentFile: createRequest().txtFile,
+      layoutGuidOverride: 'layout-guid-2',
+    });
+
+    expect(response).toMatchObject({
+      success: true,
+      correlationId: 'corr-auto',
+      parseResult: { success: true, correlationId: 'corr-auto' },
+    });
+  });
+
+  it('preserva a recusa 422 de um override fora do ranking atual', async () => {
+    server.use(
+      http.post('*/api/parse/auto', () =>
+        HttpResponse.json(
+          { message: 'O layout informado não pertence aos candidatos compatíveis.' },
+          { status: 422, headers: { 'X-Correlation-ID': 'corr-override' } }
+        )
+      )
+    );
+
+    const error = await parseService
+      .parseAutomatically({
+        documentFile: createRequest().txtFile,
+        layoutGuidOverride: 'layout-adulterado',
+      })
+      .catch(reason => reason);
+
+    expect(error).toMatchObject({
+      kind: 'parse_error',
+      httpStatus: 422,
+      correlationId: 'corr-override',
+      message: 'O layout informado não pertence aos candidatos compatíveis.',
+    });
+  });
 });

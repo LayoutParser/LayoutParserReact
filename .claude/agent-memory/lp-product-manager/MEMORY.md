@@ -1,6 +1,8 @@
 # Memória — @lp-product-manager (Maya)
 
 - [Governança do produto](product-governance.md) — taxonomia, Project, fluxo e baseline retrospectivo.
+- [Detecção automática de layout](project_auto_layout_detection_board_2026_08_29.md) — hierarquia
+  #177–#185 no Project do front e dependência espelhada na API #213/Project #2.
 
 Regras duráveis: GitHub é o registro operacional; Epic → PBI → Story → Task/Gate/Bug; não criar
 issue por commit; fechamento exige evidência; conteúdo real de TXT/XML e segredos não entram no
