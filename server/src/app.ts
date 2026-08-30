@@ -276,6 +276,9 @@ export async function buildApp(
         requestLimitBytes: config.requestLimitBytes,
         documentLimitBytes: config.documentLimitBytes,
         documentField: config.documentField,
+        // O upload legado usa `txtFile`; a detecção automática usa `documentFile`.
+        // Ambos representam o mesmo documento e precisam passar pelo mesmo limite específico.
+        documentFieldAliases: ['documentFile'],
         onLimit: kind => {
           request.payloadLimitKind = kind;
         },

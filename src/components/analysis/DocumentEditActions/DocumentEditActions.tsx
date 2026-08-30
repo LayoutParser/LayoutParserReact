@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ParseRequestError, parseService } from '../../../services/api';
 import { useAppStore } from '../../../store/useAppStore';
 import { useTransformationStore } from '../../../store/useTransformationStore';
+import type { ParseResponse } from '../../../types/api';
 import { createDocumentFile, createEditedDocumentName } from '../../../utils/documentEncoding';
 import { layoutMatchesProvenance } from '../../../utils/provenance';
 import Button from '../../shared/Button';
@@ -89,35 +90,69 @@ const DocumentEditActions: React.FC = () => {
       return;
     }
 
-    const layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
-    if (!layoutContent) {
-      setFeedback({
-        kind: 'error',
-        message: 'O conteúdo do layout selecionado não está disponível para revalidação.',
-      });
-      return;
-    }
-
     setIsRevalidating(true);
     setFeedback(null);
     setParseError(null);
 
     try {
       const txtFile = createDocumentFile(txtContent, documentSource);
-      const layoutFile = new File([layoutContent], `${selectedLayout.name || 'layout'}.xml`, {
-        type: 'application/xml',
-      });
-      const result = await parseService.parseFiles({
-        layoutFile,
-        txtFile,
-        layoutName: selectedLayout.name,
-      });
+      const selectionSource = parsedDocumentProvenance.detection?.selectionSource;
+      let nextProvenance = parsedDocumentProvenance;
+      let result: ParseResponse;
+
+      if (selectionSource && selectionSource !== 'manual') {
+        const automaticResponse = await parseService.parseAutomatically({
+          documentFile: txtFile,
+          layoutGuidOverride: selectedLayout.layoutGuid,
+        });
+        if (!automaticResponse.parseResult?.success) {
+          throw new Error(
+            'A API não conseguiu confirmar o layout identificado para o TXT editado.'
+          );
+        }
+
+        const confirmedCandidate =
+          automaticResponse.detection.selectedLayout ??
+          automaticResponse.detection.candidates.find(
+            candidate => candidate.layoutGuid === selectedLayout.layoutGuid
+          );
+        result = automaticResponse.parseResult;
+        nextProvenance = {
+          ...parsedDocumentProvenance,
+          detection: {
+            ...parsedDocumentProvenance.detection,
+            selectionSource,
+            correlationId: automaticResponse.correlationId,
+            algorithmVersion: automaticResponse.detection.algorithmVersion,
+            catalogVersion: automaticResponse.detection.catalogVersion,
+            ...(confirmedCandidate
+              ? {
+                  candidateRank: confirmedCandidate.rank,
+                  matchScore: confirmedCandidate.matchScore,
+                }
+              : {}),
+          },
+        };
+      } else {
+        const layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
+        if (!layoutContent) {
+          throw new Error('O conteúdo do layout selecionado não está disponível para revalidação.');
+        }
+        const layoutFile = new File([layoutContent], `${selectedLayout.name || 'layout'}.xml`, {
+          type: 'application/xml',
+        });
+        result = await parseService.parseFiles({
+          layoutFile,
+          txtFile,
+          layoutName: selectedLayout.name,
+        });
+      }
 
       if (typeof result.text !== 'string') {
         throw new Error('A API revalidou o documento, mas não devolveu o TXT processado.');
       }
 
-      replaceParsedDocument(result, documentSource, parsedDocumentProvenance);
+      replaceParsedDocument(result, documentSource, nextProvenance);
       invalidateTransformation();
       const errorCount = result.validationErrors?.length ?? 0;
       setFeedback({

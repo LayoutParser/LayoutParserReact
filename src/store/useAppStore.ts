@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ParseErrorInfo, ParseResponse, Field } from '../types/api';
 import type { Layout } from '../types/layout';
 import type { ParsedDocumentProvenance } from '../types/provenance';
+import type { LayoutSelectionSource } from '../types/provenance';
 import { assertEncodedReplacementSize, type DocumentSource } from '../utils/documentEncoding';
 import {
   applyPositionalFieldEdit,
@@ -40,6 +41,7 @@ interface AppState {
 
   // Layout selecionado
   selectedLayout: Layout | null;
+  selectedLayoutSource: LayoutSelectionSource | null;
 
   // Ações
   setUploading: (uploading: boolean) => void;
@@ -49,7 +51,7 @@ interface AppState {
   setParseResult: (result: ParseResponse | null) => void;
   setTxtContent: (content: string) => void;
   setFields: (fields: Field[]) => void;
-  setSelectedLayout: (layout: Layout | null) => void;
+  setSelectedLayout: (layout: Layout | null, source?: LayoutSelectionSource | null) => void;
   replaceParsedDocument: (
     result: ParseResponse,
     source: DocumentSource,
@@ -76,6 +78,7 @@ const initialState = {
   parsedDocumentProvenance: null as ParsedDocumentProvenance | null,
   editHistory: [] as PositionalEditHistoryEntry[],
   selectedLayout: null,
+  selectedLayoutSource: null as LayoutSelectionSource | null,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -88,7 +91,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setParseResult: result => set({ parseResult: result }),
   setTxtContent: content => set({ txtContent: content }),
   setFields: fields => set({ fields }),
-  setSelectedLayout: layout => set({ selectedLayout: layout }),
+  setSelectedLayout: (layout, source = layout ? 'manual' : null) =>
+    set({ selectedLayout: layout, selectedLayoutSource: source }),
   replaceParsedDocument: (result, source, provenance) =>
     set({
       parseResult: result,

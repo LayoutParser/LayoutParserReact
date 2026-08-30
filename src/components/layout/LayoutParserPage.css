@@ -223,7 +223,58 @@
 }
 
 .layout-select-wrapper {
+  display: grid;
+  gap: var(--spacing-sm);
   margin: var(--spacing-xs) 0;
+}
+
+.manual-layout-heading {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.manual-layout-heading span {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.manual-layout-heading small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+}
+
+.automatic-layout-mode-btn {
+  padding: 0;
+  justify-self: start;
+  background: transparent;
+  border: 0;
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.automatic-layout-mode-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+
+.automatic-layout-mode-btn:focus-visible {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.automatic-layout-mode-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .file-upload-form,
