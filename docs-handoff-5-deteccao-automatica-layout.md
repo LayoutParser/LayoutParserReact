@@ -3,12 +3,12 @@
 ```yaml
 handoff:
   from_agent: '@lp-front-dev / @lp-contract-qa / @lp-security / @lp-qa'
-  to_agent: '@lp-devops e mantenedores da extensao MCP'
+  to_agent: '@lp-devops e time de release da LayoutParserApi'
   task_context:
     task: 'Anexar somente MQSeries/IDoc, provar layout único ou apresentar top 5 explicável.'
     api_branch: 'develop — merge 565d8f5 via LayoutParserApi #222'
     front_branch: 'develop — merge 54b3f39 via LayoutParserReact #186'
-    current_step: 'Implementação, validação e deployments de desenvolvimento concluídos.'
+    current_step: 'Front concluído em development; promoção para produção bloqueada pela API.'
   decisions:
     - 'Unique exige exatamente um candidato compatível e catálogo completo.'
     - 'Catálogo truncado/inválido falha fechado como not_found e bloqueia override.'
@@ -28,7 +28,8 @@ handoff:
     - 'API develop: CI, deploy do serviço e smoke test aprovados no run 33323830107.'
     - 'Front develop: CodeQL e CI/deploy aprovados nos runs 33324011888 e 33324011996.'
     - 'Gate E2E real MQSeries do ambiente: aprovado em 2,1 minutos antes da publicação no IIS.'
-    - 'Project: front #179–#183/#185 e API #213–#215 concluídos; pais permanecem abertos só pelo MCP.'
+    - 'Auditoria final: 250 testes React, 69 BFF, 18 E2E, contrato 13/13 e zero alertas/vulnerabilidades.'
+    - 'Project: #179–#185 concluídos; a tarefa MCP do front #184 foi encerrada em favor da API #216.'
   verdict: 'PASS em development — contrato, segurança, UX, provas reais e deploys atendem à entrega.'
   files_key:
     api:
@@ -42,7 +43,12 @@ handoff:
       - 'server/src/limits.ts'
       - 'tests/real-fixture/mqseries-layout-detection.test.ts'
   remaining_outside_scope:
-    - 'Tool MCP tipada detect_layout: LayoutParserApi #216 / LayoutParserReact #184.'
+    - 'Tool MCP tipada detect_layout: responsabilidade exclusiva de LayoutParserApi #216.'
     - 'Ampliação contínua do corpus homologado para novos layouts/documentos.'
-  next_action: 'Implementar a tool MCP detect_layout em #216/#184; promover develop para produção apenas em ciclo próprio.'
+  release_gate:
+    status: 'BLOCKED_EXTERNAL'
+    issue: 'LayoutParserReact #188'
+    promotion_pr: 'LayoutParserReact #189 (draft)'
+    reason: 'A API master/produção ainda não expõe POST /api/parse/auto.'
+  next_action: 'Promover primeiro a API; validar /api/parse/auto; liberar #188 e então promover o PR #189.'
 ```
