@@ -25,13 +25,15 @@ async function passThrough(
   body: Buffer,
   contentType: string,
   requestLimit: number,
-  documentLimit: number
+  documentLimit: number,
+  documentFieldAliases: readonly string[] = []
 ) {
   const transform = new PayloadLimitTransform({
     contentType,
     requestLimitBytes: requestLimit,
     documentLimitBytes: documentLimit,
     documentField: 'txtFile',
+    documentFieldAliases,
   });
   return text(Readable.from(body).pipe(transform));
 }
@@ -61,6 +63,19 @@ describe('PayloadLimitTransform', () => {
         limitKind: 'document',
       }
     );
+  });
+
+  it('aplica o mesmo limite ao alias documentFile da detecção automática', async () => {
+    const multipart = await encodeFormData([
+      ['documentFile', new Blob([Buffer.alloc(9)]), 'document.txt'],
+    ]);
+
+    await expect(
+      passThrough(multipart.body, multipart.contentType, 2048, 8, ['documentFile'])
+    ).rejects.toMatchObject({
+      name: 'PayloadLimitError',
+      limitKind: 'document',
+    });
   });
 
   it('não aplica o limite de documento ao layout XML, mantendo o limite total', async () => {

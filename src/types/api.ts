@@ -26,6 +26,7 @@ export interface ApiConfig {
   baseUrl: string;
   endpoints: {
     parse: string;
+    parseAuto: string;
     layoutDatabase: string;
     dataGeneration: string;
     dataGenerator: string;
@@ -45,6 +46,49 @@ export interface ParseRequest {
   layoutName?: string;
   layoutType?: string;
   layoutConfig?: LayoutConfig;
+}
+
+export interface AutoParseRequest {
+  documentFile: File;
+  layoutGuidOverride?: string;
+}
+
+export type LayoutDetectionStatus = 'unique' | 'ambiguous' | 'not_found';
+
+/**
+ * Candidato calculado exclusivamente pela API. O front pode ordenar por `rank` para exibição,
+ * mas não recalcula `matchScore` nem transforma equivalência em confiança.
+ */
+export interface LayoutDetectionCandidate {
+  rank: number;
+  layoutGuid: string;
+  name: string;
+  /** Índice de equivalência entre 0 e 100; não representa probabilidade. */
+  matchScore: number;
+  isTied: boolean;
+  evidence: string[];
+  conflicts: string[];
+  limitations: string[];
+}
+
+export interface LayoutDetectionResult {
+  status: LayoutDetectionStatus;
+  detectedType: string;
+  algorithmVersion: string;
+  catalogVersion: string;
+  totalCandidates: number;
+  truncated: boolean;
+  selectedLayout?: LayoutDetectionCandidate;
+  candidates: LayoutDetectionCandidate[];
+  /** Aproximações não confirmadas, presentes somente quando não houve candidato compatível. */
+  suggestedCandidates?: LayoutDetectionCandidate[];
+}
+
+export interface AutoParseResponse {
+  success: boolean;
+  correlationId: string;
+  detection: LayoutDetectionResult;
+  parseResult?: ParseResponse;
 }
 
 export interface LayoutConfig {
@@ -147,6 +191,8 @@ export type DocumentHealth = 'clean' | 'has_defects';
 
 export interface ParseResponse {
   success: boolean;
+  /** Identificador da execução bem-sucedida, quando fornecido pela API. */
+  correlationId?: string;
   detectedType?: string;
   // Ver DocumentHealth. Opcional: derivável de `validationErrors` enquanto não for emitido.
   documentHealth?: DocumentHealth;

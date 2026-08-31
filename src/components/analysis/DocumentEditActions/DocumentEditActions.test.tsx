@@ -11,7 +11,7 @@ vi.mock('../../../services/api', async importOriginal => {
   const actual = await importOriginal<typeof import('../../../services/api')>();
   return {
     ...actual,
-    parseService: { parseFiles: vi.fn() },
+    parseService: { parseFiles: vi.fn(), parseAutomatically: vi.fn() },
   };
 });
 
@@ -129,5 +129,63 @@ describe('DocumentEditActions', () => {
     expect(useAppStore.getState().fields[0]).toEqual(revalidatedField);
     expect(useAppStore.getState().parseResult?.validationErrors).toHaveLength(1);
     expect(screen.getByRole('status')).toHaveTextContent('1 erro(s) posicional(is)');
+  });
+
+  it('revalida uma seleção automática pelo GUID sem expor o XML do layout', async () => {
+    useAppStore.setState(state => ({
+      selectedLayout: { layoutGuid: 'layout-1', name: 'Layout Teste' },
+      parsedDocumentProvenance: {
+        ...state.parsedDocumentProvenance!,
+        detection: {
+          selectionSource: 'ranked_candidate',
+          correlationId: 'corr-antigo',
+          algorithmVersion: 'v1',
+          catalogVersion: 'catalogo-1',
+          candidateRank: 2,
+          matchScore: 98,
+        },
+      },
+    }));
+    vi.mocked(parseService.parseAutomatically).mockResolvedValue({
+      success: true,
+      correlationId: 'corr-novo',
+      detection: {
+        status: 'ambiguous',
+        detectedType: 'mqseries',
+        algorithmVersion: 'v2',
+        catalogVersion: 'catalogo-2',
+        totalCandidates: 2,
+        truncated: false,
+        selectedLayout: {
+          rank: 1,
+          layoutGuid: 'layout-1',
+          name: 'Layout Teste',
+          matchScore: 100,
+          isTied: true,
+          evidence: [],
+          conflicts: [],
+          limitations: [],
+        },
+        candidates: [],
+      },
+      parseResult: { success: true, text: content, fields: [field] },
+    });
+    render(<DocumentEditActions />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reprocessar e revalidar' }));
+
+    await waitFor(() => expect(parseService.parseAutomatically).toHaveBeenCalledTimes(1));
+    expect(parseService.parseAutomatically).toHaveBeenCalledWith(
+      expect.objectContaining({ layoutGuidOverride: 'layout-1' })
+    );
+    expect(parseService.parseFiles).not.toHaveBeenCalled();
+    expect(useAppStore.getState().parsedDocumentProvenance?.detection).toMatchObject({
+      selectionSource: 'ranked_candidate',
+      correlationId: 'corr-novo',
+      algorithmVersion: 'v2',
+      catalogVersion: 'catalogo-2',
+      candidateRank: 1,
+      matchScore: 100,
+    });
   });
 });

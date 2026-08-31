@@ -11,19 +11,22 @@ import { useTraceabilityStore } from '../../store/useTraceabilityStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
 import ParseErrorBanner from '../upload/ParseErrorBanner';
+import AutoLayoutDetectionPanel, {
+  type AutoLayoutDetectionViewState,
+} from '../upload/AutoLayoutDetectionPanel';
 import AnalysisModeTabs from '../analysis/AnalysisModeTabs';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
 import Button from '../shared/Button';
 import Modal from '../shared/Modal';
-import type { ParseRequest } from '../../types/api';
+import type { AutoParseResponse, LayoutDetectionCandidate, ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
 import { inspectDocumentSource } from '../../utils/documentEncoding';
 import { createParsedDocumentProvenance, fileMatchesProvenance } from '../../utils/provenance';
 import { ALLOWED_UPLOAD_EXTENSIONS, validateUploadFile } from '../../utils/uploadValidation';
 import './LayoutParserPage.css';
 
-type PendingInputChange = { kind: 'layout'; layout: Layout } | { kind: 'file'; file: File };
+type PendingInputChange = { kind: 'layout'; layout: Layout | null } | { kind: 'file'; file: File };
 
 const LayoutParserPage: React.FC = () => {
   const [txtFile, setTxtFile] = useState<File | null>(null);
@@ -35,6 +38,10 @@ const LayoutParserPage: React.FC = () => {
   const [showSearchButton, setShowSearchButton] = useState(() => allLayouts.length === 0);
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const [pendingInputChange, setPendingInputChange] = useState<PendingInputChange | null>(null);
+  const [autoDetectionState, setAutoDetectionState] =
+    useState<AutoLayoutDetectionViewState>('idle');
+  const [autoParseResponse, setAutoParseResponse] = useState<AutoParseResponse | null>(null);
+  const [lastAutoCandidate, setLastAutoCandidate] = useState<LayoutDetectionCandidate | null>(null);
 
   const {
     isUploading,
@@ -42,6 +49,7 @@ const LayoutParserPage: React.FC = () => {
     uploadProgress,
     parseError,
     selectedLayout,
+    selectedLayoutSource,
     parseResult,
     parsedDocumentProvenance,
     editHistory,
@@ -89,6 +97,21 @@ const LayoutParserPage: React.FC = () => {
     }
   };
 
+  const saveCatalog = (layouts: Layout[]): Layout[] => {
+    setAllLayouts(layouts);
+    setShowSearchButton(false);
+    saveLayoutsToCache(layouts);
+    return layouts;
+  };
+
+  const fetchLayoutCatalog = async (): Promise<Layout[]> => {
+    const result = await layoutService.searchLayouts();
+    if (!result.success || !result.layouts || result.layouts.length === 0) {
+      throw new Error('Nenhum layout foi encontrado no catálogo.');
+    }
+    return saveCatalog(result.layouts);
+  };
+
   const handleRefreshCache = async () => {
     setIsSearching(true);
     setSearchError(null);
@@ -116,6 +139,9 @@ const LayoutParserPage: React.FC = () => {
   const invalidateParsedDocument = () => {
     uploadAbortRef.current?.abort();
     clearParsedDocument();
+    setAutoDetectionState('idle');
+    setAutoParseResponse(null);
+    setLastAutoCandidate(null);
     resetTransformation();
     useFieldStore.getState().reset();
     useSearchStore.getState().clearSearch();
@@ -125,8 +151,8 @@ const LayoutParserPage: React.FC = () => {
   const applyInputChange = (change: PendingInputChange) => {
     const changed =
       change.kind === 'layout'
-        ? change.layout.layoutGuid !== selectedLayout?.layoutGuid ||
-          change.layout.name !== selectedLayout?.name
+        ? change.layout?.layoutGuid !== selectedLayout?.layoutGuid ||
+          change.layout?.name !== selectedLayout?.name
         : change.file.name !== txtFile?.name ||
           change.file.size !== txtFile?.size ||
           change.file.lastModified !== txtFile?.lastModified;
@@ -136,8 +162,13 @@ const LayoutParserPage: React.FC = () => {
     }
 
     if (change.kind === 'layout') {
-      setSelectedLayout(change.layout);
+      setSelectedLayout(change.layout, change.layout ? 'manual' : null);
     } else {
+      // Um layout identificado para o arquivo anterior não vira seleção manual implícita para o
+      // próximo documento. Somente uma escolha feita no combobox permanece como override.
+      if (selectedLayoutSource !== 'manual') {
+        setSelectedLayout(null);
+      }
       setTxtFile(change.file);
     }
 
@@ -151,8 +182,8 @@ const LayoutParserPage: React.FC = () => {
 
     const changesCurrentInput =
       change.kind === 'layout'
-        ? change.layout.layoutGuid !== selectedLayout?.layoutGuid ||
-          change.layout.name !== selectedLayout?.name
+        ? change.layout?.layoutGuid !== selectedLayout?.layoutGuid ||
+          change.layout?.name !== selectedLayout?.name
         : change.file.name !== txtFile?.name ||
           change.file.size !== txtFile?.size ||
           change.file.lastModified !== txtFile?.lastModified;
@@ -167,6 +198,10 @@ const LayoutParserPage: React.FC = () => {
 
   const handleLayoutSelect = (layout: Layout) => {
     requestInputChange({ kind: 'layout', layout });
+  };
+
+  const handleAutomaticLayoutMode = () => {
+    requestInputChange({ kind: 'layout', layout: null });
   };
 
   const handleTxtFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,77 +226,158 @@ const LayoutParserPage: React.FC = () => {
     requestInputChange({ kind: 'file', file });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const findLayoutInCatalog = (
+    layouts: Layout[],
+    identity: Pick<Layout, 'layoutGuid' | 'name'>
+  ): Layout | undefined => {
+    const normalizedGuid = identity.layoutGuid.trim().toLowerCase();
+    return layouts.find(layout => {
+      const guidMatches =
+        normalizedGuid.length > 0 && layout.layoutGuid.trim().toLowerCase() === normalizedGuid;
+      return guidMatches || layout.name === identity.name;
+    });
+  };
 
-    if (!selectedLayout) {
-      setUploadError('Por favor, selecione um layout do banco de dados primeiro');
-      return;
+  const resolveManualLayout = async (layout: Layout): Promise<Layout> => {
+    if (layout.decryptedContent || layout.valueContent) return layout;
+    const completeLayout = findLayoutInCatalog(await fetchLayoutCatalog(), layout);
+    if (!completeLayout?.decryptedContent && !completeLayout?.valueContent) {
+      throw new Error(
+        'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
+      );
     }
+    return completeLayout;
+  };
 
+  const resetAnalysisConsumers = () => {
+    useFieldStore.getState().reset();
+    useSearchStore.getState().clearSearch();
+    useTraceabilityStore.getState().reset();
+  };
+
+  const processDocument = async (candidateOverride?: LayoutDetectionCandidate) => {
     if (!txtFile) {
       setUploadError('Por favor, selecione o arquivo de dados (TXT/MQSeries/IDoc)');
       return;
     }
 
+    const usesAutomaticDetection =
+      !selectedLayout || selectedLayoutSource !== 'manual' || Boolean(candidateOverride);
     setUploading(true);
     setUploadProgress(0);
-    // Os dois estados de erro convivem (ver useAppStore) e precisam ser limpos juntos no
-    // início do submit, senão sobra erro do envio anterior na tela.
     setUploadError(null);
     setParseError(null);
+    if (usesAutomaticDetection) {
+      setAutoDetectionState('loading');
+      setLastAutoCandidate(candidateOverride ?? null);
+    }
 
     try {
       const abortController = new AbortController();
       uploadAbortRef.current = abortController;
-      let layoutContent = selectedLayout.decryptedContent || selectedLayout.valueContent;
-      let layoutToUse = selectedLayout;
 
-      // Se não tiver layoutContent, buscar da API
-      if (!layoutContent) {
-        try {
-          const result = await layoutService.searchLayouts();
-          if (result.success && result.layouts) {
-            const fullLayout = result.layouts.find(
-              l => l.layoutGuid === selectedLayout.layoutGuid || l.name === selectedLayout.name
-            );
-
-            if (fullLayout && (fullLayout.decryptedContent || fullLayout.valueContent)) {
-              layoutContent = fullLayout.decryptedContent || fullLayout.valueContent;
-              layoutToUse = fullLayout;
-              setSelectedLayout(fullLayout);
-            } else {
-              throw new Error(
-                'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
-              );
+      if (usesAutomaticDetection) {
+        const automaticOverride =
+          candidateOverride?.layoutGuid ??
+          (selectedLayoutSource === 'ranked_candidate' ? selectedLayout?.layoutGuid : undefined);
+        const [response, documentSource] = await Promise.all([
+          parseService.parseAutomatically(
+            {
+              documentFile: txtFile,
+              ...(automaticOverride ? { layoutGuidOverride: automaticOverride } : {}),
+            },
+            {
+              signal: abortController.signal,
+              onUploadProgress: setUploadProgress,
             }
-          } else {
-            throw new Error('Erro ao buscar layout da API. Por favor, atualize o cache.');
+          ),
+          inspectDocumentSource(txtFile),
+        ]);
+
+        setAutoParseResponse(response);
+
+        const expectsParse = response.detection.status === 'unique' || Boolean(automaticOverride);
+
+        if (response.parseResult?.success) {
+          const detectedLayout =
+            response.detection.selectedLayout ??
+            (automaticOverride
+              ? (response.detection.candidates.find(
+                  candidate => candidate.layoutGuid === automaticOverride
+                ) ?? candidateOverride)
+              : undefined);
+          if (!detectedLayout) {
+            throw new Error('A API não informou qual layout produziu o parse automático.');
           }
-        } catch (apiError) {
-          throw new Error(
-            `Erro ao buscar layout da API: ${apiError instanceof Error ? apiError.message : 'Erro desconhecido'}`
+
+          // O XML descriptografado permanece dentro da API. Para os consumidores da tela basta a
+          // identidade pública do layout; reprocessamentos automáticos usam novamente o GUID.
+          const layoutToUse: Layout = {
+            layoutGuid: detectedLayout.layoutGuid,
+            name: detectedLayout.name,
+            ...(response.parseResult.layout?.description
+              ? { description: response.parseResult.layout.description }
+              : {}),
+            ...(response.parseResult.layout?.layoutType
+              ? { layoutType: response.parseResult.layout.layoutType }
+              : {}),
+          };
+          const selectionSource = automaticOverride ? 'ranked_candidate' : 'auto_unique';
+          setSelectedLayout(layoutToUse, selectionSource);
+          replaceParsedDocument(
+            {
+              ...response.parseResult,
+              correlationId:
+                response.parseResult.correlationId || response.correlationId || undefined,
+            },
+            documentSource,
+            createParsedDocumentProvenance(documentSource, layoutToUse, {
+              selectionSource,
+              ...(response.correlationId ? { correlationId: response.correlationId } : {}),
+              algorithmVersion: response.detection.algorithmVersion,
+              catalogVersion: response.detection.catalogVersion,
+              ...(selectionSource === 'ranked_candidate'
+                ? {
+                    candidateRank: detectedLayout.rank,
+                    matchScore: detectedLayout.matchScore,
+                  }
+                : {}),
+            })
           );
+          resetAnalysisConsumers();
+        } else if (expectsParse) {
+          throw new Error(
+            'A API confirmou o layout, mas não devolveu o resultado do parse do documento.'
+          );
+        } else {
+          // Ambiguidade e ausência de candidato são resultados válidos da detecção, não erros.
+          // Nenhum layout ou parse anterior pode permanecer associado a esses estados.
+          clearParsedDocument();
+          setSelectedLayout(null);
+          resetTransformation();
+          resetAnalysisConsumers();
         }
+
+        setAutoDetectionState('ready');
+        return;
       }
 
+      const layoutToUse = await resolveManualLayout(selectedLayout);
+      const layoutContent = layoutToUse.decryptedContent || layoutToUse.valueContent;
       if (!layoutContent) {
         throw new Error(
           'Layout não encontrado. Por favor, atualize o cache ou busque layouts do banco.'
         );
       }
 
-      const blob = new Blob([layoutContent], { type: 'application/xml' });
-      const layoutFile = new File([blob], `${layoutToUse.name || 'layout'}.xml`, {
+      const layoutFile = new File([layoutContent], `${layoutToUse.name || 'layout'}.xml`, {
         type: 'application/xml',
       });
-
       const request: ParseRequest = {
         layoutFile,
         txtFile,
         layoutName: layoutToUse.name,
       };
-
       const [result, documentSource] = await Promise.all([
         parseService.parseFiles(request, {
           signal: abortController.signal,
@@ -270,33 +386,27 @@ const LayoutParserPage: React.FC = () => {
         inspectDocumentSource(txtFile),
       ]);
 
+      setSelectedLayout(layoutToUse, 'manual');
       replaceParsedDocument(
         result,
         documentSource,
-        createParsedDocumentProvenance(documentSource, layoutToUse)
+        createParsedDocumentProvenance(documentSource, layoutToUse, {
+          selectionSource: 'manual',
+          ...(result.correlationId ? { correlationId: result.correlationId } : {}),
+        })
       );
-      useFieldStore.getState().reset();
-      useSearchStore.getState().clearSearch();
-      useTraceabilityStore.getState().reset();
+      resetAnalysisConsumers();
     } catch (error) {
       if (uploadAbortRef.current?.signal.aborted) {
         setUploadError('Processamento cancelado. Nenhum resultado novo foi aplicado.');
+        if (usesAutomaticDetection) setAutoDetectionState('error');
         return;
       }
 
-      // Falha da chamada de parse já classificada pelo service (422 x 5xx x rede) — vai para
-      // `parseError` e ganha apresentação própria. Qualquer outra falha (ex.: as validações
-      // locais lançadas acima, "Layout não encontrado...") continua no `uploadError` de texto.
       if (error instanceof ParseRequestError) {
-        // O resultado do documento ANTERIOR precisa sair da tela junto.
-        //
-        // Sem isto, quem processava um arquivo com sucesso e depois falhava no seguinte ficava
-        // com a árvore/estrutura do primeiro arquivo na tela ao lado do banner de erro do
-        // segundo — o nome do arquivo no seletor já era o novo. Isso viola direto a regra de
-        // produto da spec: quando a falha é nossa (`parser_defect`), não se apresenta arquivo
-        // nenhum. E mesmo nos 422 o documento exibido não é o que o usuário acabou de enviar.
         clearParsedDocument();
         setParseError(error.toInfo());
+        if (usesAutomaticDetection) setAutoDetectionState('error');
         logService.warn('Falha de parse classificada no front-end', {
           kind: error.kind,
           httpStatus: error.httpStatus,
@@ -306,6 +416,7 @@ const LayoutParserPage: React.FC = () => {
       } else {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
         setUploadError(errorMessage);
+        if (usesAutomaticDetection) setAutoDetectionState('error');
         logService.error('Falha inesperada no fluxo de processamento', {
           errorName: error instanceof Error ? error.name : 'UnknownError',
         });
@@ -313,6 +424,24 @@ const LayoutParserPage: React.FC = () => {
     } finally {
       uploadAbortRef.current = null;
       setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await processDocument();
+  };
+
+  const handleChooseManually = async () => {
+    if (allLayouts.length > 0 || isSearching) return;
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      await fetchLayoutCatalog();
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : 'Erro ao buscar layouts');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -350,6 +479,10 @@ const LayoutParserPage: React.FC = () => {
                   {parsedDocumentProvenance.document.originalSize} bytes
                   {' · layout '}
                   <strong>{parsedDocumentProvenance.layout.name}</strong>
+                  {parsedDocumentProvenance.detection?.selectionSource === 'auto_unique' &&
+                    ' · identificado automaticamente'}
+                  {parsedDocumentProvenance.detection?.selectionSource === 'ranked_candidate' &&
+                    ' · escolhido entre layouts equivalentes'}
                 </p>
               )}
               {/* FieldSearch destaca campos em FieldDisplay (aba "TXT Posicional"). Na aba
@@ -401,12 +534,26 @@ const LayoutParserPage: React.FC = () => {
             {/* Seleção de Layout */}
             {allLayouts.length > 0 && (
               <div className="layout-select-wrapper">
+                <div className="manual-layout-heading">
+                  <span>Layout manual</span>
+                  <small>Opcional — deixe vazio para a API identificar.</small>
+                </div>
                 <LayoutCombobox
                   layouts={allLayouts}
                   onSelect={handleLayoutSelect}
                   selectedLayout={selectedLayout}
                   disabled={isUploading}
                 />
+                {selectedLayout && (
+                  <button
+                    type="button"
+                    className="automatic-layout-mode-btn"
+                    disabled={isUploading}
+                    onClick={handleAutomaticLayoutMode}
+                  >
+                    Remover seleção e identificar automaticamente
+                  </button>
+                )}
               </div>
             )}
 
@@ -457,7 +604,20 @@ const LayoutParserPage: React.FC = () => {
                 </span>
               </div>
 
-              {parseError && <ParseErrorBanner error={parseError} />}
+              <AutoLayoutDetectionPanel
+                state={autoDetectionState}
+                detection={autoParseResponse?.detection ?? null}
+                correlationId={autoParseResponse?.correlationId}
+                error={parseError}
+                disabled={isUploading}
+                onRetry={() => void processDocument(lastAutoCandidate ?? undefined)}
+                onUseCandidate={candidate => void processDocument(candidate)}
+                onChooseManually={() => void handleChooseManually()}
+              />
+
+              {parseError && autoDetectionState !== 'error' && (
+                <ParseErrorBanner error={parseError} />
+              )}
               {uploadError && (
                 <div
                   id={uploadError && !txtFile ? 'txtFile-error' : undefined}
@@ -473,7 +633,7 @@ const LayoutParserPage: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={isUploading || !selectedLayout || !txtFile}
+                disabled={isUploading || !txtFile}
                 className="control-btn submit-btn"
               >
                 {isUploading ? 'Processando...' : 'Processar Documento'}
@@ -506,7 +666,10 @@ const LayoutParserPage: React.FC = () => {
             <AnalysisModeTabs />
           ) : (
             <div className="file-visualization-placeholder">
-              <p>Selecione um layout e anexe um documento TXT para iniciar a análise.</p>
+              <p>
+                Anexe um documento TXT, MQSeries ou IDoc. A API tentará identificar o layout; a
+                seleção manual é opcional.
+              </p>
             </div>
           )}
         </div>

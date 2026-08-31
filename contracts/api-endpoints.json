@@ -1,9 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
   "sourceOfTruth": "LayoutParserApi",
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
     { "method": "POST", "path": "/api/parse/upload", "owner": "LayoutParserApi" },
+    { "method": "POST", "path": "/api/parse/auto", "owner": "LayoutParserApi" },
     { "method": "GET", "path": "/api/layoutdatabase/mqseries-nfe", "owner": "LayoutParserApi" },
     { "method": "POST", "path": "/api/layoutdatabase/refresh-cache", "owner": "LayoutParserApi" },
     { "method": "GET", "path": "/api/monitoring/layouts-analysis", "owner": "LayoutParserApi" },
@@ -25,6 +26,27 @@
       "path": "/api/xml-analysis/diagnose-validation-error",
       "owner": "LayoutParserApi"
     },
-    { "method": "POST", "path": "/api/logs/client", "owner": "LayoutParserApi" }
+    { "method": "POST", "path": "/api/logs/client", "owner": "LayoutParserApi" },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/me",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#225"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/projects/:param/analyses",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#225"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mappings/:param/versions/:param/explanation",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#226"
+    }
   ]
 }

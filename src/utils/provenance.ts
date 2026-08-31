@@ -1,10 +1,11 @@
 import type { Layout } from '../types/layout';
-import type { ParsedDocumentProvenance } from '../types/provenance';
+import type { LayoutDetectionProvenance, ParsedDocumentProvenance } from '../types/provenance';
 import type { DocumentSource } from './documentEncoding';
 
 export const createParsedDocumentProvenance = (
   source: DocumentSource,
-  layout: Layout
+  layout: Layout,
+  detection?: LayoutDetectionProvenance
 ): ParsedDocumentProvenance => ({
   document: {
     name: source.name,
@@ -17,6 +18,7 @@ export const createParsedDocumentProvenance = (
     name: layout.name,
     ...(layout.version ? { version: layout.version } : {}),
   },
+  ...(detection ? { detection } : {}),
 });
 
 export const layoutMatchesProvenance = (

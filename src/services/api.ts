@@ -1,5 +1,7 @@
 import axios from 'axios';
 import type {
+  AutoParseRequest,
+  AutoParseResponse,
   ApiConfig,
   ParseErrorInfo,
   ParseErrorKind,
@@ -27,6 +29,7 @@ const API_CONFIG: ApiConfig = {
   baseUrl: getApiBaseUrl(),
   endpoints: {
     parse: '/api/parse/upload',
+    parseAuto: '/api/parse/auto',
     layoutDatabase: '/api/layoutdatabase',
     dataGeneration: '/api/datageneration',
     dataGenerator: '/api/datagenerator',
@@ -165,6 +168,52 @@ const readErrorBody = (data: unknown): ParseErrorBody => {
   return {};
 };
 
+const convertParseRequestError = (error: unknown, parseErrorMessage: string): unknown => {
+  if (!axios.isAxiosError(error)) return error;
+
+  const response = error.response;
+  const body = readErrorBody(response?.data);
+  // Axios normaliza os headers de resposta em minúsculas.
+  const rawCorrelationId = response?.headers?.['x-correlation-id'];
+  const correlationId =
+    typeof rawCorrelationId === 'string' && rawCorrelationId ? rawCorrelationId : undefined;
+
+  // Sem `response`: nunca houve resposta HTTP (rede/timeout/CORS).
+  if (!response) {
+    const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+    return new ParseRequestError({
+      kind: 'network_error',
+      message: isTimeout
+        ? 'A requisição excedeu o tempo limite. O documento pode ser grande demais ou a API pode estar sobrecarregada.'
+        : 'Não foi possível se comunicar com a API. Verifique sua conexão e se o serviço está no ar.',
+      correlationId,
+    });
+  }
+
+  if (response.status === 422) {
+    return new ParseRequestError({
+      kind: 'parse_error',
+      message: body.message || parseErrorMessage,
+      httpStatus: response.status,
+      detectedType: body.detectedType,
+      correlationId,
+      failureCause: body.failureCause,
+    });
+  }
+
+  const isServerFault = response.status >= 500;
+  return new ParseRequestError({
+    kind: 'server_error',
+    message: isServerFault
+      ? 'O servidor encontrou uma falha ao processar o documento.'
+      : body.message || `A API recusou a requisição (HTTP ${response.status}).`,
+    httpStatus: response.status,
+    detectedType: body.detectedType,
+    correlationId,
+    failureCause: body.failureCause,
+  });
+};
+
 // Serviço de parsing
 export const parseService = {
   /**
@@ -202,65 +251,62 @@ export const parseService = {
 
       return normalizeParseResponse(response.data);
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const response = error.response;
-        const body = readErrorBody(response?.data);
-        // Axios normaliza os headers de resposta em minúsculas.
-        const rawCorrelationId = response?.headers?.['x-correlation-id'];
-        const correlationId =
-          typeof rawCorrelationId === 'string' && rawCorrelationId ? rawCorrelationId : undefined;
+      throw convertParseRequestError(
+        error,
+        'Não foi possível parsear o documento com o layout informado.'
+      );
+    }
+  },
 
-        // Sem `response`: nunca houve resposta HTTP (rede/timeout/CORS).
-        if (!response) {
-          const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
-          throw new ParseRequestError({
-            kind: 'network_error',
-            message: isTimeout
-              ? 'A requisição excedeu o tempo limite. O documento pode ser grande demais ou a API pode estar sobrecarregada.'
-              : 'Não foi possível se comunicar com a API. Verifique sua conexão e se o serviço está no ar.',
-            correlationId,
-          });
+  /**
+   * Envia somente o documento para a detecção autoritativa. Quando o usuário escolhe um
+   * candidato ambíguo, o GUID volta como override explícito; o front não altera o ranking.
+   */
+  async parseAutomatically(
+    request: AutoParseRequest,
+    options: ParseRequestOptions = {}
+  ): Promise<AutoParseResponse> {
+    const formData = new FormData();
+    formData.append('documentFile', request.documentFile);
+    if (request.layoutGuidOverride) {
+      formData.append('layoutGuidOverride', request.layoutGuidOverride);
+    }
+
+    try {
+      const response = await apiClient.post<AutoParseResponse>(
+        API_CONFIG.endpoints.parseAuto,
+        formData,
+        {
+          signal: options.signal,
+          onUploadProgress: progress => {
+            if (!options.onUploadProgress || !progress.total) return;
+            const percentage = Math.min(100, Math.round((progress.loaded / progress.total) * 100));
+            options.onUploadProgress(percentage);
+          },
         }
+      );
+      const rawHeader = response.headers['x-correlation-id'];
+      const correlationId =
+        response.data.correlationId || (typeof rawHeader === 'string' ? rawHeader : '');
 
-        // 422: o back-end parseou a requisição e concluiu que o documento não é processável
-        // com o layout informado. É diagnóstico do documento, não falha da aplicação.
-        //
-        // O `kind` continua sendo a leitura do TRANSPORTE (status HTTP). Quem manda na
-        // apresentação é o `failureCause` do corpo quando ele vem — inclusive se discordar do
-        // status (ex.: `parser_defect` num 422, que seria divergência da spec §3): ver
-        // `assessParseFailure`. Não reescrevemos o `kind` aqui de propósito, para o fato bruto
-        // "a API respondeu 422" continuar disponível/diagnosticável.
-        if (response.status === 422) {
-          throw new ParseRequestError({
-            kind: 'parse_error',
-            message: body.message || 'Não foi possível parsear o documento com o layout informado.',
-            httpStatus: response.status,
-            detectedType: body.detectedType,
-            correlationId,
-            failureCause: body.failureCause,
-          });
-        }
-
-        // 5xx (spec §2.3: `failureCause: "parser_defect"`) e demais status inesperados.
-        //
-        // Nota: o contrato só especifica 422 / >=500 / rede. Um 4xx que não seja 422 (ex.: o
-        // BadRequest do ParseController quando falta arquivo) cai aqui também — nesse caso o
-        // corpo costuma trazer uma mensagem específica e útil, que é preferida ao texto
-        // genérico. O texto de fallback é escolhido pelo status para não afirmar "falha do
-        // servidor" diante de um 4xx, que é problema da requisição.
-        const isServerFault = response.status >= 500;
-        throw new ParseRequestError({
-          kind: 'server_error',
-          message: isServerFault
-            ? 'O servidor encontrou uma falha ao processar o documento.'
-            : body.message || `A API recusou a requisição (HTTP ${response.status}).`,
-          httpStatus: response.status,
-          detectedType: body.detectedType,
-          correlationId,
-          failureCause: body.failureCause,
-        });
-      }
-      throw error;
+      return {
+        ...response.data,
+        correlationId,
+        ...(response.data.parseResult
+          ? {
+              parseResult: normalizeParseResponse({
+                ...response.data.parseResult,
+                correlationId:
+                  response.data.parseResult.correlationId || correlationId || undefined,
+              }),
+            }
+          : {}),
+      };
+    } catch (error) {
+      throw convertParseRequestError(
+        error,
+        'Não foi possível identificar um layout para este documento.'
+      );
     }
   },
 };

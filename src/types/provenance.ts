@@ -1,5 +1,16 @@
 import type { DocumentEncoding } from '../utils/documentEncoding';
 
+export type LayoutSelectionSource = 'manual' | 'auto_unique' | 'ranked_candidate';
+
+export interface LayoutDetectionProvenance {
+  selectionSource: LayoutSelectionSource;
+  correlationId?: string;
+  algorithmVersion?: string;
+  catalogVersion?: string;
+  candidateRank?: number;
+  matchScore?: number;
+}
+
 /**
  * Identidade imutável dos insumos que produziram o parse atualmente exibido.
  * Conteúdo e secrets não são duplicados aqui: apenas dados suficientes para impedir que
@@ -17,4 +28,6 @@ export interface ParsedDocumentProvenance {
     name: string;
     version?: string;
   };
+  /** Metadados auditáveis disponíveis no front, sem copiar o conteúdo do documento. */
+  detection?: LayoutDetectionProvenance;
 }

@@ -1,0 +1,266 @@
+.auto-layout-detection {
+  display: grid;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+}
+
+.auto-layout-detection--loading {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  background: var(--color-info-bg);
+  border-color: rgba(var(--color-accent-rgb), 0.3);
+}
+
+.auto-layout-detection__spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(var(--color-accent-rgb), 0.2);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: auto-layout-spin 0.8s linear infinite;
+}
+
+.auto-layout-detection h3,
+.auto-layout-detection h4,
+.auto-layout-detection p {
+  margin: 0;
+}
+
+.auto-layout-detection h3 {
+  color: var(--color-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-tight);
+}
+
+.auto-layout-detection__header,
+.layout-candidate-card__heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.auto-layout-detection__eyebrow,
+.layout-candidate-card__rank {
+  color: var(--color-accent-hover);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.auto-layout-detection__type {
+  flex: 0 0 auto;
+  padding: 0.2rem var(--spacing-sm);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-pill);
+  color: var(--color-info-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.auto-layout-detection__announcement,
+.auto-layout-detection__truncation {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.auto-layout-detection__unique {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background: var(--color-success-bg);
+  border: 1px solid rgba(var(--color-success-rgb), 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-success-text);
+}
+
+.auto-layout-detection__unique span {
+  font-size: var(--font-size-xs);
+}
+
+.auto-layout-detection__candidate-list {
+  display: grid;
+  gap: var(--spacing-sm);
+}
+
+.layout-candidate-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.layout-candidate-card--selected {
+  border-color: var(--color-accent);
+  box-shadow: inset 4px 0 0 var(--color-accent);
+}
+
+.layout-candidate-card__selected {
+  width: fit-content;
+  padding: 0.2rem var(--spacing-sm);
+  background: var(--color-success-bg);
+  border-radius: var(--radius-pill);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.layout-candidate-card h4 {
+  overflow-wrap: anywhere;
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+}
+
+.layout-candidate-card__score {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  color: var(--color-accent-hover);
+}
+
+.layout-candidate-card__score span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.layout-candidate-card__tie {
+  padding: var(--spacing-sm);
+  background: var(--color-warning-bg);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-xs);
+}
+
+.layout-candidate-card__detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.layout-candidate-card__detail strong {
+  color: var(--color-text);
+}
+
+.layout-candidate-card__detail ul {
+  margin: var(--spacing-xs) 0 0;
+  padding-left: var(--spacing-lg);
+}
+
+.layout-candidate-card__detail--conflict strong {
+  color: var(--color-danger-text);
+}
+
+.layout-candidate-card__action,
+.auto-layout-detection__actions button {
+  min-height: var(--control-height);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-accent-hover);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.layout-candidate-card__action:hover:not(:disabled),
+.auto-layout-detection__actions button:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.layout-candidate-card__action:focus-visible,
+.auto-layout-detection__actions button:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.layout-candidate-card__action:disabled,
+.auto-layout-detection__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auto-layout-detection__suggestions-title {
+  margin-bottom: var(--spacing-sm) !important;
+  color: var(--color-warning-text) !important;
+  font-size: var(--font-size-sm) !important;
+}
+
+.auto-layout-detection__metadata {
+  display: grid;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-xs);
+}
+
+.auto-layout-detection__metadata div {
+  display: grid;
+  grid-template-columns: minmax(5rem, auto) minmax(0, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.auto-layout-detection__metadata dt {
+  color: var(--color-text-muted);
+}
+
+.auto-layout-detection__metadata dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+}
+
+.auto-layout-detection__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+@keyframes auto-layout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auto-layout-detection__spinner {
+    animation: none;
+    border-top-color: rgba(var(--color-accent-rgb), 0.2);
+    background: var(--color-accent);
+  }
+}
+
+@media (max-width: 600px) {
+  .auto-layout-detection,
+  .layout-candidate-card {
+    padding: var(--spacing-sm);
+  }
+
+  .layout-candidate-card__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .layout-candidate-card__score {
+    justify-items: start;
+  }
+
+  .layout-candidate-card__action,
+  .auto-layout-detection__actions,
+  .auto-layout-detection__actions button {
+    width: 100%;
+  }
+}

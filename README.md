@@ -13,6 +13,17 @@ um front-end React e um gateway Node.js; as regras de parsing e transformação 
 
 ## Conteúdo
 
+### Evolução para produto fiscal
+
+- [Arquitetura-alvo da plataforma fiscal](docs/architecture/fiscal-document-platform.md)
+- [Roadmap de produto e implementação](docs/product/fiscal-platform-roadmap.md)
+- [Mapping Studio fiscal assistido por IA](docs/product/ai-assisted-fiscal-mapping-studio.md)
+- [Contrato cross-repo de workspace e explicabilidade](docs/contracts/fiscal-workspace-and-mapping-explanation-api.md)
+- ADRs: [escopo fiscal](docs/architecture/adr/0001-fiscal-product-scope.md),
+  [identidade do workspace](docs/architecture/adr/0002-immutable-user-workspace-identity.md) e
+  [explicação independente do motor](docs/architecture/adr/0003-engine-neutral-mapping-explanation.md),
+  além da [fronteira read-only do Sysmiddle](docs/architecture/adr/0004-sysmiddle-read-only-and-human-in-the-loop-authoring.md)
+
 - [O que o sistema faz](#o-que-o-sistema-faz)
 - [Arquitetura e ecossistema](#arquitetura-e-ecossistema)
 - [Tecnologias](#tecnologias)
@@ -29,16 +40,21 @@ um front-end React e um gateway Node.js; as regras de parsing e transformação 
 
 O fluxo principal é:
 
-1. O usuário escolhe um layout do catálogo ou fornece o conteúdo de layout aceito pelo fluxo.
-2. Seleciona um documento `.txt`, `.mq_series` ou `.idoc` de até **25 MiB**.
-3. O front envia o formulário para `POST /api/parse/upload`, com progresso e opção de cancelar.
-4. A API .NET identifica e processa a estrutura do documento.
-5. O front apresenta campos, posições, linhas, validações e a árvore estrutural retornada.
-6. Após um parse bem-sucedido, o usuário solicita a avaliação dos candidatos Sysmiddle e TCL/XSL.
+1. O usuário seleciona um documento `.txt`, `.mq_series` ou `.idoc` de até **25 MiB**.
+2. Sem seleção manual, o front envia somente o documento para `POST /api/parse/auto`.
+3. A API prova um layout único, devolve até cinco equivalências explicáveis ou informa que nenhum
+   candidato foi confirmado. Mais de um candidato nunca gera escolha silenciosa.
+4. Em caso ambíguo, o usuário escolhe explicitamente **Usar este layout**; o GUID volta como
+   `layoutGuidOverride`, é revalidado pela API e fica associado ao correlation ID da execução.
+5. O catálogo manual e `POST /api/parse/upload` continuam disponíveis como fallback avançado.
+6. A API .NET identifica e processa a estrutura do documento sem expor o XML descriptografado no
+   fluxo automático.
+7. O front apresenta campos, posições, linhas, validações e a árvore estrutural retornada.
+8. Após um parse bem-sucedido, o usuário solicita a avaliação dos candidatos Sysmiddle e TCL/XSL.
    A ausência de mapper Sysmiddle não bloqueia a avaliação TCL/XSL.
-7. Quando o candidato fornece rastreabilidade, o inspetor liga a ocorrência física do campo TXT
+9. Quando o candidato fornece rastreabilidade, o inspetor liga a ocorrência física do campo TXT
    ao elemento, atributo ou texto correspondente no XML.
-8. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
+10. O XML retornado pode ser visualizado, copiado ou baixado como arquivo `.xml`.
 
 Quando nenhum candidato é produzido, a interface separa os avisos devolvidos pela API por pathway.
 Assim, falhas de mapper/runner Sysmiddle não são confundidas com falhas do pipeline TCL/XSL. Se a
@@ -296,6 +312,7 @@ As variáveis mais importantes são:
 | `ENTRA_CLIENT_ID`                     | Application (client) ID                      | obrigatório em produção   |
 | `ENTRA_CLIENT_SECRET`                 | Credencial confidencial do BFF               | secret, nunca versionado  |
 | `BFF_SESSION_TTL_SECONDS`             | Vida máxima da sessão criptografada          | `28800`                   |
+| `BFF_TRUSTED_IDENTITY_*_HEADER`       | Principal imutável encaminhado à API         | `x-layoutparser-*`        |
 | `BFF_REQUEST_LIMIT_MIB`               | Limite da requisição multipart completa      | `32`                      |
 | `BFF_DOCUMENT_LIMIT_MIB`              | Limite cumulativo do campo `txtFile`         | `25`                      |
 | `BFF_RATE_LIMIT_MAX`                  | Máximo por janela                            | `120`                     |
@@ -450,13 +467,13 @@ teste determinístico; isso não substitui um teste de integração contra o gat
 
 O cenário [`mqseries-user-flow.spec.ts`](e2e-real/mqseries-user-flow.spec.ts) não intercepta nem
 simula APIs. Ele inicia o front e o BFF reais, aponta o BFF para a `LayoutParserApi`, abre a página
-como usuário autenticado de desenvolvimento e opera os mesmos controles da interface: busca e
-seleciona o layout, abre o seletor de arquivo, anexa o TXT, processa, seleciona uma tag vazia,
-gera a transformação multi-candidato, volta ao TXT, edita suas 15 posições e reprocessa o
-documento.
+como usuário autenticado de desenvolvimento e opera os mesmos controles da interface: anexa o TXT,
+executa a detecção automática, escolhe explicitamente o layout homologado dentro do top 5,
+processa, seleciona uma tag vazia, gera a transformação multi-candidato, volta ao TXT, edita suas
+15 posições e reprocessa o documento com o mesmo GUID auditável.
 
 Além da UI, o teste exige HTTP 200 e valida que um `X-Correlation-ID` válido, novo por operação e
-imutável atravessou navegador → BFF → API → navegador nas chamadas de sessão, catálogo, parse,
+imutável atravessou navegador → BFF → API → navegador nas chamadas de sessão, detecção, parse,
 transformação multi-candidato e reparse. O contrato aceito é o do documento homologado: 59 linhas,
 705 campos e quatro ocorrências físicas da `LINHA081`, sem a ocorrência agregada duplicada no fim.
 
@@ -479,10 +496,12 @@ autorizar a promoção `develop → main`.
 
 ### Aceitação com o par MQSeries real
 
-O cenário opt-in [`mqseries-positional.test.ts`](tests/real-fixture/mqseries-positional.test.ts)
-envia o layout e o documento privados de `.codex/temp/teste` diretamente à API local. Ele valida
-o contrato real, os 59 grupos físicos, a recuperação das larguras fixas, a cobertura contínua até
-a posição 600, as quatro ocorrências da `LINHA081`, a remoção das duas entradas agregadas e a
+A suíte opt-in reúne [`mqseries-layout-detection.test.ts`](tests/real-fixture/mqseries-layout-detection.test.ts)
+e [`mqseries-positional.test.ts`](tests/real-fixture/mqseries-positional.test.ts). O primeiro envia
+somente o documento, exige estado `ambiguous`, top 5 explicável, correlation ID preservado e
+ausência de parse antes da escolha; depois confirma o layout homologado por override. O segundo
+valida o parse posicional manual de regressão, os 59 grupos físicos, as larguras fixas, a cobertura
+até a posição 600, as quatro ocorrências da `LINHA081`, a remoção das duas entradas agregadas e a
 editabilidade segura dos 703 campos. Nenhum conteúdo ou valor do documento é registrado no teste.
 
 ```powershell
@@ -497,8 +516,14 @@ npm run test:fixture:mqseries
 
 Os dois arquivos reais permanecem ignorados pelo Git. A suíte falha explicitamente se o par não
 estiver presente, se os tamanhos não corresponderem à fixture homologada ou se a API estiver fora
-do ar; por isso ela não faz parte do gate determinístico da CI. A regressão sanitizada equivalente
-continua em `src/utils` e roda em todo `npm run quality`.
+do ar. No runner de desenvolvimento, a mesma fixture é provisionada fora do repositório e o E2E
+executa o percurso real arquivo → top 5 → escolha → parse → edição → revalidação. A regressão
+sanitizada equivalente continua em `src/utils` e roda em todo `npm run quality`.
+
+Como prova complementar local, a amostra privada `maiorMenor.idoc` foi enviada ao mesmo endpoint:
+a API retornou `unique` para `LAY_MARELLI_TXT_SAP_ENVNFE_4.00_NFe`, preservou o correlation ID e
+processou 55 linhas/263 campos. A fixture IDoc também permanece fora do Git; seu comportamento
+estrutural é protegido pelos testes determinísticos da API.
 
 ### Contrato da API
 
@@ -606,6 +631,11 @@ API é o hub e a fonte da verdade. Este repositório fornece apenas
 [`.mcp.json.example`](.mcp.json.example) para conectar o ambiente de IA ao MCP da API; copie para
 `.mcp.json`, ajuste o caminho local da DLL e não versione a configuração resultante. A autoridade
 e as regras estão em [`.claude/rules/mcp-usage.md`](.claude/rules/mcp-usage.md).
+
+Estudo em refinamento: [detecção automática de layout MQSeries/IDoc](docs/proposals/automatic-layout-detection-mqseries-idoc.md).
+Ele propõe um fluxo arquivo-primeiro com `unique`, `ambiguous` e `not_found`, preservando o modo
+manual como fallback, apresentando até cinco equivalências explicáveis quando houver ambiguidade e
+exigindo 100% de precisão no subconjunto auto-selecionado.
 
 ## Avaliação para o trabalho acadêmico
 

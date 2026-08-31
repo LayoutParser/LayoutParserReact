@@ -44,8 +44,9 @@ for (const serviceFile of serviceFiles) {
   }
 }
 
-// parseService usa a constante tipada API_CONFIG.endpoints.parse em vez de literal no post.
+// parseService usa constantes tipadas do API_CONFIG em vez de literais nos dois posts.
 discovered.push({ method: 'POST', path: '/api/parse/upload', file: 'src/services/api.ts' });
+discovered.push({ method: 'POST', path: '/api/parse/auto', file: 'src/services/api.ts' });
 
 const missing = discovered.filter(({ method, path: endpointPath }) => {
   const canonicalPath = endpointPath.replace(/:[^/]+/g, ':param');
@@ -97,7 +98,11 @@ if (openApiUrl) {
     )
   );
 
-  const apiOwned = manifest.endpoints.filter(endpoint => endpoint.owner === 'LayoutParserApi');
+  // Contratos `proposed` permitem preparar tipos/services sem declarar falsamente que a rota já
+  // existe. Eles só entram na conferência OpenAPI após a API remover esse estado no handoff.
+  const apiOwned = manifest.endpoints.filter(
+    endpoint => endpoint.owner === 'LayoutParserApi' && endpoint.availability !== 'proposed'
+  );
   const absentRemotely = apiOwned.filter(
     endpoint => !remoteEndpoints.has(`${endpoint.method} ${normalizePath(endpoint.path)}`)
   );
@@ -110,6 +115,9 @@ if (openApiUrl) {
   }
 }
 
+const proposedCount = manifest.endpoints.filter(
+  endpoint => endpoint.availability === 'proposed'
+).length;
 console.log(
-  `Contrato validado: ${discovered.length} usos no front, ${manifest.endpoints.length} endpoints registrados${openApiUrl ? ' e OpenAPI conferido' : ''}.`
+  `Contrato validado: ${discovered.length} usos no front, ${manifest.endpoints.length} endpoints registrados (${proposedCount} propostos)${openApiUrl ? ' e OpenAPI conferido' : ''}.`
 );

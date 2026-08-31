@@ -1,6 +1,9 @@
 # Memória — @lp-devops (Gage)
 
 - Push, PR, CI, deploy, secrets e MCP são autoridade exclusiva de `@lp-devops`.
+- [MCP da API validado para detecção automática](project_api_mcp_validation_2026_08_29.md) —
+  servidor saudável, endpoint `/api/parse/auto` entregue em branch e tool tipada rastreada em
+  #184/#216.
 - [Pipeline seguro](project_quality_pipeline_2026_08_10.md) — runners isolados, Actions por SHA e releases IIS+BFF.
 - [gh CLI e git de rede](project_gh_cli_unavailable_wsl.md) — hoje funcionam direto do bash/WSL (remote HTTPS + gh 2.45); nota antiga do `git.exe` está superada.
 - [Node no Windows](project_node_toolchain_wsl_interop.md) — validar env vars no shell nativo correto.
