@@ -13,6 +13,15 @@ um front-end React e um gateway Node.js; as regras de parsing e transformação 
 
 ## Conteúdo
 
+### Evolução para produto fiscal
+
+- [Arquitetura-alvo da plataforma fiscal](docs/architecture/fiscal-document-platform.md)
+- [Roadmap de produto e implementação](docs/product/fiscal-platform-roadmap.md)
+- [Contrato cross-repo de workspace e explicabilidade](docs/contracts/fiscal-workspace-and-mapping-explanation-api.md)
+- ADRs: [escopo fiscal](docs/architecture/adr/0001-fiscal-product-scope.md),
+  [identidade do workspace](docs/architecture/adr/0002-immutable-user-workspace-identity.md) e
+  [explicação independente do motor](docs/architecture/adr/0003-engine-neutral-mapping-explanation.md)
+
 - [O que o sistema faz](#o-que-o-sistema-faz)
 - [Arquitetura e ecossistema](#arquitetura-e-ecossistema)
 - [Tecnologias](#tecnologias)
@@ -301,6 +310,7 @@ As variáveis mais importantes são:
 | `ENTRA_CLIENT_ID`                     | Application (client) ID                      | obrigatório em produção   |
 | `ENTRA_CLIENT_SECRET`                 | Credencial confidencial do BFF               | secret, nunca versionado  |
 | `BFF_SESSION_TTL_SECONDS`             | Vida máxima da sessão criptografada          | `28800`                   |
+| `BFF_TRUSTED_IDENTITY_*_HEADER`       | Principal imutável encaminhado à API         | `x-layoutparser-*`        |
 | `BFF_REQUEST_LIMIT_MIB`               | Limite da requisição multipart completa      | `32`                      |
 | `BFF_DOCUMENT_LIMIT_MIB`              | Limite cumulativo do campo `txtFile`         | `25`                      |
 | `BFF_RATE_LIMIT_MAX`                  | Máximo por janela                            | `120`                     |

@@ -5,6 +5,8 @@
   #177–#185 no Project do front e dependência espelhada na API #213/Project #2.
 - [Auditoria e gate de produção](project_front_audit_2026_08_30.md) — front concluído em
   development, #184 transferida para API #216 e promoção controlada por #188/PR #189.
+- [Plataforma fiscal e workspaces](project_fiscal_workspaces_2026_08_31.md) — decisão de nicho,
+  milestone P0, Epic #195/PBIs #196–#199/gate #200 e dependências API #225–#228.
 
 Regras duráveis: GitHub é o registro operacional; Epic → PBI → Story → Task/Gate/Bug; não criar
 issue por commit; fechamento exige evidência; conteúdo real de TXT/XML e segredos não entram no

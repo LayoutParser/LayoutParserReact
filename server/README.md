@@ -104,6 +104,9 @@ GOOGLE_CLIENT_ID=<Client ID do Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<Client Secret do Google Cloud Console>
 BFF_TRUSTED_USER_HEADER=X-IIS-User
 BFF_TRUSTED_ROLES_HEADER=X-IIS-Roles
+BFF_TRUSTED_IDENTITY_PROVIDER_HEADER=X-LayoutParser-Identity-Provider
+BFF_TRUSTED_IDENTITY_SUBJECT_HEADER=X-LayoutParser-Identity-Subject
+BFF_TRUSTED_IDENTITY_TENANT_HEADER=X-LayoutParser-Identity-Tenant
 BFF_ADMIN_USERS=
 BFF_ADMIN_ROLES=
 BFF_DEV_AUTH_ENABLED=false
@@ -147,6 +150,9 @@ final `/*`. Um usuário precisa estar em `BFF_ADMIN_USERS` ou possuir uma role p
 - `X-Correlation-ID` válido é preservado; valores inválidos são substituídos por UUID.
 - `Authorization`, cookies e identidades fornecidas pelo navegador são removidos antes do proxy.
   O BFF injeta somente os headers normalizados da sessão validada.
+- `provider`, `subject` e `tenant` são encaminhados exclusivamente ao upstream confiável para a API
+  resolver um `UserId` interno estável. O subject bruto não faz parte de `/api/session` e não fica
+  disponível ao JavaScript.
 - Logs Pino são JSON estruturado e contêm método, path sem query, status, duração e estado de
   autenticação. Headers sensíveis e corpos TXT/XML não são registrados.
 - URLs de upstream com credenciais são recusadas.

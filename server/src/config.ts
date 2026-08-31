@@ -46,6 +46,9 @@ export interface AppConfig {
   readonly rateLimitWindowMs: number;
   readonly trustedUserHeader: string;
   readonly trustedRolesHeader: string;
+  readonly trustedIdentityProviderHeader: string;
+  readonly trustedIdentitySubjectHeader: string;
+  readonly trustedIdentityTenantHeader: string;
   readonly adminUsers: ReadonlySet<string>;
   readonly adminRoles: ReadonlySet<string>;
   readonly adminPaths: readonly string[];
@@ -352,6 +355,31 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     'x-iis-roles',
     'BFF_TRUSTED_ROLES_HEADER'
   );
+  const trustedIdentityProviderHeader = parseHeaderName(
+    environment.BFF_TRUSTED_IDENTITY_PROVIDER_HEADER,
+    'x-layoutparser-identity-provider',
+    'BFF_TRUSTED_IDENTITY_PROVIDER_HEADER'
+  );
+  const trustedIdentitySubjectHeader = parseHeaderName(
+    environment.BFF_TRUSTED_IDENTITY_SUBJECT_HEADER,
+    'x-layoutparser-identity-subject',
+    'BFF_TRUSTED_IDENTITY_SUBJECT_HEADER'
+  );
+  const trustedIdentityTenantHeader = parseHeaderName(
+    environment.BFF_TRUSTED_IDENTITY_TENANT_HEADER,
+    'x-layoutparser-identity-tenant',
+    'BFF_TRUSTED_IDENTITY_TENANT_HEADER'
+  );
+  const trustedIdentityHeaders = [
+    trustedUserHeader,
+    trustedRolesHeader,
+    trustedIdentityProviderHeader,
+    trustedIdentitySubjectHeader,
+    trustedIdentityTenantHeader,
+  ];
+  if (new Set(trustedIdentityHeaders).size !== trustedIdentityHeaders.length) {
+    throw new ConfigError('Os headers confiáveis de identidade precisam ter nomes distintos.');
+  }
   const developmentAuthEnabled = parseBoolean(
     environment.BFF_DEV_AUTH_ENABLED,
     false,
@@ -411,6 +439,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     ),
     trustedUserHeader,
     trustedRolesHeader,
+    trustedIdentityProviderHeader,
+    trustedIdentitySubjectHeader,
+    trustedIdentityTenantHeader,
     adminUsers,
     adminRoles,
     adminPaths: parseAdminPaths(environment.BFF_ADMIN_PATHS),
