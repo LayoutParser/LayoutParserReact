@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import AuthenticationGate from '../components/auth/AuthenticationGate';
 import HomePage from '../components/marketing/HomePage';
+import WorkspaceSwitcher from '../components/workspace/WorkspaceSwitcher';
 import { sessionService } from '../services/api/sessionService';
 import { useAppStore } from '../store/useAppStore';
 import { useSessionStore } from '../store/useSessionStore';
+import { useWorkspaceStore } from '../store/useWorkspaceStore';
 import { SESSION_EXPIRED_EVENT } from '../types/session';
 import './MainLayout.css';
 
@@ -14,6 +16,7 @@ export const MainLayout: React.FC = () => {
   const location = useLocation();
   const { status, authenticated, user, isAdmin, error, loadSession, expireSession } =
     useSessionStore();
+  const { loadWorkspaces, reset: resetWorkspace } = useWorkspaceStore();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const searchParameters = new URLSearchParams(location.search);
@@ -30,6 +33,17 @@ export const MainLayout: React.FC = () => {
     window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expireSession);
   }, [expireSession]);
+
+  useEffect(() => {
+    if (status === 'authenticated' && authenticated) {
+      void loadWorkspaces();
+      return;
+    }
+
+    if (status === 'unauthenticated' || status === 'error') {
+      resetWorkspace();
+    }
+  }, [authenticated, loadWorkspaces, resetWorkspace, status]);
 
   // Redirecionar para /upload se estiver em /analysis sem parseResult
   useEffect(() => {
@@ -94,6 +108,7 @@ export const MainLayout: React.FC = () => {
       // Mesmo se a chamada falhar (ex.: rede), seguimos para '/' — o gate de autenticação
       // revalida a sessão via /api/session no próximo carregamento.
     } finally {
+      resetWorkspace();
       window.location.assign('/');
     }
   };
@@ -101,11 +116,12 @@ export const MainLayout: React.FC = () => {
   return (
     <div className="main-layout">
       <header className="session-bar">
-        <Link to="/upload" className="session-brand" aria-label="Ir para o processamento">
+        <Link to="/workspace" className="session-brand" aria-label="Ir para o workspace fiscal">
           <img src="/layoutparser-mark.svg" alt="" />
           <span>LayoutParser</span>
         </Link>
         <div className="session-account">
+          <WorkspaceSwitcher />
           {isAdmin && (
             <Link to="/admin" className="session-admin-link">
               Administração

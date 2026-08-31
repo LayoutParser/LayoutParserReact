@@ -29,9 +29,11 @@ export interface FiscalWorkspaceSummary {
 }
 
 export interface CurrentWorkspacesResponse {
-  activeWorkspaceId: string | null;
+  activeWorkspaceId: string;
   workspaces: FiscalWorkspaceSummary[];
 }
+
+export type WorkspaceLoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface FiscalProfile {
   documentType: FiscalDocumentType;

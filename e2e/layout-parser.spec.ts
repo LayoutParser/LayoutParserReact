@@ -16,6 +16,23 @@ const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
     })
   );
 
+  await page.route('**/api/workspaces/me', route =>
+    route.fulfill({
+      json: {
+        activeWorkspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        workspaces: [
+          {
+            workspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            name: 'Workspace fiscal E2E',
+            kind: 'personal',
+            role: 'owner',
+            createdAt: '2026-08-31T12:00:00Z',
+          },
+        ],
+      },
+    })
+  );
+
   await page.route('**/api/logs/client', route => route.fulfill({ status: 204 }));
 };
 
@@ -289,6 +306,20 @@ const processSapDocument = async (page: Page) => {
   });
   await page.getByRole('button', { name: 'Processar Documento' }).click();
 };
+
+test('vincula a sessão autenticada ao workspace fiscal', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await page.goto('/workspace');
+
+  await expect(page.getByRole('heading', { name: 'Workspace fiscal E2E' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Workspace ativo' })).toHaveValue(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  );
+  await expect(page.getByRole('link', { name: 'Abrir processamento' })).toHaveAttribute(
+    'href',
+    '/upload'
+  );
+});
 
 test('processa TXT e entrega o XML transformado para download', async ({ page }) => {
   await mockAuthenticatedGateway(page);
