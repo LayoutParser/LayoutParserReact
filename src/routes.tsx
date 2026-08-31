@@ -28,7 +28,13 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="/upload" replace />,
+        element: <Navigate to="/workspace" replace />,
+      },
+      {
+        path: 'workspace',
+        lazy: async () => ({
+          Component: (await import('./components/workspace/WorkspacePage')).default,
+        }),
       },
       {
         path: 'upload',

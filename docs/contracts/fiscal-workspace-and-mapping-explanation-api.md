@@ -1,13 +1,13 @@
-# Contrato proposto — Workspace fiscal e explicabilidade de mappings
+# Contrato cross-repo — Workspace fiscal e explicabilidade de mappings
 
 > Consumidor: LayoutParserReact/BFF
 > Provedor: LayoutParserApi
-> Estado: **proposta cross-repo; endpoints ainda não disponíveis**
+> Estado: **identidade/workspace entregues; demais capacidades evoluem por slice**
 
-Os endpoints ficam marcados como `availability: proposed` em `contracts/api-endpoints.json`. Esse
-estado permite tipar a fronteira sem exigir a rota no OpenAPI de runtime. O handoff da API deve
-remover `proposed`; somente então as telas dependentes podem ser ativadas e o check OpenAPI passa a
-exigir os endpoints.
+`GET /api/workspaces/me` foi entregue pela LayoutParserApi no PR
+[#234](https://github.com/LayoutParser/LayoutParserApi/pull/234) e deixou de ser `proposed` em
+`contracts/api-endpoints.json`. Endpoints ainda não implementados continuam marcados como
+`availability: proposed`; somente o handoff da API pode remover esse estado e ativar sua UI.
 
 ## 1. Identidade confiável BFF → API
 
@@ -53,10 +53,18 @@ Mudança de nome/e-mail atualiza o perfil, sem criar usuário ou workspace novo.
 
 Cria o workspace pessoal de forma idempotente quando o usuário ainda não possui membership.
 
+Respostas observáveis: `401` quando não há identidade confiável e `503` em falha do serviço. O
+front valida que `activeWorkspaceId` pertence à lista devolvida, não persiste essa seleção e nunca
+aceita um workspace arbitrário informado pelo navegador.
+
 ### `GET /api/workspaces/{workspaceId}`
 
 Retorna somente se o usuário tiver membership. Nunca distinguir “não existe” de “existe, mas é de
 outro usuário” por mensagens detalhadas.
+
+Esse endpoint também foi entregue pelo PR #234 e usa `404` uniforme para recurso ausente, ausência
+de membership ou identidade indisponível. A idempotência concorrente foi coberta pela suíte da API;
+a validação em SQL Server real com múltiplas instâncias ainda é uma ressalva operacional conhecida.
 
 ## 3. Projetos fiscais
 
@@ -139,17 +147,38 @@ papel, estado do Draft e disponibilidade do adapter.
 
 ### Pacote fiscal e Draft assistido
 
+O primeiro incremento de pacote foi entregue no PR
+[#236](https://github.com/LayoutParser/LayoutParserApi/pull/236), com escopo deliberadamente menor
+que o PBI completo do front:
+
+- disponível: criação multipart da revisão 1 e consulta de metadados do pacote;
+- pendente: inventário normalizado de campos/XSD/planilha, conflitos e ausências;
+- pendente: criação explícita de nova revisão e download controlado de artefato;
+- pendente: contrato navegável de projetos para o usuário escolher um projeto sem informar GUID;
+- validação manual do Windows Defender no host real ainda não executada.
+
+Contrato entregue:
+
+| Método e rota                                                              | Estado   | Finalidade                                                |
+| -------------------------------------------------------------------------- | -------- | --------------------------------------------------------- |
+| `POST /api/workspaces/{workspaceId}/projects/{projectId}/mapping-packages` | Entregue | Cria pacote e revisão 1 por upload multipart idempotente. |
+| `GET /api/workspaces/{workspaceId}/mapping-packages/{packageId}`           | Entregue | Retorna pacote, revisão atual e metadados dos artefatos.  |
+
+Os nomes dos campos multipart são parte do contrato: `sample`, `layout`, `spec`, `xsd`,
+`expectedXml` e `fiscalContext`. A extensão permitida é, respectivamente, `.txt`, `.xml`, `.xlsx`,
+`.xsd`, `.xml` e `.json`; o limite atual é 50 MiB por artefato e dez artefatos por request.
+`Idempotency-Key` deve ser gerado pelo front para uma tentativa lógica e reaproveitado apenas em
+retry dessa mesma tentativa.
+
 As rotas abaixo são propostas e devem ser refinadas no OpenAPI da API antes da implementação da UI:
 
-| Método e rota                                                                 | Finalidade                                                          |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `POST /api/workspaces/{workspaceId}/projects/{projectId}/mapping-packages`    | Criar revisão com amostras, layout, Excel, XSD e gabarito opcional. |
-| `GET /api/workspaces/{workspaceId}/mapping-packages/{packageId}`              | Consultar inventário, hashes, qualidade e lacunas dos insumos.      |
-| `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/drafts`      | Criar `MappingDraft` sobre uma revisão imutável do pacote.          |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions`     | Iniciar job de sugestões da IA.                                     |
-| `PATCH /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/rules/{ruleId}` | Aceitar, editar ou rejeitar regra com `If-Match`.                   |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile`         | Gerar TCL/XSL/XSLT apenas a partir da revisão aceita.               |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs`       | Executar, validar XSD/fiscal, comparar e medir cobertura.           |
+| Método e rota                                                                 | Finalidade                                                 |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/drafts`      | Criar `MappingDraft` sobre uma revisão imutável do pacote. |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions`     | Iniciar job de sugestões da IA.                            |
+| `PATCH /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/rules/{ruleId}` | Aceitar, editar ou rejeitar regra com `If-Match`.          |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile`         | Gerar TCL/XSL/XSLT apenas a partir da revisão aceita.      |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs`       | Executar, validar XSD/fiscal, comparar e medir cobertura.  |
 
 Criação de pacote usa multipart com metadados JSON e artefatos classificados. A API inspeciona
 conteúdo e extensão, calcula hash, aplica limite e antivírus/política equivalente e nunca confia no
