@@ -43,6 +43,17 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
+.workspace-switcher--idle {
+  padding-inline: var(--spacing-sm);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.workspace-switcher--idle:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .workspace-switcher__pulse {
   width: 0.55rem;
   height: 0.55rem;

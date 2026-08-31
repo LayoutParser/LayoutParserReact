@@ -17,6 +17,9 @@
 - Branch front `codex/feat-workspace-shell-slice1`: store somente em memória, shell `/workspace`,
   seletor, estados loading/erro/sucesso e validação runtime do contrato.
 - A rota raiz autenticada entra no workspace; `/upload` permanece disponível.
+- O bootstrap do workspace ocorre somente ao entrar em `/workspace`; acesso direto a `/upload`
+  não dispara SQL de identidade em paralelo ao parse. Depois de carregado, o store em memória
+  mantém o seletor durante a navegação.
 - E2E autenticado cobre desktop e mobile. Não iniciar parser TCL/XSLT/Sysmiddle no React.
 
 ## Slice 2 da API — pacote fiscal

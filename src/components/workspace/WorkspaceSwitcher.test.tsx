@@ -15,6 +15,19 @@ const workspace = {
 describe('WorkspaceSwitcher', () => {
   beforeEach(() => useWorkspaceStore.getState().reset());
 
+  it('mantém acesso explícito sem iniciar consulta fora da área fiscal', () => {
+    render(
+      <MemoryRouter>
+        <WorkspaceSwitcher />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('link', { name: 'Abrir workspace fiscal' })).toHaveAttribute(
+      'href',
+      '/workspace'
+    );
+  });
+
   it('mostra o workspace resolvido e liga para a visão geral', () => {
     useWorkspaceStore.setState({
       status: 'ready',
