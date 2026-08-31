@@ -1,26 +1,28 @@
-# Plataforma fiscal, workspaces e mappings explicáveis — 31/08/2026
+# Plataforma fiscal, workspaces e autoria assistida — 31/08/2026
 
 ## Decisão
 
 O LayoutParser permanece nichado em documentos fiscais brasileiros: NF-e, CT-e, MDF-e, NFS-e e
-NFCom. TXT/MQSeries/IDoc/XML/JSON e TCL/XSLT/Sysmiddle são formatos/motores do domínio, não o
-posicionamento do produto.
+NFCom. A autoria assistida usa amostras + layout + Excel + XSD/gabarito para gerar TCL/XSL/XSLT.
+Sysmiddle é estritamente execução/explicação read-only; nunca editar, converter ou publicar.
 
 ## Governança criada
 
 - Milestone `P0 — Plataforma Fiscal e Workspaces` nos repositórios React e API.
-- Front: Epic #195; PBIs #196–#199; gate cross-repo #200.
-- API: identidade/workspaces #225; explicabilidade TCL/XSLT #226; spike Sysmiddle #227; gate de
-  isolamento #228.
+- Front: Epic #195; base #196–#200; autoria #201–#204; gates Sysmiddle/FIAT #205–#206.
+- API: identidade/workspaces #225/#228; explicabilidade #226/#227; autoria principal #103 e
+  decomposição #229–#232.
 - Itens adicionados aos Projects #3 e #2; #196 e API #225 estão In Progress.
 - API #94 e #103 foram referenciadas como dependências existentes, sem duplicação.
 
 ## Arquitetura
 
 Principal OIDC imutável (`provider + tenant/issuer + subject`) resolve `UserId` interno na API;
-nome/e-mail não são chave. Histórico fiscal não vai para localStorage. TCL/XSLT/Sysmiddle convergem
-para `MappingExplanation`, com níveis authoritative/best_effort/opaque/unsupported.
+nome/e-mail não são chave. Histórico fiscal não vai para localStorage. Todos os motores convergem
+para `MappingExplanation`, mas apenas TCL/XSL/XSLT possuem capability de autoria. A IA gera
+`MappingDraftRule`; humano aceita/edita antes de compilar e testar.
 
 Documentos: `docs/architecture/fiscal-document-platform.md`,
-`docs/product/fiscal-platform-roadmap.md` e
+`docs/product/fiscal-platform-roadmap.md`,
+`docs/product/ai-assisted-fiscal-mapping-studio.md` e
 `docs/contracts/fiscal-workspace-and-mapping-explanation-api.md`.

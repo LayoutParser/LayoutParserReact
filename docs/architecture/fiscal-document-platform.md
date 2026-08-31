@@ -15,9 +15,9 @@ brasileira, com regras fortes para criação, inspeção, transformação e vali
 - NFS-e;
 - NFCom.
 
-Formatos como TXT posicional, MQSeries, IDoc, XML, XSL/XSLT e JSON são meios de entrada, saída ou
-autoria. O produto vendável é a capacidade de transformar um documento fiscal A em um documento
-fiscal B com explicação, validação e rastreabilidade.
+Formatos como TXT posicional, MQSeries, IDoc, XML e JSON são meios de entrada ou saída. TCL e
+XSL/XSLT são artefatos de autoria e execução. O produto vendável é a capacidade de transformar um
+documento fiscal A em um documento fiscal B com explicação, validação e rastreabilidade.
 
 ### Proposta de valor
 
@@ -37,7 +37,7 @@ fiscal B com explicação, validação e rastreabilidade.
 
 | Camada           | Responsabilidade                                                                                                       |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| React            | Experiência de produto, navegação, autoria visual e apresentação de explicações já normalizadas.                       |
+| React            | Experiência de produto, revisão humana, autoria assistida de TCL/XSL/XSLT e apresentação de explicações normalizadas.  |
 | BFF Node/Fastify | Sessão, identidade confiável, autorização de fronteira, limites, rate limit e proxy same-origin.                       |
 | LayoutParserApi  | Fonte da verdade de usuários internos, workspaces, documentos, regras fiscais, layouts, mappings, versões e execuções. |
 | Motores          | Executar Sysmiddle, TCL, XSL/XSLT e futuros adapters sem expor detalhes inseguros ao navegador.                        |
@@ -57,9 +57,9 @@ flowchart LR
     API --> REG[Catálogo de layouts, schemas e mappings]
     API --> EXE[Orquestrador de execuções]
     EXE --> DET[Detecção e parsing]
-    EXE --> SYS[Adapter Sysmiddle]
-    EXE --> TCL[Adapter TCL]
-    EXE --> XSL[Adapter XSL/XSLT]
+    EXE --> SYS[Sysmiddle: executar e explicar]
+    EXE --> TCL[TCL: gerar, editar, executar e explicar]
+    EXE --> XSL[XSL/XSLT: gerar, editar, executar e explicar]
     SYS --> EXP[Modelo normalizado de explicação]
     TCL --> EXP
     XSL --> EXP
@@ -80,17 +80,22 @@ Upload
   → permitir revisão, edição e reprocessamento
 ```
 
-### Fluxo de autoria de mapping
+### Fluxo de autoria assistida de mapping
 
 ```text
-Schema de origem + schema de destino
-  → mapping em Draft
-  → regras normalizadas e visualização explicável
-  → casos de teste e cobertura dos destinos
-  → revisão/aprovação
+Amostras de entrada + layout estrutural + planilha de especificação + XSD oficial
+  → pacote fiscal normalizado e versionado
+  → IA propõe regras intermediárias com proveniência, confiança e perguntas em aberto
+  → usuário revisa, corrige e completa o Draft
+  → API gera TCL e XSL/XSLT a partir das regras aceitas
+  → execução, validação XSD, regras fiscais, diff e cobertura
+  → revisão/aprovação humana
   → versão imutável
   → promoção development → validation → production
 ```
+
+O Sysmiddle não participa deste fluxo de autoria. Quando um mapper Sysmiddle existir, o produto
+somente o executa por meio do backend e apresenta a explicação permitida pelo adapter.
 
 ## 4. Modelo de domínio
 
@@ -178,7 +183,22 @@ WorkspaceMembership
 | Operator    | Executar análises e reprocessamentos.                    |
 | Viewer      | Consultar resultados e explicações sem alterar.          |
 
-## 6. Explicabilidade de TCL, XSL/XSLT e Sysmiddle
+## 6. Explicabilidade e fronteira de autoria
+
+### Matriz de capacidades por motor
+
+| Capacidade                    | TCL | XSL/XSLT | Sysmiddle                        |
+| ----------------------------- | --- | -------- | -------------------------------- |
+| Executar pelo backend         | Sim | Sim      | Sim                              |
+| Explicar regra normalizada    | Sim | Sim      | Sim, conforme suporte do adapter |
+| Sugerir regra com IA          | Sim | Sim      | Não                              |
+| Editar no Mapping Studio      | Sim | Sim      | **Não**                          |
+| Criar nova versão             | Sim | Sim      | **Não**                          |
+| Compilar/publicar pelo Studio | Sim | Sim      | **Não**                          |
+
+Esta fronteira é fail-closed: o frontend nunca oferece comando, formulário, endpoint ou atalho de
+edição para Sysmiddle. Mesmo quando uma regra Sysmiddle for completamente explicável, ela continua
+somente leitura.
 
 ### Modelo canônico
 
@@ -213,7 +233,9 @@ copie LINHA004.CNPJ para /NFe/infNFe/emit/CNPJ,
 removendo espaços laterais.
 ```
 
-Também deve existir uma visão técnica com XPath, função, parâmetros e referência de origem.
+Também deve existir uma visão técnica com XPath, função, parâmetros e referência de origem. Para
+TCL/XSL/XSLT, o usuário pode aceitar, rejeitar ou corrigir uma sugestão da IA; para Sysmiddle, a
+mesma interface exibe um selo permanente **Somente leitura** e remove todas as ações de autoria.
 
 ### XSL/XSLT
 
@@ -226,11 +248,12 @@ adapter seguro.
 O adapter deve usar a representação declarada/AST produzida pelo parser TCL e nunca depender de
 regex no navegador. A regra normalizada precisa preservar a referência à linha/campo original.
 
-### Sysmiddle
+### Sysmiddle — explicação somente leitura
 
 É viável explicar a parte declarativa disponível no XML/mapper e correlacioná-la com
 `fieldMappings`/`sectionMappings`. Funções proprietárias sem tradução conhecida devem aparecer como
-bloco opaco, com nome e argumentos permitidos, sem decompilar ou publicar código de terceiro.
+bloco opaco, com nome e argumentos permitidos, sem decompilar ou publicar código de terceiro. O
+produto não altera, recria, corrige, converte nem publica mappers Sysmiddle.
 
 O contrato deve distinguir:
 
@@ -239,6 +262,24 @@ O contrato deve distinguir:
 - `opaque`: existe uma regra, mas sua semântica não pode ser aberta;
 - `unsupported`: o adapter ainda não oferece explicação.
 
+### Copiloto fiscal para TCL/XSL/XSLT
+
+A IA trabalha sobre uma representação intermediária estruturada (`MappingDraft`), e não grava
+código diretamente como versão oficial. Cada sugestão precisa informar:
+
+- campo(s) de origem e destino fiscal;
+- regra/condição proposta;
+- evidência usada: amostra, célula da planilha, XSD ou regra já aprovada;
+- confiança e limitações;
+- impacto nos casos de teste;
+- pergunta ao usuário quando houver ambiguidade.
+
+O usuário ajuda a IA aceitando, corrigindo, rejeitando e explicando exceções. Essas decisões são
+auditadas e podem melhorar novas propostas dentro das políticas de dados do workspace, mas nunca
+autorizam treinamento externo implícito com documentos fiscais.
+
+Detalhamento: `docs/product/ai-assisted-fiscal-mapping-studio.md`.
+
 ## 7. Arquitetura de informação do front-end
 
 ```text
@@ -246,7 +287,9 @@ O contrato deve distinguir:
 /workspaces/:workspaceId/projects projetos fiscais
 /projects/:projectId/analyses     histórico de documentos
 /projects/:projectId/mappings     catálogo de mappings
+/projects/:projectId/packages     insumos: amostras, planilhas e schemas
 /mappings/:mappingId/versions/:v  Mapping Studio
+/mappings/:mappingId/test-lab     execução, XSD, cobertura e regressão
 /runs/:runId                      execução, diagnóstico e artefatos
 /catalog                          schemas/layouts fiscais
 /admin                            operação global, separada da administração do workspace
@@ -295,8 +338,11 @@ Políticas por workspace:
 - API é fonte da verdade do workspace e das regras fiscais;
 - identidade imutável do provedor é a amarração inicial do usuário;
 - explicabilidade usa contrato canônico independente do motor;
+- autoria e edição são exclusivas de TCL e XSL/XSLT;
+- Sysmiddle é somente execução e explicação, sem qualquer mutação;
+- IA propõe regras estruturadas; usuário aprova antes da geração/publicação;
 - histórico fiscal não será armazenado no navegador;
-- Sysmiddle será tratado por adapter seguro e degradável.
+- Sysmiddle será tratado por adapter seguro, degradável e read-only.
 
 ### Fora do P0
 
@@ -305,3 +351,4 @@ Políticas por workspace:
 - execução de código arbitrário no navegador;
 - colaboração em tempo real;
 - substituição imediata dos motores Sysmiddle/TCL existentes.
+- geração, edição, conversão ou publicação de artefatos Sysmiddle.

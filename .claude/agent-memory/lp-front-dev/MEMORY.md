@@ -30,7 +30,8 @@
 - [Regressão .mqseries: largura física](project_mqseries_field_length_regression.md) — front normaliza
   `start` + `LengthField`, preserva campos vazios editáveis e exclui o agregado da LINHA081.
 - [Fundação do workspace fiscal](project_fiscal_workspace_foundation_2026_08_31.md) — principal
-  imutável BFF→API, tipos/services iniciais e bloqueio consciente até contratos #225/#226.
+  imutável BFF→API, tipos/services iniciais, pacote FIAT assistido e fronteira de autoria:
+  TCL/XSL/XSLT editáveis, Sysmiddle read-only.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

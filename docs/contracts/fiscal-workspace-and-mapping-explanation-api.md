@@ -115,6 +115,77 @@ Paginação por cursor e filtros por `documentType`, `status`, `from`, `to` e `l
 - `MappingTestCase`: entrada/saída esperada sanitizada ou protegida;
 - `MappingExplanation`: representação normalizada para a UI.
 
+### Capabilities de motor
+
+O contrato de explicação é reutilizável por todos os motores, mas não concede capacidade de
+autoria. Toda versão deve declarar capabilities explicitamente:
+
+```json
+{
+  "engine": "sysmiddle",
+  "capabilities": {
+    "execute": true,
+    "explain": true,
+    "author": false,
+    "compile": false,
+    "publish": false
+  }
+}
+```
+
+Para `sysmiddle`, `author`, `compile` e `publish` são sempre `false`. A API rejeita mutações mesmo
+se um cliente adulterado tentar chamá-las. TCL e XSL/XSLT podem habilitar essas capacidades conforme
+papel, estado do Draft e disponibilidade do adapter.
+
+### Pacote fiscal e Draft assistido
+
+As rotas abaixo são propostas e devem ser refinadas no OpenAPI da API antes da implementação da UI:
+
+| Método e rota                                                                 | Finalidade                                                          |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `POST /api/workspaces/{workspaceId}/projects/{projectId}/mapping-packages`    | Criar revisão com amostras, layout, Excel, XSD e gabarito opcional. |
+| `GET /api/workspaces/{workspaceId}/mapping-packages/{packageId}`              | Consultar inventário, hashes, qualidade e lacunas dos insumos.      |
+| `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/drafts`      | Criar `MappingDraft` sobre uma revisão imutável do pacote.          |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions`     | Iniciar job de sugestões da IA.                                     |
+| `PATCH /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/rules/{ruleId}` | Aceitar, editar ou rejeitar regra com `If-Match`.                   |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile`         | Gerar TCL/XSL/XSLT apenas a partir da revisão aceita.               |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs`       | Executar, validar XSD/fiscal, comparar e medir cobertura.           |
+
+Criação de pacote usa multipart com metadados JSON e artefatos classificados. A API inspeciona
+conteúdo e extensão, calcula hash, aplica limite e antivírus/política equivalente e nunca confia no
+MIME informado pelo navegador.
+
+Resposta mínima de uma sugestão:
+
+```json
+{
+  "jobId": "01J...",
+  "status": "completed",
+  "packageRevision": 2,
+  "draftRevision": 5,
+  "rules": [
+    {
+      "ruleId": "rule_emit_cnpj",
+      "status": "proposed",
+      "sourceRefs": ["layout://LINHA004/CNPJ"],
+      "targetRefs": ["xsd:///NFe/infNFe/emit/CNPJ"],
+      "operation": "copy",
+      "transformations": ["trim"],
+      "confidence": "high",
+      "evidence": [
+        { "kind": "spreadsheet-cell", "reference": "Mapeamento!F42" },
+        { "kind": "xsd", "reference": "/NFe/infNFe/emit/CNPJ" }
+      ],
+      "questions": []
+    }
+  ]
+}
+```
+
+Regras sem evidência suficiente ficam `needs_input`; a API não cria correspondência silenciosa. A
+compilação é assíncrona, idempotente e devolve artefatos versionados, diagnósticos e correlation ID.
+`engine=sysmiddle` deve ser recusado por todas as rotas de Draft, compile e publish.
+
 ### `GET /api/workspaces/{workspaceId}/mappings/{mappingId}/versions/{version}/explanation`
 
 ```json
@@ -196,7 +267,8 @@ Usar o parser/AST real. Preservar IDs/referências da regra para diff e navegaç
 
 Ler apenas metadados declarativos licenciados para uso pela aplicação. Reaproveitar
 `fieldMappings`, `sectionMappings` e a tabela permitida de funções. Não devolver código
-decompilado, segredo, caminho interno ou expressão que viole licença.
+decompilado, segredo, caminho interno ou expressão que viole licença. Não oferecer endpoint de
+mutação; qualquer tentativa genérica com `engine=sysmiddle` retorna erro categórico e auditável.
 
 ## 7. Concorrência, segurança e auditoria
 
@@ -218,3 +290,6 @@ decompilado, segredo, caminho interno ou expressão que viole licença.
 5. Explicação XSLT é determinística para fixture conhecida.
 6. Regra Sysmiddle não compreendida aparece `opaque`, nunca “direta”.
 7. Payloads reais e identidade externa não aparecem em log ou erro.
+8. Sugestão IA sem evidência suficiente exige intervenção humana.
+9. Somente regras aceitas entram na geração TCL/XSL/XSLT.
+10. Todas as tentativas de autoria Sysmiddle são negadas pela API e pelo front.

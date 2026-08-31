@@ -9,12 +9,24 @@
 - Front Project #3: [LayoutParserReact — Backlog](https://github.com/orgs/LayoutParser/projects/3)
 - Front: Epic [#195](https://github.com/LayoutParser/LayoutParserReact/issues/195), PBIs
   [#196](https://github.com/LayoutParser/LayoutParserReact/issues/196)–[#199](https://github.com/LayoutParser/LayoutParserReact/issues/199)
-  e gate [#200](https://github.com/LayoutParser/LayoutParserReact/issues/200).
+  e gate [#200](https://github.com/LayoutParser/LayoutParserReact/issues/200). Autoria fiscal:
+  pacote [#201](https://github.com/LayoutParser/LayoutParserReact/issues/201), revisão IA
+  [#202](https://github.com/LayoutParser/LayoutParserReact/issues/202), editor TCL/XSLT
+  [#203](https://github.com/LayoutParser/LayoutParserReact/issues/203), Test Lab
+  [#204](https://github.com/LayoutParser/LayoutParserReact/issues/204), gate Sysmiddle read-only
+  [#205](https://github.com/LayoutParser/LayoutParserReact/issues/205) e piloto FIAT
+  [#206](https://github.com/LayoutParser/LayoutParserReact/issues/206).
 - API Project #2: [LayoutParserApi — Backlog](https://github.com/orgs/LayoutParser/projects/2)
 - API: identidade/workspaces [#225](https://github.com/LayoutParser/LayoutParserApi/issues/225),
   explicabilidade TCL/XSLT [#226](https://github.com/LayoutParser/LayoutParserApi/issues/226),
   investigação Sysmiddle [#227](https://github.com/LayoutParser/LayoutParserApi/issues/227) e gate
   de isolamento [#228](https://github.com/LayoutParser/LayoutParserApi/issues/228).
+- API autoria IA: feature principal
+  [#103](https://github.com/LayoutParser/LayoutParserApi/issues/103), pacote fiscal
+  [#229](https://github.com/LayoutParser/LayoutParserApi/issues/229), MappingDraft
+  [#230](https://github.com/LayoutParser/LayoutParserApi/issues/230), compilação/Test Lab
+  [#231](https://github.com/LayoutParser/LayoutParserApi/issues/231) e gate de mutação Sysmiddle
+  [#232](https://github.com/LayoutParser/LayoutParserApi/issues/232).
 - Trabalho existente reaproveitado: governança de mappers
   [API #94](https://github.com/LayoutParser/LayoutParserApi/issues/94) e geração fiscal
   [API #103](https://github.com/LayoutParser/LayoutParserApi/issues/103).
@@ -22,8 +34,9 @@
 ## Objetivo
 
 Transformar o fluxo atual de upload/análise em uma plataforma fiscal na qual cada usuário possua
-workspaces autorizados, histórico de documentos analisados e um catálogo versionado de mappings
-TCL, XSL/XSLT e Sysmiddle com explicação visual legível.
+workspaces autorizados, histórico de documentos analisados e um catálogo versionado. O produto
+explica TCL, XSL/XSLT e Sysmiddle, mas autoria assistida, edição e publicação são exclusivas de TCL
+e XSL/XSLT.
 
 ## Métricas de produto
 
@@ -69,14 +82,14 @@ TCL, XSL/XSLT e Sysmiddle com explicação visual legível.
 1. Contrato canônico `MappingExplanation` na API.
 2. Adapter XSL/XSLT.
 3. Adapter TCL.
-4. Spike/adapter Sysmiddle com classificação de trechos opacos.
+4. Adapter read-only de Sysmiddle com classificação de trechos opacos.
 5. Mapping Studio read-only: origem → regra → destino.
 6. Visão humana e visão técnica da mesma regra.
 7. Navegação bidirecional com `fieldMappings` e `sectionMappings`.
 
 ## P1 — Autoria e governança fiscal
 
-### Mapping Studio editável
+### Mapping Studio editável — somente TCL/XSL/XSLT
 
 - criar ligação direta;
 - constante, concatenação, condição, lookup e conversão;
@@ -85,6 +98,13 @@ TCL, XSL/XSLT e Sysmiddle com explicação visual legível.
 - validação instantânea do grafo;
 - autosave de Draft com controle otimista de concorrência;
 - diff entre versões.
+
+O fluxo começa em um `FiscalMappingPackage`: amostras, layout de origem, especificação Excel, XSD
+oficial e gabarito opcional. A IA produz regras intermediárias com evidência e confiança; o usuário
+revisa essas regras antes da geração do TCL/XSL/XSLT.
+
+Sysmiddle permanece no Studio somente para leitura e explicação. Não existe ação de edição,
+geração, compilação ou promoção para esse motor.
 
 ### Fiscal Test Lab
 
@@ -146,10 +166,18 @@ Draft mutável.
 - **Entrega:** regras normalizadas e visualização read-only de templates/condições/cópias.
 - **Gate:** fixture XSLT conhecida gera grafo determinístico e texto coerente.
 
-### Slice 6 — TCL e Sysmiddle
+### Slice 6 — TCL editável e Sysmiddle somente leitura
 
-- **Entrega:** adapters para o mesmo contrato; regra não compreendida é visivelmente opaca.
-- **Gate:** o front nunca apresenta inferência best-effort como regra autoritativa.
+- **Entrega:** autoria assistida de TCL e adapter explicativo read-only de Sysmiddle no mesmo
+  contrato de visualização.
+- **Gate:** o front nunca apresenta inferência best-effort como regra autoritativa e não envia
+  mutação alguma para Sysmiddle.
+
+### Slice 7 — Primeiro pacote fiscal FIAT
+
+- **Entrega:** amostra MQSeries/IDoc + layout + planilha + XSD NF-e 4.00 alimentam um MappingDraft;
+  usuário revisa propostas e gera TCL/XSL/XSLT.
+- **Gate:** saída válida no XSD, provenance navegável, regressão aprovada e zero mutação Sysmiddle.
 
 ## Matriz cross-repo
 
@@ -160,6 +188,8 @@ Draft mutável.
 | Histórico         | lista, filtros, detalhes        | gravação, paginação, retenção     | nenhum payload em logs             |
 | Mapping           | Studio e diff                   | catálogo, versão, release         | imutabilidade e concorrência       |
 | Explicação        | grafo e inspetor                | adapters TCL/XSLT/Sysmiddle       | fixtures e confiança               |
+| Autoria IA        | revisão/edição TCL e XSL/XSLT   | Draft, sugestão, geração e testes | aceite humano e regressão          |
+| Sysmiddle         | visualização read-only          | explicação e execução apenas      | tentativa de mutação sempre negada |
 | Fiscal            | UX por tipo/versão              | validação autoritativa            | matriz NF-e/CT-e/MDF-e/NFS-e/NFCom |
 
 ## Definition of Done do P0
