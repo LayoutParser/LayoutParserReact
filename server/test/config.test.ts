@@ -37,6 +37,9 @@ describe('loadConfig', () => {
       redirectUri: 'https://layoutparser.example/auth/callback',
     });
     expect(config.trustedUserHeader).toBe('x-user');
+    expect(config.trustedIdentityProviderHeader).toBe('x-layoutparser-identity-provider');
+    expect(config.trustedIdentitySubjectHeader).toBe('x-layoutparser-identity-subject');
+    expect(config.trustedIdentityTenantHeader).toBe('x-layoutparser-identity-tenant');
     expect(config.adminRoles.has('layoutparseradmins')).toBe(true);
   });
 
@@ -123,6 +126,9 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ BFF_ADMIN_PATHS: '/api/admin/*/nested' })).toThrowError(
       'padrão inválido'
     );
+    expect(() => loadConfig({ BFF_TRUSTED_IDENTITY_SUBJECT_HEADER: 'x-iis-user' })).toThrowError(
+      'nomes distintos'
+    );
   });
 
   it.each([
@@ -130,6 +136,7 @@ describe('loadConfig', () => {
     [{ BFF_PORT: '3.14' }, 'número inteiro'],
     [{ BFF_PORT: '70000' }, 'entre 1 e 65535'],
     [{ BFF_TRUSTED_USER_HEADER: 'bad header' }, 'header inválido'],
+    [{ BFF_TRUSTED_IDENTITY_SUBJECT_HEADER: 'bad header' }, 'header inválido'],
     [{ BFF_DOCUMENT_FIELD: 'bad field!' }, 'campo inválido'],
     [{ BFF_SESSION_TTL_SECONDS: '299' }, 'entre 300 e 86400'],
     [{ BFF_PUBLIC_ORIGIN: 'https://example.test/path' }, 'somente a origem'],

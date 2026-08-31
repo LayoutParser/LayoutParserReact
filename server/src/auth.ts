@@ -9,8 +9,11 @@ import type {
 import type { AppConfig } from './config.js';
 
 export interface AuthenticatedIdentity {
+  readonly provider: AuthProvider | 'development';
   readonly name: string;
   readonly roles: readonly string[];
+  readonly subject: string;
+  readonly tenantId?: string;
   readonly isAdmin: boolean;
 }
 
@@ -93,8 +96,11 @@ export function resolveIdentity(
       .filter((role): role is string => typeof role === 'string' && isSafeIdentityValue(role))
       .slice(0, 50);
     return {
+      provider: sessionIdentity.provider,
       name: sessionIdentity.name,
       roles,
+      subject: sessionIdentity.subject,
+      ...(sessionIdentity.tenantId ? { tenantId: sessionIdentity.tenantId } : {}),
       isAdmin: calculateIsAdmin(sessionIdentity.name, roles, config),
     };
   }
@@ -110,8 +116,11 @@ export function resolveIdentity(
 
   const roles = parseRoles(readSafeHeader(request, config.developmentRolesHeader));
   return {
+    provider: 'development',
     name,
     roles,
+    // Identidade sintética limitada ao desenvolvimento. Produção nunca entra neste ramo.
+    subject: name,
     isAdmin: calculateIsAdmin(name, roles, config),
   };
 }

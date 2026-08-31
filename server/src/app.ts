@@ -125,6 +125,9 @@ function rewriteProxyHeaders(
 
   delete rewritten[config.trustedUserHeader];
   delete rewritten[config.trustedRolesHeader];
+  delete rewritten[config.trustedIdentityProviderHeader];
+  delete rewritten[config.trustedIdentitySubjectHeader];
+  delete rewritten[config.trustedIdentityTenantHeader];
   delete rewritten[config.developmentUserHeader];
   delete rewritten[config.developmentRolesHeader];
   delete rewritten.authorization;
@@ -133,6 +136,11 @@ function rewriteProxyHeaders(
   rewritten['x-correlation-id'] = request.id;
   if (request.identity) {
     rewritten[config.trustedUserHeader] = request.identity.name;
+    rewritten[config.trustedIdentityProviderHeader] = request.identity.provider;
+    rewritten[config.trustedIdentitySubjectHeader] = request.identity.subject;
+    if (request.identity.tenantId) {
+      rewritten[config.trustedIdentityTenantHeader] = request.identity.tenantId;
+    }
     if (request.identity.roles.length > 0) {
       rewritten[config.trustedRolesHeader] = request.identity.roles.join(',');
     }

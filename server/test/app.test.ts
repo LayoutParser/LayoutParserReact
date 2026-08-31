@@ -180,6 +180,16 @@ describe('LayoutParser BFF', () => {
       url: '/api/session',
       headers: { cookie: sessionCookie },
     });
+    const proxied = await app.inject({
+      method: 'GET',
+      url: '/api/layouts',
+      headers: {
+        cookie: sessionCookie,
+        'x-layoutparser-identity-provider': 'google',
+        'x-layoutparser-identity-subject': 'spoofed-subject',
+        'x-layoutparser-identity-tenant': 'spoofed-tenant',
+      },
+    });
     const spoofedHeaders = await app.inject({
       method: 'GET',
       url: '/api/session',
@@ -198,6 +208,15 @@ describe('LayoutParser BFF', () => {
     });
     expect(authenticated.headers['strict-transport-security']).toContain('max-age=31536000');
     expect(spoofedHeaders.json()).toMatchObject({ authenticated: false, isAdmin: false });
+    expect(proxied.statusCode).toBe(200);
+    expect(upstream.requests).toHaveLength(1);
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-provider']).toBe('entra');
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-subject']).toBe(
+      'subject-12345678901234567890'
+    );
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-tenant']).toBe(
+      'tenant-12345678901234567890'
+    );
   });
 
   it('conclui login OIDC com state, nonce e PKCE e permite logout local', async () => {
@@ -627,6 +646,9 @@ describe('LayoutParser BFF', () => {
         'content-type': 'text/plain',
         'x-dev-user': 'student.user',
         'x-dev-roles': 'Users',
+        'x-layoutparser-identity-provider': 'google',
+        'x-layoutparser-identity-subject': 'spoofed-subject',
+        'x-layoutparser-identity-tenant': 'spoofed-tenant',
         authorization: 'Bearer browser-token-must-not-leak',
         cookie: 'browser-cookie-must-not-leak=yes',
       },
@@ -642,6 +664,9 @@ describe('LayoutParser BFF', () => {
     expect(upstream.requests[0]?.body.toString()).toBe('document body');
     expect(upstream.requests[0]?.headers['x-iis-user']).toBe('student.user');
     expect(upstream.requests[0]?.headers['x-iis-roles']).toBe('Users');
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-provider']).toBe('development');
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-subject']).toBe('student.user');
+    expect(upstream.requests[0]?.headers['x-layoutparser-identity-tenant']).toBeUndefined();
     expect(upstream.requests[0]?.headers['x-dev-user']).toBeUndefined();
     expect(upstream.requests[0]?.headers.authorization).toBeUndefined();
     expect(upstream.requests[0]?.headers.cookie).toBeUndefined();
