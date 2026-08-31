@@ -155,6 +155,24 @@ O navegador não executa parsing posicional nem transformação XSLT. O front va
 arquivo para dar feedback imediato; a validação autoritativa e as regras de negócio pertencem
 ao gateway e à API.
 
+### Workspace fiscal e pacotes versionados / Fiscal workspace and versioned packages
+
+Após a autenticação, `/workspace` carrega `GET /api/workspaces/me` e apresenta somente os
+workspaces associados à identidade imutável resolvida pela API. O workspace ativo permanece em
+memória; IDs, documentos e conteúdo fiscal não são persistidos pelo front. Falhas de contrato,
+autorização e indisponibilidade aparecem como estados explícitos com nova tentativa segura.
+
+O contrato do primeiro `FiscalMappingPackage` também está tipado no front: upload multipart
+idempotente e consulta de metadados da revisão, sem registrar conteúdo. O wizard completo continua
+condicionado ao inventário normalizado de Excel/XSD, à navegação de projetos e ao endpoint de nova
+revisão ainda pendentes na API. Consulte o
+[contrato cross-repo](docs/contracts/fiscal-workspace-and-mapping-explanation-api.md).
+
+> **EN:** Authenticated users enter `/workspace`, which resolves only API-authorized workspaces and
+> keeps the active selection in memory. The first versioned package upload/read contract is typed,
+> but the complete wizard remains gated by normalized inventory, project navigation and revision
+> APIs; the UI never fabricates these missing domain results.
+
 A rota `/admin` consulta a sessão do gateway e exige autorização administrativa. A proteção no
 React melhora a experiência, mas não substitui a autorização aplicada no servidor.
 

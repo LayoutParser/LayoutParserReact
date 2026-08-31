@@ -1,0 +1,110 @@
+.workspace-switcher {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0.2rem 0.35rem 0.2rem var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+}
+
+.workspace-switcher__link {
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.workspace-switcher__link:hover {
+  text-decoration: underline;
+}
+
+.workspace-switcher__select {
+  width: clamp(9rem, 18vw, 15rem);
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--spacing-sm);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+}
+
+.workspace-switcher--loading {
+  padding-inline: var(--spacing-sm);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.workspace-switcher--idle {
+  padding-inline: var(--spacing-sm);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.workspace-switcher--idle:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.workspace-switcher__pulse {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--color-text-inverse);
+  border-radius: 50%;
+  opacity: 0.75;
+  animation: workspace-pulse 1.1s ease-in-out infinite alternate;
+}
+
+.workspace-switcher--error {
+  padding-inline: var(--spacing-sm);
+  background: rgba(var(--color-danger-rgb), 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+}
+
+.workspace-switcher--error:hover {
+  background: rgba(var(--color-danger-rgb), 0.3);
+}
+
+@keyframes workspace-pulse {
+  to {
+    opacity: 0.28;
+    transform: scale(0.72);
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-switcher__link,
+  .workspace-switcher--loading span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .workspace-switcher {
+    padding-left: 0.35rem;
+  }
+
+  .workspace-switcher__select {
+    width: clamp(7.5rem, 29vw, 10rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-switcher__pulse {
+    animation: none;
+  }
+}

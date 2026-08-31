@@ -12,11 +12,46 @@ describe('workspaceService', () => {
   });
 
   it('busca os workspaces do principal autenticado sem enviar identidade pelo browser', async () => {
-    const payload = { activeWorkspaceId: 'workspace-1', workspaces: [] };
+    const payload = {
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          workspaceId: 'workspace-1',
+          name: 'Meu workspace fiscal',
+          kind: 'personal',
+          role: 'owner',
+          createdAt: '2026-08-31T12:00:00Z',
+        },
+      ],
+    };
     vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
 
     await expect(workspaceService.getCurrentWorkspaces()).resolves.toEqual(payload);
     expect(apiClient.get).toHaveBeenCalledWith('/api/workspaces/me');
+  });
+
+  it.each([
+    null,
+    { activeWorkspaceId: '', workspaces: [] },
+    { activeWorkspaceId: 'workspace-2', workspaces: [] },
+    {
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          workspaceId: 'workspace-1',
+          name: 'Workspace',
+          kind: 'desconhecido',
+          role: 'owner',
+          createdAt: '2026-08-31T12:00:00Z',
+        },
+      ],
+    },
+  ])('recusa resposta de workspace que viola o contrato', async payload => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+    await expect(workspaceService.getCurrentWorkspaces()).rejects.toMatchObject({
+      kind: 'invalid_response',
+    });
   });
 
   it('lista análises com IDs codificados e filtros fiscais', async () => {

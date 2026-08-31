@@ -31,8 +31,19 @@
       "method": "GET",
       "path": "/api/workspaces/me",
       "owner": "LayoutParserApi",
-      "availability": "proposed",
-      "trackingIssue": "LayoutParserApi#225"
+      "deliveredBy": "LayoutParserApi#234"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/projects/:param/mapping-packages",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#236"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-packages/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#236"
     },
     {
       "method": "GET",

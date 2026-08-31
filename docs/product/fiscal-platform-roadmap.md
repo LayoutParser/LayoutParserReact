@@ -138,18 +138,24 @@ Draft mutável.
 
 ## Sequência de implementação vertical
 
-### Slice 1 — Identidade confiável
+### Slice 1 — Identidade confiável e workspace real
 
 - **Entrega:** BFF encaminha provider/subject/tenant somente ao upstream confiável; API cria
-  `UserId` interno.
+  `UserId` interno e expõe `/api/workspaces/me`; o front entrega shell `/workspace`, seletor e
+  estados loading/erro/sucesso.
+- **Status:** API [#234](https://github.com/LayoutParser/LayoutParserApi/pull/234) entregue; integração
+  do front em validação.
 - **Gate:** dois logins do mesmo principal resolvem o mesmo usuário; nomes alterados não criam
-  outro workspace.
+  outro workspace e usuário A não lê workspace B.
 
-### Slice 2 — Workspace vazio, mas real
+### Slice 2 — Primeiro pacote fiscal versionado
 
-- **Entrega:** `/api/workspaces/me`, shell `/workspace`, estado loading/vazio/erro e workspace
-  pessoal.
-- **Gate:** usuário A não lê workspace B, inclusive alterando IDs manualmente.
+- **Entrega:** upload multipart idempotente e consulta de metadados de `FiscalMappingPackage`.
+- **Status:** API [#236](https://github.com/LayoutParser/LayoutParserApi/pull/236) entregou criação da
+  revisão 1 e consulta. O PBI front #201 permanece parcial até existirem inventário normalizado,
+  navegação de projetos e criação de nova revisão.
+- **Gate:** MIME real, XXE, zip bomb, isolamento e retry idempotente; o front não guarda conteúdo
+  fiscal em `localStorage` e não inventa projeto ou inventário ausente.
 
 ### Slice 3 — Primeira análise persistida
 
