@@ -6,7 +6,19 @@ const WorkspaceSwitcher = () => {
   const { status, workspaces, activeWorkspaceId, error, loadWorkspaces, selectWorkspace } =
     useWorkspaceStore();
 
-  if (status === 'idle' || status === 'loading') {
+  if (status === 'idle') {
+    return (
+      <Link
+        to="/workspace"
+        className="workspace-switcher workspace-switcher--idle"
+        aria-label="Abrir workspace fiscal"
+      >
+        Workspace fiscal
+      </Link>
+    );
+  }
+
+  if (status === 'loading') {
     return (
       <div className="workspace-switcher workspace-switcher--loading" aria-live="polite">
         <span className="workspace-switcher__pulse" aria-hidden="true" />

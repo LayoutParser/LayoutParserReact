@@ -172,4 +172,18 @@ describe('MainLayout — bootstrap do workspace', () => {
       expect(screen.getByRole('combobox', { name: 'Workspace ativo' })).toHaveValue('workspace-1')
     );
   });
+
+  it('não torna o workspace uma dependência implícita do processamento direto', () => {
+    render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <MainLayout />
+      </MemoryRouter>
+    );
+
+    expect(workspaceService.getCurrentWorkspaces).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'Abrir workspace fiscal' })).toHaveAttribute(
+      'href',
+      '/workspace'
+    );
+  });
 });
