@@ -4,7 +4,11 @@ const layoutGuid = '11111111-1111-1111-1111-111111111111';
 const syntheticTxt = `000001001ABC${' '.repeat(588)}`;
 const sapLayoutName = 'LAY_MARELLI_TXT_SAP_ENVNFE_4.00_NFe';
 
-const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
+const mockAuthenticatedGateway = async (
+  page: Page,
+  isAdmin = true,
+  workspaceRole: 'owner' | 'fiscal_admin' = 'owner'
+) => {
   await page.route('**/api/session', route =>
     route.fulfill({
       json: {
@@ -25,7 +29,7 @@ const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
             workspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             name: 'Workspace fiscal E2E',
             kind: 'personal',
-            role: 'owner',
+            role: workspaceRole,
             createdAt: '2026-08-31T12:00:00Z',
           },
         ],
@@ -41,7 +45,42 @@ const mappingRuleId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 const mappingReleaseId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 
 const mockMappingStudioApis = async (page: Page) => {
-  let testCompleted = false;
+  let releaseStatus: 'draft_compiled' | 'test_passed' | 'approved' | 'published' | 'deprecated' =
+    'draft_compiled';
+
+  const governanceResponse = () => ({
+    releaseId: mappingReleaseId,
+    workspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    draftId: mappingDraftId,
+    engine: 'xslt',
+    status: releaseStatus,
+    environment:
+      releaseStatus === 'published' || releaseStatus === 'deprecated'
+        ? 'production'
+        : 'development',
+    approvedByUserId:
+      releaseStatus === 'draft_compiled' || releaseStatus === 'test_passed' ? null : 'reviewer-e2e',
+    approvedAt:
+      releaseStatus === 'draft_compiled' || releaseStatus === 'test_passed'
+        ? null
+        : '2026-09-01T10:00:00Z',
+    approvalJustification:
+      releaseStatus === 'draft_compiled' || releaseStatus === 'test_passed'
+        ? null
+        : 'Aprovada pelo cenário E2E.',
+    publishedByUserId:
+      releaseStatus === 'published' || releaseStatus === 'deprecated' ? 'admin-e2e' : null,
+    publishedAt:
+      releaseStatus === 'published' || releaseStatus === 'deprecated'
+        ? '2026-09-01T10:05:00Z'
+        : null,
+    previousPublishedReleaseId:
+      releaseStatus === 'published' || releaseStatus === 'deprecated'
+        ? 'release-anterior-e2e'
+        : null,
+    correlationId: 'mapping-e2e-correlation',
+    eTag: 'AAAAAAAAAAM=',
+  });
 
   await page.route('**/api/workspaces/*/mappings/*/versions/draft/explanation', route =>
     route.fulfill({
@@ -147,18 +186,19 @@ const mockMappingStudioApis = async (page: Page) => {
         sourceRuleIds: [mappingRuleId],
         compileDiagnostics: [],
         rulesSnapshotHash: 'rules-e2e-hash',
-        testRunSummary: testCompleted
-          ? {
-              passed: 1,
-              failed: 0,
-              coveragePercent: 100,
-              requiredGatesPassed: true,
-              xsdValid: true,
-              xsdErrors: [],
-              divergences: [],
-            }
-          : null,
-        status: testCompleted ? 'test_passed' : 'draft_compiled',
+        testRunSummary:
+          releaseStatus === 'draft_compiled'
+            ? null
+            : {
+                passed: 1,
+                failed: 0,
+                coveragePercent: 100,
+                requiredGatesPassed: true,
+                xsdValid: true,
+                xsdErrors: [],
+                divergences: [],
+              },
+        status: releaseStatus,
         correlationId: 'mapping-e2e-correlation',
         createdAt: '2026-08-31T20:02:00Z',
         eTag: 'AAAAAAAAAAI=',
@@ -169,7 +209,7 @@ const mockMappingStudioApis = async (page: Page) => {
     route.fulfill({ json: { jobId: 'test-job-e2e', status: 'queued' } })
   );
   await page.route('**/api/workspaces/*/mapping-drafts/*/test-runs/*', route => {
-    testCompleted = true;
+    releaseStatus = 'test_passed';
     return route.fulfill({
       json: {
         jobId: 'test-job-e2e',
@@ -180,6 +220,22 @@ const mockMappingStudioApis = async (page: Page) => {
         durationMs: 21,
       },
     });
+  });
+  await page.route('**/api/workspaces/*/mapping-releases/*/approve', async route => {
+    expect(route.request().postDataJSON()).toEqual({
+      justification: 'Revisão fiscal aprovada no E2E.',
+    });
+    releaseStatus = 'approved';
+    return route.fulfill({ json: governanceResponse() });
+  });
+  await page.route('**/api/workspaces/*/mapping-releases/*/publish', async route => {
+    expect(route.request().postDataJSON()).toEqual({ environment: 'production' });
+    releaseStatus = 'published';
+    return route.fulfill({ json: governanceResponse() });
+  });
+  await page.route('**/api/workspaces/*/mapping-releases/*/rollback', route => {
+    releaseStatus = 'deprecated';
+    return route.fulfill({ json: governanceResponse() });
   });
 };
 
@@ -469,7 +525,7 @@ test('vincula a sessão autenticada ao workspace fiscal', async ({ page }) => {
 });
 
 test('compila o snapshot revisado e executa uma fixture no Fiscal Test Lab', async ({ page }) => {
-  await mockAuthenticatedGateway(page);
+  await mockAuthenticatedGateway(page, true, 'fiscal_admin');
   await mockMappingStudioApis(page);
   await page.goto(`/workspace/mapping-studio/${mappingDraftId}/draft`);
 
@@ -478,13 +534,66 @@ test('compila o snapshot revisado e executa uma fixture no Fiscal Test Lab', asy
   await page.getByRole('button', { name: 'Compilar snapshot' }).click();
 
   await expect(page.getByRole('heading', { name: 'Compilada, aguardando testes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Revisão, publicação e rollback' })).toBeVisible();
+  await expect(page.getByText('Aguardando Test Lab')).toBeVisible();
   await page.getByLabel('XML de entrada').fill('<origem><CNPJ>12345678000199</CNPJ></origem>');
   await page.getByLabel('XML esperado').fill('<NFe><emit><CNPJ>12345678000199</CNPJ></emit></NFe>');
   await page.getByRole('button', { name: 'Executar Test Lab' }).click();
 
   await expect(page.getByRole('heading', { name: 'Gates aprovados' })).toBeVisible();
   await expect(page.getByText('100.0% de cobertura')).toBeVisible();
+  await expect(page.getByText('Gates técnicos aprovados', { exact: true })).toBeVisible();
+  await page.getByLabel('Justificativa da revisão').fill('Revisão fiscal aprovada no E2E.');
+  await page.getByRole('button', { name: 'Aprovar release' }).click();
+  await expect(page.getByRole('heading', { name: 'Aprovada para publicação' })).toBeVisible();
+
+  await page.getByLabel('Ambiente de ativação').selectOption('production');
+  await page.getByRole('button', { name: 'Publicar release' }).click();
+  await expect(page.getByRole('heading', { name: 'Publicada' })).toBeVisible();
+  await expect(page.getByText('release-anterior-e2e')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Reverter para a versão anterior' }).click();
+  await expect(page.getByRole('heading', { name: 'Descontinuada' })).toBeVisible();
+  await expect(page.getByText(/Rollback concluído/i)).toBeVisible();
   await expect(page.getByText('mapping-e2e-correlation')).toBeVisible();
+});
+
+test('falha fechado quando Sysmiddle anuncia capabilities de mutação adulteradas', async ({
+  page,
+}) => {
+  await mockAuthenticatedGateway(page);
+  await page.route('**/api/workspaces/*/mappings/*/versions/current/explanation', route =>
+    route.fulfill({
+      json: {
+        mappingId: 'mapper-sysmiddle-adulterado',
+        version: 'current',
+        engine: 'sysmiddle',
+        capabilities: {
+          execute: true,
+          explain: true,
+          author: true,
+          compile: true,
+          publish: true,
+        },
+        sourceSchema: null,
+        targetSchema: null,
+        rules: [],
+        description: 'Payload que deve ser recusado',
+        limitations: [],
+        opaqueRuleCount: 0,
+      },
+    })
+  );
+
+  await page.goto('/workspace/mapping-studio/mapper-sysmiddle-adulterado/current');
+
+  await expect(
+    page.getByRole('heading', { name: 'Não foi possível abrir esta transformação' })
+  ).toBeVisible();
+  await expect(page.getByText(/explicação de mapping inválida/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Gerar sugestões' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Compilar snapshot' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /publicar/i })).toHaveCount(0);
 });
 
 test('processa TXT e entrega o XML transformado para download', async ({ page }) => {

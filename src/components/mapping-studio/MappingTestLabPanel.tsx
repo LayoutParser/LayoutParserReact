@@ -8,20 +8,33 @@ import type {
   MappingReleaseArtifact,
   MappingTestRunJob,
 } from '../../types/mappingRelease';
+import type { WorkspaceRole } from '../../types/workspace';
+import MappingGovernanceReadiness from './MappingGovernanceReadiness';
 
 interface MappingTestLabPanelProps {
   workspaceId: string;
   draft: MappingDraft;
   compileEnabled: boolean;
   executeEnabled: boolean;
+  workspaceRole: WorkspaceRole;
 }
 
 const activeStatuses = new Set(['queued', 'running']);
+const testableReleaseStatuses = new Set<MappingRelease['status']>([
+  'draft_compiled',
+  'test_passed',
+  'test_failed',
+]);
 
 const releaseStatusLabels: Record<MappingRelease['status'], string> = {
   draft_compiled: 'Compilada, aguardando testes',
   test_passed: 'Gates aprovados',
   test_failed: 'Gates reprovados',
+  in_review: 'Em revisão',
+  approved: 'Aprovada para publicação',
+  published: 'Publicada',
+  deprecated: 'Descontinuada',
+  archived: 'Arquivada',
 };
 
 const downloadArtifact = (artifact: MappingReleaseArtifact, releaseId: string) => {
@@ -42,6 +55,7 @@ const MappingTestLabPanel = ({
   draft,
   compileEnabled,
   executeEnabled,
+  workspaceRole,
 }: MappingTestLabPanelProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const releaseIdFromUrl = searchParams.get('releaseId');
@@ -307,7 +321,7 @@ const MappingTestLabPanel = ({
                     className="mapping-button"
                     onClick={() => downloadArtifact(artifact, release.releaseId)}
                   >
-                    Baixar artefato
+                    Baixar artefato {artifact.kind.toUpperCase()}
                   </button>
                 </header>
                 <details>
@@ -328,50 +342,52 @@ const MappingTestLabPanel = ({
             </aside>
           )}
 
-          {release.engine === 'xslt' && executeEnabled && (
-            <form
-              className="mapping-test-form"
-              onSubmit={event => {
-                event.preventDefault();
-                void startTestRun();
-              }}
-            >
-              <h3>Executar fixture individual</h3>
-              <p>
-                A API aplica o XSLT, valida o XSD quando reconhecido e compara o XML canônico com o
-                gabarito.
-              </p>
-              <label>
-                XML de entrada
-                <textarea
-                  value={inputXml}
-                  onChange={event => setInputXml(event.target.value)}
-                  rows={8}
-                  required
-                />
-              </label>
-              <label>
-                XML esperado
-                <textarea
-                  value={expectedXml}
-                  onChange={event => setExpectedXml(event.target.value)}
-                  rows={8}
-                  required
-                />
-              </label>
-              <label>
-                Versão do XSD (opcional)
-                <input value={xsdVersion} onChange={event => setXsdVersion(event.target.value)} />
-              </label>
-              <button
-                type="submit"
-                className="mapping-button mapping-button--primary"
-                disabled={testActive}
+          {release.engine === 'xslt' &&
+            executeEnabled &&
+            testableReleaseStatuses.has(release.status) && (
+              <form
+                className="mapping-test-form"
+                onSubmit={event => {
+                  event.preventDefault();
+                  void startTestRun();
+                }}
               >
-                {testActive ? 'Executando gates…' : 'Executar Test Lab'}
-              </button>
-            </form>
-          )}
+                <h3>Executar fixture individual</h3>
+                <p>
+                  A API aplica o XSLT, valida o XSD quando reconhecido e compara o XML canônico com
+                  o gabarito.
+                </p>
+                <label>
+                  XML de entrada
+                  <textarea
+                    value={inputXml}
+                    onChange={event => setInputXml(event.target.value)}
+                    rows={8}
+                    required
+                  />
+                </label>
+                <label>
+                  XML esperado
+                  <textarea
+                    value={expectedXml}
+                    onChange={event => setExpectedXml(event.target.value)}
+                    rows={8}
+                    required
+                  />
+                </label>
+                <label>
+                  Versão do XSD (opcional)
+                  <input value={xsdVersion} onChange={event => setXsdVersion(event.target.value)} />
+                </label>
+                <button
+                  type="submit"
+                  className="mapping-button mapping-button--primary"
+                  disabled={testActive}
+                >
+                  {testActive ? 'Executando gates…' : 'Executar Test Lab'}
+                </button>
+              </form>
+            )}
 
           {testJob && (
             <p className="mapping-job-status" role="status">
@@ -388,6 +404,8 @@ const MappingTestLabPanel = ({
             <div
               className="mapping-test-summary"
               data-passed={release.testRunSummary.requiredGatesPassed}
+              role="status"
+              aria-live="polite"
             >
               <header>
                 <h3>
@@ -428,6 +446,15 @@ const MappingTestLabPanel = ({
               ))}
             </div>
           )}
+
+          <MappingGovernanceReadiness
+            workspaceId={workspaceId}
+            workspaceRole={workspaceRole}
+            release={release}
+            onReleaseChange={nextRelease =>
+              setReleaseResult({ releaseId: nextRelease.releaseId, value: nextRelease })
+            }
+          />
         </div>
       )}
     </section>

@@ -63,12 +63,25 @@ const release = {
   correlationId: 'correlation-1',
   createdAt: '2026-08-31T22:00:00Z',
   eTag: 'AAAAAAAAAAE=',
+  environment: null,
+  approvedByUserId: null,
+  approvedAt: null,
+  approvalJustification: null,
+  publishedByUserId: null,
+  publishedAt: null,
+  previousPublishedReleaseId: null,
 };
 
 function renderPanel(path = '/workspace/mapping-studio/draft-1/draft') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <MappingTestLabPanel workspaceId="workspace-1" draft={draft} compileEnabled executeEnabled />
+      <MappingTestLabPanel
+        workspaceId="workspace-1"
+        draft={draft}
+        compileEnabled
+        executeEnabled
+        workspaceRole="fiscal_admin"
+      />
     </MemoryRouter>
   );
 }
@@ -87,6 +100,7 @@ describe('MappingTestLabPanel', () => {
           draft={draft}
           compileEnabled={false}
           executeEnabled
+          workspaceRole="fiscal_admin"
         />
       </MemoryRouter>
     );
@@ -147,5 +161,33 @@ describe('MappingTestLabPanel', () => {
     expect(input).toHaveValue('');
     expect(expected).toHaveValue('');
     expect(window.localStorage).toHaveLength(0);
+  });
+
+  it('não permite executar nova fixture sobre release publicada e imutável', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      status: 'published',
+      testRunSummary: {
+        passed: 1,
+        failed: 0,
+        coveragePercent: 100,
+        requiredGatesPassed: true,
+        xsdValid: true,
+        xsdErrors: [],
+        divergences: [],
+      },
+      environment: 'production',
+      approvedByUserId: 'reviewer-1',
+      approvedAt: '2026-09-01T10:00:00Z',
+      approvalJustification: 'Revisão fiscal concluída.',
+      publishedByUserId: 'admin-1',
+      publishedAt: '2026-09-01T10:05:00Z',
+      previousPublishedReleaseId: 'release-0',
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(await screen.findByRole('heading', { name: 'Publicada' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Executar Test Lab' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('XML de entrada')).not.toBeInTheDocument();
   });
 });

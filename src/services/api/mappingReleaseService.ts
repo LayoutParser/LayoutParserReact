@@ -5,6 +5,8 @@ import type {
   MappingAsyncJobStatus,
   MappingCompileDiagnostic,
   MappingCompileJob,
+  MappingGovernanceEnvironment,
+  MappingGovernanceSnapshot,
   MappingRelease,
   MappingReleaseArtifact,
   MappingReleaseStatus,
@@ -19,6 +21,16 @@ const releaseStatuses = new Set<MappingReleaseStatus>([
   'draft_compiled',
   'test_passed',
   'test_failed',
+  'in_review',
+  'approved',
+  'published',
+  'deprecated',
+  'archived',
+]);
+const governanceEnvironments = new Set<MappingGovernanceEnvironment>([
+  'development',
+  'validation',
+  'production',
 ]);
 const jobStatuses = new Set<MappingAsyncJobStatus>(['queued', 'running', 'completed', 'failed']);
 
@@ -59,6 +71,22 @@ function isStringArray(value: unknown): value is string[] {
 
 function isValidDate(value: unknown): value is string {
   return isNonEmptyString(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isNullableValidDate(value: unknown): value is string | null {
+  return value === null || isValidDate(value);
+}
+
+function parseOptionalString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (!isNonEmptyString(value)) throw invalidResponse();
+  return value;
+}
+
+function parseOptionalDate(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (!isValidDate(value)) throw invalidResponse();
+  return value;
 }
 
 function isNullableFiniteNumber(value: unknown): value is number | null {
@@ -158,7 +186,7 @@ function parseTestSummary(value: unknown): MappingTestRunSummary {
     throw invalidResponse();
   }
 
-  return {
+  const summary: MappingTestRunSummary = {
     passed: value.passed,
     failed: value.failed,
     coveragePercent: value.coveragePercent,
@@ -167,6 +195,31 @@ function parseTestSummary(value: unknown): MappingTestRunSummary {
     xsdErrors: value.xsdErrors,
     divergences: value.divergences.map(parseDivergence),
   };
+
+  if (
+    summary.requiredGatesPassed &&
+    (!summary.xsdValid || summary.failed !== 0 || summary.divergences.length !== 0)
+  ) {
+    throw invalidResponse();
+  }
+
+  return summary;
+}
+
+function assertReleaseStateConsistency(
+  status: MappingReleaseStatus,
+  summary: MappingTestRunSummary | null
+): void {
+  if (status === 'draft_compiled' && summary !== null) throw invalidResponse();
+  if (status === 'test_failed' && summary?.requiredGatesPassed !== false) throw invalidResponse();
+  if (
+    ['test_passed', 'in_review', 'approved', 'published', 'deprecated', 'archived'].includes(
+      status
+    ) &&
+    summary?.requiredGatesPassed !== true
+  ) {
+    throw invalidResponse();
+  }
 }
 
 function parseRelease(value: unknown): MappingRelease {
@@ -191,6 +244,11 @@ function parseRelease(value: unknown): MappingRelease {
     throw invalidResponse();
   }
 
+  const status = value.status as MappingReleaseStatus;
+  const testRunSummary =
+    value.testRunSummary === null ? null : parseTestSummary(value.testRunSummary);
+  assertReleaseStateConsistency(status, testRunSummary);
+
   return {
     releaseId: value.releaseId,
     workspaceId: value.workspaceId,
@@ -200,12 +258,73 @@ function parseRelease(value: unknown): MappingRelease {
     sourceRuleIds: value.sourceRuleIds,
     compileDiagnostics: value.compileDiagnostics.map(parseDiagnostic),
     rulesSnapshotHash: value.rulesSnapshotHash,
-    testRunSummary: value.testRunSummary === null ? null : parseTestSummary(value.testRunSummary),
-    status: value.status as MappingReleaseStatus,
+    testRunSummary,
+    status,
     correlationId: value.correlationId,
     createdAt: value.createdAt,
     eTag: value.eTag,
+    environment: parseOptionalString(value.environment),
+    approvedByUserId: parseOptionalString(value.approvedByUserId),
+    approvedAt: parseOptionalDate(value.approvedAt),
+    approvalJustification: parseOptionalString(value.approvalJustification),
+    publishedByUserId: parseOptionalString(value.publishedByUserId),
+    publishedAt: parseOptionalDate(value.publishedAt),
+    previousPublishedReleaseId: parseOptionalString(value.previousPublishedReleaseId),
   };
+}
+
+function parseGovernanceSnapshot(
+  value: unknown,
+  expectedStatus: MappingReleaseStatus
+): MappingGovernanceSnapshot {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.releaseId) ||
+    !isNonEmptyString(value.workspaceId) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.engine) ||
+    !engines.has(value.engine as MappingAuthoringEngine) ||
+    !isNonEmptyString(value.status) ||
+    !releaseStatuses.has(value.status as MappingReleaseStatus) ||
+    !isNonEmptyString(value.environment) ||
+    !isNullableString(value.approvedByUserId) ||
+    !isNullableValidDate(value.approvedAt) ||
+    !isNullableString(value.approvalJustification) ||
+    !isNullableString(value.publishedByUserId) ||
+    !isNullableValidDate(value.publishedAt) ||
+    !isNullableString(value.previousPublishedReleaseId) ||
+    !isNonEmptyString(value.correlationId) ||
+    !isNonEmptyString(value.eTag)
+  ) {
+    throw invalidResponse();
+  }
+
+  const snapshot = value as unknown as MappingGovernanceSnapshot;
+  if (snapshot.status !== expectedStatus) throw invalidResponse();
+  if (
+    ['approved', 'published', 'deprecated'].includes(snapshot.status) &&
+    (!snapshot.approvedByUserId || !snapshot.approvedAt || !snapshot.approvalJustification)
+  ) {
+    throw invalidResponse();
+  }
+  if (
+    ['published', 'deprecated'].includes(snapshot.status) &&
+    (!snapshot.publishedByUserId || !snapshot.publishedAt)
+  ) {
+    throw invalidResponse();
+  }
+  return snapshot;
+}
+
+function assertGovernanceResource(
+  snapshot: MappingGovernanceSnapshot,
+  workspaceId: string,
+  releaseId: string
+): MappingGovernanceSnapshot {
+  if (snapshot.workspaceId !== workspaceId.trim() || snapshot.releaseId !== releaseId.trim()) {
+    throw invalidResponse();
+  }
+  return snapshot;
 }
 
 function parseJob(value: unknown): MappingCompileJob {
@@ -252,31 +371,33 @@ function mapRequestError(error: unknown): never {
     if (status === 401 || status === 403) {
       throw new MappingReleaseRequestError(
         'unauthorized',
-        'Sua sessão não permite compilar ou testar este mapping.'
+        status === 403
+          ? 'Seu papel no workspace não permite esta operação de governança.'
+          : 'Sua sessão não permite concluir esta operação fiscal.'
       );
     }
     if (status === 404) {
       throw new MappingReleaseRequestError(
         'not_found',
-        'O draft, job ou release não foi encontrado para esta identidade.'
+        'O draft, job, workspace ou release não foi encontrado para esta identidade.'
       );
     }
     if (status === 400 || status === 422) {
       throw new MappingReleaseRequestError(
         'rejected',
-        message ?? 'A API recusou a compilação ou fixture fiscal.'
+        message ?? 'A API recusou a operação fiscal.'
       );
     }
     if (!error.response || status === 503 || (status !== undefined && status >= 500)) {
       throw new MappingReleaseRequestError(
         'unavailable',
-        'O serviço de compilação fiscal está temporariamente indisponível.'
+        'O serviço fiscal está temporariamente indisponível.'
       );
     }
   }
   throw new MappingReleaseRequestError(
     'request_failed',
-    'Não foi possível concluir a operação de compilação ou teste.'
+    'Não foi possível concluir a operação fiscal.'
   );
 }
 
@@ -381,6 +502,83 @@ export const mappingReleaseService = {
         `/api/workspaces/${workspace}/mapping-drafts/${draft}/test-runs/${job}`
       );
       return parseTestJob(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  async approveRelease(
+    workspaceId: string,
+    releaseId: string,
+    justification: string
+  ): Promise<MappingGovernanceSnapshot> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const release = resourceSegment(releaseId, 'Release');
+    const normalizedJustification = justification.trim();
+    if (!normalizedJustification) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'A justificativa é obrigatória para aprovar a release.'
+      );
+    }
+    try {
+      const response = await apiClient.post<unknown>(
+        `/api/workspaces/${workspace}/mapping-releases/${release}/approve`,
+        { justification: normalizedJustification }
+      );
+      return assertGovernanceResource(
+        parseGovernanceSnapshot(response.data, 'approved'),
+        workspaceId,
+        releaseId
+      );
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  async publishRelease(
+    workspaceId: string,
+    releaseId: string,
+    environment: MappingGovernanceEnvironment
+  ): Promise<MappingGovernanceSnapshot> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const release = resourceSegment(releaseId, 'Release');
+    if (!governanceEnvironments.has(environment)) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'Selecione um ambiente de publicação suportado.'
+      );
+    }
+    try {
+      const response = await apiClient.post<unknown>(
+        `/api/workspaces/${workspace}/mapping-releases/${release}/publish`,
+        { environment }
+      );
+      return assertGovernanceResource(
+        parseGovernanceSnapshot(response.data, 'published'),
+        workspaceId,
+        releaseId
+      );
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  async rollbackRelease(
+    workspaceId: string,
+    releaseId: string
+  ): Promise<MappingGovernanceSnapshot> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const release = resourceSegment(releaseId, 'Release');
+    try {
+      const response = await apiClient.post<unknown>(
+        `/api/workspaces/${workspace}/mapping-releases/${release}/rollback`
+      );
+      return assertGovernanceResource(
+        parseGovernanceSnapshot(response.data, 'deprecated'),
+        workspaceId,
+        releaseId
+      );
     } catch (error) {
       return mapRequestError(error);
     }

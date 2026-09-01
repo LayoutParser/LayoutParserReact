@@ -200,6 +200,47 @@ Criação de pacote usa multipart com metadados JSON e artefatos classificados. 
 conteúdo e extensão, calcula hash, aplica limite e antivírus/política equivalente e nunca confia no
 MIME informado pelo navegador.
 
+### Slices 6 e 7 — segurança e governança
+
+O Slice 6 não adiciona operação ao consumidor: ele torna categórica a fronteira existente. O front
+também falha fechado nas respostas:
+
+- `MappingExplanation.engine=sysmiddle` com `author`, `compile` ou `publish=true` é inválido;
+- Draft e Release aceitam somente `tcl` ou `xslt`, sem normalizar arrays, objetos ou strings
+  adulteradas para um valor permitido;
+- ausência de controle visual não substitui a rejeição autoritativa da API.
+
+O Slice 7 foi entregue pela API no PR
+[#248](https://github.com/LayoutParser/LayoutParserApi/pull/248). Ele estende
+`MappingRelease.status` com `in_review`, `approved`, `published`, `deprecated` e `archived` e expõe:
+
+| Operação                                                                   | Papel de workspace           | Corpo                             | Transição                                                   |
+| -------------------------------------------------------------------------- | ---------------------------- | --------------------------------- | ----------------------------------------------------------- |
+| `POST /api/workspaces/{workspaceId}/mapping-releases/{releaseId}/approve`  | `reviewer` ou `fiscal_admin` | `{ "justification": "..." }`      | `test_passed → in_review → approved`                        |
+| `POST /api/workspaces/{workspaceId}/mapping-releases/{releaseId}/publish`  | `fiscal_admin` ou `owner`    | `{ "environment": "production" }` | `approved → published`                                      |
+| `POST /api/workspaces/{workspaceId}/mapping-releases/{releaseId}/rollback` | `fiscal_admin` ou `owner`    | sem corpo                         | `published → deprecated`, restaurando a publicação anterior |
+
+O front oferece como alvos `development`, `validation` e `production`, exige justificativa para
+aprovação, atualiza a máquina de estados com a resposta autoritativa e trata `403`, `404` e `422`
+sem tentar contornar o RBAC. `capabilities.publish` pertence ao motor/adaptador de explicação e
+**não** representa permissão do usuário; a orientação visual usa o papel devolvido por
+`GET /api/workspaces/me`, e a API sempre revalida o acesso.
+
+Limitações contratuais preservadas:
+
+- as respostas das mutações são parciais; o `GET` completo do Slice 5 ainda omite os novos campos
+  de aprovação/publicação, então o parser não inventa valores ausentes;
+- a API devolve `eTag`, mas os endpoints ainda não recebem `If-Match`;
+- não existe endpoint de leitura de `MappingTransition` nem `allowedTransitions`;
+- o rollback é idempotente e nunca edita os artefatos publicados;
+- o piloto FIAT automatizado da API usa fixture sintética; a execução com artefatos reais continua
+  pendente e não pode ser declarada validada em produção.
+
+**EN summary:** Slice 7 now exposes RBAC-protected approve, publish and rollback operations. The
+frontend follows the authoritative release status, never treats engine capabilities as user
+authorization, and keeps API gaps (partial governance responses, no `If-Match`, no transition
+query, real FIAT pilot pending) explicit.
+
 Resposta atual de um Draft:
 
 ```json
