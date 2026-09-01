@@ -62,6 +62,22 @@ describe('mappingDraftService', () => {
     );
   });
 
+  it.each(['sysmiddle', ' sysmiddle ', ['xslt', 'sysmiddle'], { engine: 'xslt' }])(
+    'não envia engine de autoria adulterado: %o',
+    async engine => {
+      await expect(
+        mappingDraftService.createDraft({
+          workspaceId: 'workspace-1',
+          packageId: 'package-1',
+          revisionId: 'revision-1',
+          engine: engine as never,
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+
+      expect(apiClient.post).not.toHaveBeenCalled();
+    }
+  );
+
   it('consulta o draft e valida que todas as regras pertencem a ele', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: draft });
 
@@ -162,4 +178,15 @@ describe('mappingDraftService', () => {
       kind: 'invalid_input',
     });
   });
+
+  it.each(['sysmiddle', ' sysmiddle ', ['tcl', 'sysmiddle'], { value: 'tcl' }])(
+    'recusa Draft devolvido com engine adulterado: %o',
+    async engine => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: { ...draft, engine } });
+
+      await expect(mappingDraftService.getDraft('workspace-1', 'draft-1')).rejects.toMatchObject({
+        kind: 'invalid_response',
+      });
+    }
+  );
 });

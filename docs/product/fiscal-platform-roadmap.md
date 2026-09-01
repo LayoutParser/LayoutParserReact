@@ -190,17 +190,51 @@ Draft mutável.
 - **Gate:** o front não habilita compilação contra capability falsa, não guarda fixtures no
   `localStorage` e nunca expõe mutação Sysmiddle.
 
-### Slice 6 — Histórico e catálogo navegável
+### Slice 6 — Gate transversal Sysmiddle
+
+- **Entrega:** a API fecha mutação por payload adulterado, inclusive arrays, objetos, tipos
+  inesperados e espaços ao redor de `sysmiddle`; o front rejeita `MappingExplanation`, Draft e
+  Release que tentem anunciar ou transportar autoria, compilação ou publicação Sysmiddle.
+- **Status:** API [#247](https://github.com/LayoutParser/LayoutParserApi/pull/247) mesclada em
+  `develop`; o front possui validação runtime, teste de estado adulterado e E2E desktop/mobile
+  cobrindo ausência de controles. A auditoria explícita de tentativas bloqueadas permanece como
+  follow-up adicional, apesar de a proteção autoritativa da API #232 estar concluída.
+- **Gate:** qualquer capacidade mutável Sysmiddle falha fechado antes de montar o Studio. O servidor
+  continua sendo a proteção autoritativa para clientes fora deste front.
+
+### Slice 7 — Governança e piloto FIAT
+
+- **Entrega integrada:** o front consome `approve`, `publish` e `rollback` do PR API
+  [#248](https://github.com/LayoutParser/LayoutParserApi/pull/248), acompanha os estados
+  `draft_compiled → test_passed → approved → published → deprecated`, orienta ações pelo papel do
+  workspace e deixa a API revalidar o RBAC. A aprovação exige justificativa; a publicação congela
+  os artefatos; rollback restaura a publicação anterior sem editar a release.
+- **Defesa:** status e resumo de gates contraditórios são rejeitados, resposta de mutação não pode
+  trocar workspace/release, Sysmiddle nunca entra no fluxo e `capabilities.publish` não é usado como
+  autorização da identidade.
+- **Dependências restantes:** a API
+  [#94](https://github.com/LayoutParser/LayoutParserApi/issues/94) foi encerrada com os três
+  endpoints entregues; leitura da trilha de transições, `If-Match` nas mutações e metadados de
+  governança no `GET` completo devem ser acompanhados em follow-ups. O piloto FIAT real do front
+  [#206](https://github.com/LayoutParser/LayoutParserReact/issues/206) continua bloqueado por
+  [API #219](https://github.com/LayoutParser/LayoutParserApi/issues/219) e
+  [API #221](https://github.com/LayoutParser/LayoutParserApi/issues/221).
+- **Evidência já disponível:** a suíte opt-in `npm run test:e2e:real` usa navegador, BFF e API reais,
+  exige o par privado homologado e valida correlation IDs, detecção ambígua Top 5, escolha explícita,
+  parse posicional, transformação, edição e reparse. A suíte E2E isolada cobre a governança com
+  respostas sintéticas; a suíte real ainda não publica uma release contra o backend.
+- **Gate:** saída válida no XSD, provenance navegável, regressão aprovada, transições auditáveis e
+  zero mutação Sysmiddle. A integração do contrato está concluída; o piloto FIAT real permanece
+  parcial até receber e executar o pacote fiscal homologado.
+
+**EN summary:** the Slice 7 governance contract is integrated end to end in the frontend. Real FIAT
+validation, transition-history retrieval and optimistic concurrency remain explicit follow-ups.
+
+### Próximo slice — Histórico e catálogo navegável
 
 - **Entrega esperada:** listar projetos, pacotes, análises e mappings sem exigir GUID manual;
   políticas de retenção e versionamento continuam autoritativas na API.
 - **Gate:** conteúdo fiscal não é persistido no navegador e versão publicada é imutável.
-
-### Slice 7 — Primeiro pacote fiscal FIAT
-
-- **Entrega:** amostra MQSeries/IDoc + layout + planilha + XSD NF-e 4.00 alimentam um MappingDraft;
-  usuário revisa propostas e gera TCL/XSL/XSLT.
-- **Gate:** saída válida no XSD, provenance navegável, regressão aprovada e zero mutação Sysmiddle.
 
 ## Matriz cross-repo
 

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "sourceOfTruth": "LayoutParserApi",
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
@@ -123,6 +123,24 @@
       "path": "/api/workspaces/:param/mapping-drafts/:param/test-runs/:param",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-releases/:param/approve",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#248"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-releases/:param/publish",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#248"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-releases/:param/rollback",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#248"
     }
   ]
 }

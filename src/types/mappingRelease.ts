@@ -1,7 +1,16 @@
 import type { MappingAuthoringEngine, MappingDraftEvidence } from './mappingDraft';
 
-export type MappingReleaseStatus = 'draft_compiled' | 'test_passed' | 'test_failed';
+export type MappingReleaseStatus =
+  | 'draft_compiled'
+  | 'test_passed'
+  | 'test_failed'
+  | 'in_review'
+  | 'approved'
+  | 'published'
+  | 'deprecated'
+  | 'archived';
 export type MappingAsyncJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type MappingGovernanceEnvironment = 'development' | 'validation' | 'production';
 
 export interface MappingReleaseArtifact {
   kind: string;
@@ -49,6 +58,32 @@ export interface MappingRelease {
   status: MappingReleaseStatus;
   correlationId: string;
   createdAt: string;
+  eTag: string;
+  /** O GET do Slice 5 ainda omite estes campos; as mutações do Slice 7 os preenchem. */
+  environment: string | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalJustification: string | null;
+  publishedByUserId: string | null;
+  publishedAt: string | null;
+  previousPublishedReleaseId: string | null;
+}
+
+/** Resposta parcial e autoritativa devolvida por approve/publish/rollback. */
+export interface MappingGovernanceSnapshot {
+  releaseId: string;
+  workspaceId: string;
+  draftId: string;
+  engine: MappingAuthoringEngine;
+  status: MappingReleaseStatus;
+  environment: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalJustification: string | null;
+  publishedByUserId: string | null;
+  publishedAt: string | null;
+  previousPublishedReleaseId: string | null;
+  correlationId: string;
   eTag: string;
 }
 
