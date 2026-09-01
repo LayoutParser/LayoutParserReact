@@ -2,12 +2,16 @@
 
 > Consumidor: LayoutParserReact/BFF
 > Provedor: LayoutParserApi
-> Estado: **identidade/workspace entregues; demais capacidades evoluem por slice**
+> Estado: **Slices 1–5 entregues em `develop` da API; integração do Slice 5 em validação no front**
 
 `GET /api/workspaces/me` foi entregue pela LayoutParserApi no PR
 [#234](https://github.com/LayoutParser/LayoutParserApi/pull/234) e deixou de ser `proposed` em
 `contracts/api-endpoints.json`. Endpoints ainda não implementados continuam marcados como
-`availability: proposed`; somente o handoff da API pode remover esse estado e ativar sua UI.
+`availability: proposed`; somente o handoff da API pode remover esse estado e ativar sua UI. Os PRs
+[#238](https://github.com/LayoutParser/LayoutParserApi/pull/238) e
+[#240](https://github.com/LayoutParser/LayoutParserApi/pull/240) liberaram, respectivamente,
+`MappingDraft` e `MappingExplanation`. O PR
+[#243](https://github.com/LayoutParser/LayoutParserApi/pull/243) entregou compilação e Test Lab.
 
 ## 1. Identidade confiável BFF → API
 
@@ -170,112 +174,115 @@ Os nomes dos campos multipart são parte do contrato: `sample`, `layout`, `spec`
 `Idempotency-Key` deve ser gerado pelo front para uma tentativa lógica e reaproveitado apenas em
 retry dessa mesma tentativa.
 
-As rotas abaixo são propostas e devem ser refinadas no OpenAPI da API antes da implementação da UI:
+O Slice 3 entregou as rotas de Draft e revisão humana:
 
-| Método e rota                                                                 | Finalidade                                                 |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/drafts`      | Criar `MappingDraft` sobre uma revisão imutável do pacote. |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions`     | Iniciar job de sugestões da IA.                            |
-| `PATCH /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/rules/{ruleId}` | Aceitar, editar ou rejeitar regra com `If-Match`.          |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile`         | Gerar TCL/XSL/XSLT apenas a partir da revisão aceita.      |
-| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs`       | Executar, validar XSD/fiscal, comparar e medir cobertura.  |
+| Método e rota                                                                       | Finalidade                                                       |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/drafts`            | Criar Draft TCL/XSLT sobre `revisionId` exato.                   |
+| `GET /api/workspaces/{workspaceId}/mapping-drafts/{draftId}`                        | Consultar Draft e regras atuais.                                 |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions`           | Iniciar job idempotente de sugestões.                            |
+| `GET /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions/{jobId}`    | Observar `queued/running/completed/failed/canceled`.             |
+| `DELETE /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/suggestions/{jobId}` | Solicitar cancelamento cooperativo.                              |
+| `PATCH /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/rules/{ruleId}`       | Decidir com `If-Match`; `412` devolve a regra concorrente atual. |
+
+O Slice 5 foi entregue pelo PR [API #243](https://github.com/LayoutParser/LayoutParserApi/pull/243).
+O front possui consumidor tipado para as rotas abaixo:
+
+| Método e rota                                                                     | Finalidade                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile`             | Iniciar compilação determinística do snapshot aceito.  |
+| `GET /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/compile/{jobId}`      | Observar job e obter `releaseId`.                      |
+| `GET /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/releases/{releaseId}` | Ler artefatos, diagnósticos, hash, gates e provenance. |
+| `POST /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs`           | Executar fixture XML individual sobre uma release.     |
+| `GET /api/workspaces/{workspaceId}/mapping-drafts/{draftId}/test-runs/{jobId}`    | Observar o resultado dos gates obrigatórios.           |
 
 Criação de pacote usa multipart com metadados JSON e artefatos classificados. A API inspeciona
 conteúdo e extensão, calcula hash, aplica limite e antivírus/política equivalente e nunca confia no
 MIME informado pelo navegador.
 
-Resposta mínima de uma sugestão:
+Resposta atual de um Draft:
 
 ```json
 {
-  "jobId": "01J...",
-  "status": "completed",
-  "packageRevision": 2,
-  "draftRevision": 5,
+  "draftId": "00000000-0000-0000-0000-000000000001",
+  "workspaceId": "00000000-0000-0000-0000-000000000002",
+  "packageId": "00000000-0000-0000-0000-000000000003",
+  "revisionId": "00000000-0000-0000-0000-000000000004",
+  "engine": "tcl",
+  "createdAt": "2026-08-31T19:00:00Z",
   "rules": [
     {
-      "ruleId": "rule_emit_cnpj",
+      "ruleId": "00000000-0000-0000-0000-000000000005",
+      "draftId": "00000000-0000-0000-0000-000000000001",
       "status": "proposed",
       "sourceRefs": ["layout://LINHA004/CNPJ"],
       "targetRefs": ["xsd:///NFe/infNFe/emit/CNPJ"],
       "operation": "copy",
-      "transformations": ["trim"],
+      "conditions": "[]",
+      "transformations": "[\"trim\"]",
+      "cardinality": "1:1",
       "confidence": "high",
-      "evidence": [
-        { "kind": "spreadsheet-cell", "reference": "Mapeamento!F42" },
-        { "kind": "xsd", "reference": "/NFe/infNFe/emit/CNPJ" }
-      ],
-      "questions": []
+      "evidence": [{ "kind": "xsd", "reference": "/NFe/infNFe/emit/CNPJ" }],
+      "questions": [],
+      "createdAt": "2026-08-31T19:01:00Z",
+      "eTag": "AAAAAAAAAAE="
     }
   ]
 }
 ```
 
-Regras sem evidência suficiente ficam `needs_input`; a API não cria correspondência silenciosa. A
-compilação é assíncrona, idempotente e devolve artefatos versionados, diagnósticos e correlation ID.
-`engine=sysmiddle` deve ser recusado por todas as rotas de Draft, compile e publish.
+O front cita o ETag (`If-Match: "AAAAAAAAAAE="`). Sem header a API retorna `428`; divergência
+retorna `412` e inclui `current`, que substitui a visão local antes de novo merge humano. Regras sem
+evidência suficiente ficam `needs_input`; Sysmiddle é recusado no controller de Draft.
+
+**Gap confirmado:** `UpdateRuleRequest.answer` faz `needs_input → proposed`, mas o texto não é
+encaminhado ao store nem registrado na decisão. Até a API corrigir, a UI oferece correção
+estruturada e não finge persistir uma resposta livre.
 
 ### `GET /api/workspaces/{workspaceId}/mappings/{mappingId}/versions/{version}/explanation`
 
 ```json
 {
-  "mappingId": "01J...",
-  "version": 3,
+  "mappingId": "00000000-0000-0000-0000-000000000001",
+  "version": "draft",
   "engine": "xslt",
-  "supportLevel": "authoritative",
-  "sourceSchema": {
-    "schemaId": "01J...",
-    "format": "fixed_width",
-    "fiscalDocumentType": "nfe",
-    "version": "4.00"
+  "capabilities": {
+    "execute": true,
+    "explain": true,
+    "author": true,
+    "compile": false,
+    "publish": false
   },
-  "targetSchema": {
-    "schemaId": "01J...",
-    "format": "xml",
-    "fiscalDocumentType": "nfe",
-    "version": "4.00"
-  },
+  "sourceSchema": null,
+  "targetSchema": null,
   "rules": [
     {
       "ruleId": "rule-emit-cnpj",
-      "order": 10,
-      "kind": "transform",
-      "label": "CNPJ do emitente",
-      "humanDescription": "Remove espaços e copia o CNPJ do emitente para o XML da NF-e.",
-      "sources": [
-        {
-          "ref": "layout://LINHA004/CNPJ",
-          "label": "LINHA004.CNPJ"
-        }
-      ],
-      "targets": [
-        {
-          "ref": "xpath:///nfe:NFe/nfe:infNFe/nfe:emit/nfe:CNPJ",
-          "label": "emit/CNPJ"
-        }
-      ],
+      "sourceRefs": ["layout://LINHA004/CNPJ"],
+      "targetRefs": ["xsd:///NFe/infNFe/emit/CNPJ"],
       "condition": null,
-      "operations": [
-        {
-          "name": "trim",
-          "arguments": []
-        }
-      ],
-      "supportLevel": "authoritative",
-      "limitations": []
+      "operations": ["copy"],
+      "cardinality": "1:1",
+      "evidence": [{ "kind": "xsd", "reference": "/NFe/infNFe/emit/CNPJ" }],
+      "humanDescription": "Remove espaços e copia o CNPJ do emitente para o XML da NF-e.",
+      "technicalDetail": "[\"trim\"]",
+      "supportLevel": "authoritative"
     }
   ],
+  "description": null,
   "opaqueRuleCount": 0,
   "limitations": []
 }
 ```
 
+Versões atuais são categóricas: Draft TCL/XSLT usa `version=draft`; Sysmiddle usa
+`version=current`. Mesmo após o merge do Slice 5, XSLT compilado ainda não alimenta este endpoint e
+os adapters TCL/XSLT continuam com `compile=false`. Esses gaps permanecem rastreados na issue API
+#231; o front permanece fail-closed e não deduz capabilities a partir da existência de uma rota.
+
 ### Vocabulário mínimo
 
-`engine`: `tcl`, `xsl`, `xslt`, `sysmiddle`.
-
-`kind`: `copy`, `constant`, `transform`, `condition`, `loop`, `lookup`, `aggregate`, `script`,
-`unknown`.
+`engine`: `tcl`, `xslt`, `sysmiddle`.
 
 `supportLevel`: `authoritative`, `best_effort`, `opaque`, `unsupported`.
 

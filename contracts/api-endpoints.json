@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 4,
   "sourceOfTruth": "LayoutParserApi",
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
@@ -56,8 +56,73 @@
       "method": "GET",
       "path": "/api/workspaces/:param/mappings/:param/versions/:param/explanation",
       "owner": "LayoutParserApi",
-      "availability": "proposed",
-      "trackingIssue": "LayoutParserApi#226"
+      "deliveredBy": "LayoutParserApi#240"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-packages/:param/drafts",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/suggestions",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/suggestions/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/suggestions/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/compile",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/compile/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/releases/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-runs",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-runs/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#243"
     }
   ]
 }
