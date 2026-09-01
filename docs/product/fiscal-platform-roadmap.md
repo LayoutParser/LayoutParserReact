@@ -144,7 +144,7 @@ Draft mutável.
   `UserId` interno e expõe `/api/workspaces/me`; o front entrega shell `/workspace`, seletor e
   estados loading/erro/sucesso.
 - **Status:** API [#234](https://github.com/LayoutParser/LayoutParserApi/pull/234) entregue; integração
-  do front em validação.
+  do front entregue pelos PRs #208/#209 e validada no environment `development`.
 - **Gate:** dois logins do mesmo principal resolvem o mesmo usuário; nomes alterados não criam
   outro workspace e usuário A não lê workspace B.
 
@@ -157,27 +157,44 @@ Draft mutável.
 - **Gate:** MIME real, XXE, zip bomb, isolamento e retry idempotente; o front não guarda conteúdo
   fiscal em `localStorage` e não inventa projeto ou inventário ausente.
 
-### Slice 3 — Primeira análise persistida
+### Slice 3 — MappingDraft human-in-the-loop
 
-- **Entrega:** parse bem-sucedido aparece em “Análises recentes” com metadados sanitizados.
-- **Gate:** conteúdo do documento não é persistido quando a política é metadata-only.
+- **Entrega:** API [#238](https://github.com/LayoutParser/LayoutParserApi/pull/238) criou Draft,
+  regras, job assíncrono de sugestão e decisões com ETag/`If-Match`; o front possui service tipado,
+  fila de revisão e resolução fail-safe de conflito `412`.
+- **Ressalva:** `answer` é aceito no request, mas o texto ainda não chega ao store da API; a UI não
+  oferece uma falsa resposta livre e mantém a correção estruturada disponível.
+- **Gate:** Sysmiddle não entra no fluxo de autoria; aceitar/editar/rejeitar nunca sobrescreve outra
+  sessão silenciosamente.
 
-### Slice 4 — Mapping versionado
+### Slice 4 — MappingExplanation canônico
 
-- **Entrega:** catalogar um mapping existente, abrir versão e mostrar origem/destino.
-- **Gate:** versão publicada não pode ser modificada.
+- **Entrega:** API [#240](https://github.com/LayoutParser/LayoutParserApi/pull/240) entregou DTO e
+  adapters TCL, XSLT e Sysmiddle; o front valida o payload em runtime e apresenta capabilities,
+  schemas, regras, evidências, nível de suporte e limitações.
+- **Ressalva:** XSLT real continua `unsupported` até existir artefato compilado no Slice 5; TCL
+  explica o Draft; Sysmiddle usa a versão `current` e permanece estritamente somente leitura.
+- **Gate:** a UI não infere capability ausente, não reconstitui regra e não renderiza autoria para
+  Sysmiddle, inclusive em deep link.
 
-### Slice 5 — XSL/XSLT explicado
+### Slice 5 — Compilação e Fiscal Test Lab
 
-- **Entrega:** regras normalizadas e visualização read-only de templates/condições/cópias.
-- **Gate:** fixture XSLT conhecida gera grafo determinístico e texto coerente.
+- **Entrega:** API [#243](https://github.com/LayoutParser/LayoutParserApi/pull/243) gera TCL/XSLT
+  somente das regras aceitas/editadas, expõe release imutável do snapshot e executa fixture XSLT
+  individual com XSD best-effort, diff canônico, cobertura, provenance e correlation ID. O front
+  possui compilação assíncrona, visualização/download de artefato e painel dos gates.
+- **Ressalvas:** TCL ainda não possui runner determinístico; suites versionadas não foram entregues;
+  os adapters da explicação continuam declarando `compile=false` e o XSLT compilado ainda não é
+  explicado pela rota canônica. A issue API
+  [#231](https://github.com/LayoutParser/LayoutParserApi/issues/231) permanece aberta.
+- **Gate:** o front não habilita compilação contra capability falsa, não guarda fixtures no
+  `localStorage` e nunca expõe mutação Sysmiddle.
 
-### Slice 6 — TCL editável e Sysmiddle somente leitura
+### Slice 6 — Histórico e catálogo navegável
 
-- **Entrega:** autoria assistida de TCL e adapter explicativo read-only de Sysmiddle no mesmo
-  contrato de visualização.
-- **Gate:** o front nunca apresenta inferência best-effort como regra autoritativa e não envia
-  mutação alguma para Sysmiddle.
+- **Entrega esperada:** listar projetos, pacotes, análises e mappings sem exigir GUID manual;
+  políticas de retenção e versionamento continuam autoritativas na API.
+- **Gate:** conteúdo fiscal não é persistido no navegador e versão publicada é imutável.
 
 ### Slice 7 — Primeiro pacote fiscal FIAT
 

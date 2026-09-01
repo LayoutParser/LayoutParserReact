@@ -71,40 +71,58 @@ describe('workspaceService', () => {
   it('busca a explicação de uma versão de mapping', async () => {
     const payload = {
       mappingId: 'mapping-1',
-      version: 2,
+      version: 'draft',
       engine: 'xslt',
-      supportLevel: 'authoritative',
-      sourceSchema: {
-        schemaId: 'source',
-        format: 'fixed_width',
-        fiscalDocumentType: 'nfe',
-        version: '4.00',
+      capabilities: {
+        execute: true,
+        explain: true,
+        author: true,
+        compile: false,
+        publish: false,
       },
-      targetSchema: {
-        schemaId: 'target',
-        format: 'xml',
-        fiscalDocumentType: 'nfe',
-        version: '4.00',
-      },
+      sourceSchema: null,
+      targetSchema: null,
       rules: [],
+      description: null,
       opaqueRuleCount: 0,
-      limitations: [],
+      limitations: ['Draft ainda não compilado.'],
     } as const;
     vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
 
     await expect(
-      workspaceService.getMappingExplanation('workspace-1', 'mapping-1', 2)
+      workspaceService.getMappingExplanation('workspace-1', 'mapping-1', 'draft')
     ).resolves.toEqual(payload);
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/api/workspaces/workspace-1/mappings/mapping-1/versions/2/explanation'
+      '/api/workspaces/workspace-1/mappings/mapping-1/versions/draft/explanation'
     );
+  });
+
+  it('recusa explicação que amplia capabilities ou vocabulário sem contrato', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        mappingId: 'mapping-1',
+        version: 'current',
+        engine: 'sysmiddle',
+        capabilities: { execute: true, explain: true, author: true },
+        sourceSchema: null,
+        targetSchema: null,
+        rules: [],
+        description: null,
+        opaqueRuleCount: 0,
+        limitations: [],
+      },
+    });
+
+    await expect(
+      workspaceService.getMappingExplanation('workspace', 'mapping', 'current')
+    ).rejects.toMatchObject({ kind: 'invalid_response' });
   });
 
   it.each([
     () => workspaceService.listAnalyses('', 'project', {}),
     () => workspaceService.listAnalyses('workspace', ' ', {}),
-    () => workspaceService.getMappingExplanation('workspace', 'mapping', 0),
-    () => workspaceService.getMappingExplanation('workspace', 'mapping', 1.5),
+    () => workspaceService.getMappingExplanation('workspace', 'mapping', ''),
+    () => workspaceService.getMappingExplanation('workspace', '', 'draft'),
   ])('recusa recurso ou versão inválida antes de chamar a API', async action => {
     await expect(action()).rejects.toThrow();
     expect(apiClient.get).not.toHaveBeenCalled();

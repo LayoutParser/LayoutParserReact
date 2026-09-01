@@ -26,3 +26,14 @@ Documentos: `docs/architecture/fiscal-document-platform.md`,
 `docs/product/fiscal-platform-roadmap.md`,
 `docs/product/ai-assisted-fiscal-mapping-studio.md` e
 `docs/contracts/fiscal-workspace-and-mapping-explanation-api.md`.
+
+## Atualização — Slices 3 a 5
+
+- API #238/#240/#243 entregaram Draft, explicação, compilação e Test Lab individual.
+- Front integrou revisão humana, explicação multi-engine, release e Test Lab na branch
+  `codex/feat-mapping-studio-slices-3-5`.
+- #199, #202 e #204 avançam para validação parcial; não fechar enquanto faltarem resposta livre
+  persistida, inventário/catálogo navegável, suites versionadas, runner TCL e correção das
+  capabilities/explicação da release na API #231.
+- #205 pode ser validada: a UI não cria controle de autoria/compile para Sysmiddle e os serviços de
+  mutação aceitam somente `tcl|xslt`.

@@ -173,6 +173,25 @@ revisão ainda pendentes na API. Consulte o
 > but the complete wizard remains gated by normalized inventory, project navigation and revision
 > APIs; the UI never fabricates these missing domain results.
 
+### Mapping Studio e Fiscal Test Lab / Mapping Studio and Fiscal Test Lab
+
+O `/workspace/mapping-studio` abre Drafts TCL/XSLT e mappings Sysmiddle pelo contrato canônico da
+API. Regras propostas mostram origem, destino, operação, evidências, confiança e perguntas; decisões
+de aceitar, editar ou rejeitar usam ETag/`If-Match`, evitando sobrescrever outra sessão. Sysmiddle é
+sempre somente leitura, inclusive por deep link ou estado adulterado.
+
+Para Drafts compiláveis, o Fiscal Test Lab acompanha o job assíncrono, reabre a release pela URL,
+mostra hash, correlation ID, diagnósticos e código gerado, e executa fixtures XSLT individuais. O
+resultado apresenta validação XSD, cobertura, diff canônico e proveniência até a regra de origem.
+O conteúdo das fixtures é limpo após o envio e nunca vai para `localStorage`. A UI obedece
+`capabilities` de forma fail-closed: enquanto a API declarar `compile=false`, nenhum botão de
+compilação é exposto. TCL pode ser compilado, mas ainda não possui runner determinístico na API.
+
+> **EN:** Mapping Studio reviews TCL/XSLT proposals with optimistic concurrency and renders
+> Sysmiddle as strictly read-only. Fiscal Test Lab observes asynchronous compilation, exposes the
+> immutable snapshot and runs individual XSLT fixtures with XSD, canonical diff, coverage and
+> provenance. Fixtures are not persisted in the browser, and capabilities are enforced fail-closed.
+
 A rota `/admin` consulta a sessão do gateway e exige autorização administrativa. A proteção no
 React melhora a experiência, mas não substitui a autorização aplicada no servidor.
 
