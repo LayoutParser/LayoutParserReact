@@ -37,6 +37,18 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'workspace/mapping-studio',
+        lazy: async () => ({
+          Component: (await import('./components/mapping-studio/MappingStudioPage')).default,
+        }),
+      },
+      {
+        path: 'workspace/mapping-studio/:mappingId/:version',
+        lazy: async () => ({
+          Component: (await import('./components/mapping-studio/MappingStudioPage')).default,
+        }),
+      },
+      {
         path: 'upload',
         lazy: async () => ({
           Component: (await import('./components/layout/LayoutParserPage')).default,

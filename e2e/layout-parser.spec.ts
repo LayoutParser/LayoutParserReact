@@ -36,6 +36,153 @@ const mockAuthenticatedGateway = async (page: Page, isAdmin = true) => {
   await page.route('**/api/logs/client', route => route.fulfill({ status: 204 }));
 };
 
+const mappingDraftId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const mappingRuleId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const mappingReleaseId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+const mockMappingStudioApis = async (page: Page) => {
+  let testCompleted = false;
+
+  await page.route('**/api/workspaces/*/mappings/*/versions/draft/explanation', route =>
+    route.fulfill({
+      json: {
+        mappingId: mappingDraftId,
+        version: 'draft',
+        engine: 'xslt',
+        capabilities: {
+          execute: true,
+          explain: true,
+          author: true,
+          compile: true,
+          publish: false,
+        },
+        sourceSchema: { layoutGuid: layoutGuid, description: 'Layout MQSeries NF-e 4.00' },
+        targetSchema: { layoutGuid: null, description: 'XSD NF-e 4.00' },
+        rules: [
+          {
+            ruleId: mappingRuleId,
+            sourceRefs: ['layout://LINHA004/CNPJ'],
+            targetRefs: ['xsd:///NFe/infNFe/emit/CNPJ'],
+            condition: null,
+            operations: ['copy'],
+            cardinality: '1:1',
+            evidence: [{ kind: 'xsd', reference: '/NFe/infNFe/emit/CNPJ' }],
+            humanDescription: 'Copia o CNPJ do emitente para a NF-e.',
+            technicalDetail: '["copy"]',
+            supportLevel: 'authoritative',
+          },
+        ],
+        description: 'Mapping fiscal de homologação.',
+        limitations: [],
+        opaqueRuleCount: 0,
+      },
+    })
+  );
+
+  await page.route('**/api/workspaces/*/mapping-drafts/*', async route => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname.includes('/compile/') || requestUrl.pathname.includes('/releases/')) {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      json: {
+        draftId: mappingDraftId,
+        workspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        packageId: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+        revisionId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+        engine: 'xslt',
+        createdAt: '2026-08-31T20:00:00Z',
+        rules: [
+          {
+            ruleId: mappingRuleId,
+            draftId: mappingDraftId,
+            sourceRefs: ['layout://LINHA004/CNPJ'],
+            targetRefs: ['xsd:///NFe/infNFe/emit/CNPJ'],
+            operation: 'copy',
+            conditions: '[]',
+            transformations: '[]',
+            cardinality: '1:1',
+            evidence: [{ kind: 'xsd', reference: '/NFe/infNFe/emit/CNPJ' }],
+            confidence: 'high',
+            status: 'accepted',
+            questions: [],
+            createdAt: '2026-08-31T20:01:00Z',
+            eTag: 'AAAAAAAAAAE=',
+          },
+        ],
+      },
+    });
+  });
+
+  await page.route('**/api/workspaces/*/mapping-drafts/*/compile', route =>
+    route.fulfill({ json: { jobId: 'compile-job-e2e', status: 'queued' } })
+  );
+  await page.route('**/api/workspaces/*/mapping-drafts/*/compile/*', route =>
+    route.fulfill({
+      json: {
+        jobId: 'compile-job-e2e',
+        status: 'completed',
+        releaseId: mappingReleaseId,
+        error: null,
+        durationMs: 14,
+      },
+    })
+  );
+  await page.route('**/api/workspaces/*/mapping-drafts/*/releases/*', route =>
+    route.fulfill({
+      json: {
+        releaseId: mappingReleaseId,
+        workspaceId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        draftId: mappingDraftId,
+        engine: 'xslt',
+        artifacts: [
+          {
+            kind: 'xslt',
+            content: '<xsl:stylesheet version="1.0"/>',
+            hash: 'xslt-e2e-hash',
+            generatedAt: '2026-08-31T20:02:00Z',
+          },
+        ],
+        sourceRuleIds: [mappingRuleId],
+        compileDiagnostics: [],
+        rulesSnapshotHash: 'rules-e2e-hash',
+        testRunSummary: testCompleted
+          ? {
+              passed: 1,
+              failed: 0,
+              coveragePercent: 100,
+              requiredGatesPassed: true,
+              xsdValid: true,
+              xsdErrors: [],
+              divergences: [],
+            }
+          : null,
+        status: testCompleted ? 'test_passed' : 'draft_compiled',
+        correlationId: 'mapping-e2e-correlation',
+        createdAt: '2026-08-31T20:02:00Z',
+        eTag: 'AAAAAAAAAAI=',
+      },
+    })
+  );
+  await page.route('**/api/workspaces/*/mapping-drafts/*/test-runs', route =>
+    route.fulfill({ json: { jobId: 'test-job-e2e', status: 'queued' } })
+  );
+  await page.route('**/api/workspaces/*/mapping-drafts/*/test-runs/*', route => {
+    testCompleted = true;
+    return route.fulfill({
+      json: {
+        jobId: 'test-job-e2e',
+        status: 'completed',
+        releaseId: mappingReleaseId,
+        requiredGatesPassed: true,
+        error: null,
+        durationMs: 21,
+      },
+    });
+  });
+};
+
 const mockProcessingApis = async (page: Page, withoutCandidates = false) => {
   await page.route('**/api/layoutdatabase/mqseries-nfe', route =>
     route.fulfill({
@@ -319,6 +466,25 @@ test('vincula a sessão autenticada ao workspace fiscal', async ({ page }) => {
     'href',
     '/upload'
   );
+});
+
+test('compila o snapshot revisado e executa uma fixture no Fiscal Test Lab', async ({ page }) => {
+  await mockAuthenticatedGateway(page);
+  await mockMappingStudioApis(page);
+  await page.goto(`/workspace/mapping-studio/${mappingDraftId}/draft`);
+
+  await expect(page.getByRole('heading', { name: 'Mapping fiscal de homologação.' })).toBeVisible();
+  await expect(page.getByText('Copia o CNPJ do emitente para a NF-e.')).toBeVisible();
+  await page.getByRole('button', { name: 'Compilar snapshot' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Compilada, aguardando testes' })).toBeVisible();
+  await page.getByLabel('XML de entrada').fill('<origem><CNPJ>12345678000199</CNPJ></origem>');
+  await page.getByLabel('XML esperado').fill('<NFe><emit><CNPJ>12345678000199</CNPJ></emit></NFe>');
+  await page.getByRole('button', { name: 'Executar Test Lab' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Gates aprovados' })).toBeVisible();
+  await expect(page.getByText('100.0% de cobertura')).toBeVisible();
+  await expect(page.getByText('mapping-e2e-correlation')).toBeVisible();
 });
 
 test('processa TXT e entrega o XML transformado para download', async ({ page }) => {

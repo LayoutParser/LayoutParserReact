@@ -7,18 +7,8 @@ export type WorkspaceRole =
 
 export type DocumentFormat = 'fixed_width' | 'mqseries' | 'idoc' | 'xml' | 'json';
 export type AnalysisStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'expired';
-export type MappingEngine = 'tcl' | 'xsl' | 'xslt' | 'sysmiddle';
+export type MappingEngine = 'tcl' | 'xslt' | 'sysmiddle';
 export type MappingSupportLevel = 'authoritative' | 'best_effort' | 'opaque' | 'unsupported';
-export type MappingRuleKind =
-  | 'copy'
-  | 'constant'
-  | 'transform'
-  | 'condition'
-  | 'loop'
-  | 'lookup'
-  | 'aggregate'
-  | 'script'
-  | 'unknown';
 
 export interface FiscalWorkspaceSummary {
   workspaceId: string;
@@ -78,46 +68,46 @@ export interface AnalysisFilters {
   layoutGuid?: string;
 }
 
-export interface MappingRuleReference {
-  ref: string;
-  label: string;
+export interface MappingEngineCapabilities {
+  execute: boolean;
+  explain: boolean;
+  author: boolean;
+  compile: boolean;
+  publish: boolean;
 }
 
-export interface MappingOperation {
-  name: string;
-  arguments: string[];
+export interface MappingSchemaReference {
+  layoutGuid: string | null;
+  description: string | null;
+}
+
+export interface MappingEvidenceReference {
+  kind: string;
+  reference: string;
 }
 
 export interface MappingRuleExplanation {
   ruleId: string;
-  order: number;
-  kind: MappingRuleKind;
-  label: string;
-  humanDescription: string;
-  sources: MappingRuleReference[];
-  targets: MappingRuleReference[];
+  sourceRefs: string[];
+  targetRefs: string[];
   condition: string | null;
-  operations: MappingOperation[];
+  operations: string[];
+  cardinality: string;
+  evidence: MappingEvidenceReference[];
+  humanDescription: string;
+  technicalDetail: string | null;
   supportLevel: MappingSupportLevel;
-  limitations: string[];
-}
-
-export interface SchemaReference {
-  schemaId: string;
-  format: DocumentFormat;
-  fiscalDocumentType: FiscalDocumentType;
-  version: string;
-  jurisdiction?: string | null;
 }
 
 export interface MappingExplanation {
   mappingId: string;
-  version: number;
+  version: string;
   engine: MappingEngine;
-  supportLevel: MappingSupportLevel;
-  sourceSchema: SchemaReference;
-  targetSchema: SchemaReference;
+  capabilities: MappingEngineCapabilities;
+  sourceSchema: MappingSchemaReference | null;
+  targetSchema: MappingSchemaReference | null;
   rules: MappingRuleExplanation[];
+  description: string | null;
   opaqueRuleCount: number;
   limitations: string[];
 }

@@ -60,8 +60,8 @@ const WorkspacePage = () => {
           <p className="workspace-eyebrow">Workspace fiscal ativo</p>
           <h1 id="workspace-title">{activeWorkspace.name}</h1>
           <p className="workspace-hero__description">
-            Seu ambiente isolado para analisar documentos fiscais e, nos próximos slices, organizar
-            históricos, pacotes e mappings versionados.
+            Seu ambiente isolado para analisar documentos fiscais, revisar propostas de mapping e
+            compreender regras de transformação com segurança.
           </p>
         </div>
         <span className="workspace-role-badge">{roleLabels[activeWorkspace.role]}</span>
@@ -105,10 +105,13 @@ const WorkspacePage = () => {
             <p>As análises persistidas aparecerão aqui após o contrato de projetos e retenção.</p>
           </article>
 
-          <article className="workspace-action-card">
-            <span className="workspace-action-card__status">Planejado</span>
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
             <h3>Mapping Studio</h3>
-            <p>Revisão assistida e autoria de TCL/XSL/XSLT, com Sysmiddle somente leitura.</p>
+            <p>
+              Revise propostas TCL/XSLT e explique Sysmiddle somente leitura, sem risco de autoria.
+            </p>
+            <Link to="/workspace/mapping-studio">Abrir Mapping Studio</Link>
           </article>
         </div>
       </section>

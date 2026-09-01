@@ -32,6 +32,8 @@
 - [Fundação do workspace fiscal](project_fiscal_workspace_foundation_2026_08_31.md) — principal
   imutável BFF→API, tipos/services iniciais, pacote FIAT assistido e fronteira de autoria:
   TCL/XSL/XSLT editáveis, Sysmiddle read-only.
+- [Mapping Studio — Slices 3 a 5](project_mapping_studio_slices_3_5_2026_08_31.md) — revisão humana,
+  explicação canônica, compilação/Test Lab e gaps contratuais preservados de forma fail-closed.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
