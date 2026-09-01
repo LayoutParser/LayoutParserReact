@@ -157,6 +157,36 @@ describe('MappingStudioPage', () => {
     expect(mappingDraftService.getDraft).not.toHaveBeenCalled();
   });
 
+  it('mantém Sysmiddle sem autoria mesmo se o service for adulterado em memória', async () => {
+    vi.mocked(workspaceService.getMappingExplanation).mockResolvedValue({
+      ...sysmiddleExplanation,
+      capabilities: {
+        execute: true,
+        explain: true,
+        author: true,
+        compile: true,
+        publish: true,
+      },
+    });
+
+    renderRoute('/workspace/mapping-studio/mapper-1/current');
+
+    expect(await screen.findByText('Somente leitura')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Gerar sugestões' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Compilar snapshot' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /publicar/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Editar').closest('article')).toHaveAttribute('data-enabled', 'false');
+    expect(screen.getByText('Compilar').closest('article')).toHaveAttribute(
+      'data-enabled',
+      'false'
+    );
+    expect(screen.getByText('Publicar').closest('article')).toHaveAttribute(
+      'data-enabled',
+      'false'
+    );
+    expect(mappingDraftService.getDraft).not.toHaveBeenCalled();
+  });
+
   it('revisa uma proposta TCL e atualiza a explicação após o ETag ser aceito', async () => {
     vi.mocked(workspaceService.getMappingExplanation).mockResolvedValue(tclExplanation);
     vi.mocked(mappingDraftService.getDraft).mockResolvedValue(draft);

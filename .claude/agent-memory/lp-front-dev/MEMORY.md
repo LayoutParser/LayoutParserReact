@@ -34,6 +34,8 @@
   TCL/XSL/XSLT editáveis, Sysmiddle read-only.
 - [Mapping Studio — Slices 3 a 5](project_mapping_studio_slices_3_5_2026_08_31.md) — revisão humana,
   explicação canônica, compilação/Test Lab e gaps contratuais preservados de forma fail-closed.
+- [Mapping Studio — Slices 6 e 7](project_mapping_studio_slices_6_7_2026_09_01.md) — gate Sysmiddle,
+  governança approve/publish/rollback com RBAC e bloqueios remanescentes do piloto FIAT real.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

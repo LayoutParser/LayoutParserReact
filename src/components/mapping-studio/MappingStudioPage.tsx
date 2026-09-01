@@ -151,7 +151,10 @@ const fetchMappingData = async (workspaceId: string, mappingId: string, version:
 };
 
 const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; version: string }) => {
-  const { status, activeWorkspaceId } = useWorkspaceStore();
+  const { status, activeWorkspaceId, workspaces } = useWorkspaceStore();
+  const activeWorkspaceRole = workspaces.find(
+    workspace => workspace.workspaceId === activeWorkspaceId
+  )?.role;
   const [explanation, setExplanation] = useState<MappingExplanation | null>(null);
   const [draft, setDraft] = useState<MappingDraft | null>(null);
   const [job, setJob] = useState<MappingSuggestionJob | null>(null);
@@ -348,6 +351,15 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
   if (!explanation) return null;
 
   const readOnly = explanation.engine === 'sysmiddle' || !explanation.capabilities.author;
+  const effectiveCapabilities =
+    explanation.engine === 'sysmiddle'
+      ? {
+          ...explanation.capabilities,
+          author: false,
+          compile: false,
+          publish: false,
+        }
+      : explanation.capabilities;
   const activeJob = job && activeJobStatuses.has(job.status);
 
   return (
@@ -391,11 +403,11 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
 
       <section className="mapping-capability-grid" aria-label="Capacidades deste motor">
         {capabilityLabels.map(([capability, label]) => (
-          <article key={capability} data-enabled={explanation.capabilities[capability]}>
-            <span aria-hidden="true">{explanation.capabilities[capability] ? '✓' : '—'}</span>
+          <article key={capability} data-enabled={effectiveCapabilities[capability]}>
+            <span aria-hidden="true">{effectiveCapabilities[capability] ? '✓' : '—'}</span>
             <div>
               <strong>{label}</strong>
-              <small>{explanation.capabilities[capability] ? 'Disponível' : 'Indisponível'}</small>
+              <small>{effectiveCapabilities[capability] ? 'Disponível' : 'Indisponível'}</small>
             </div>
           </article>
         ))}
@@ -430,7 +442,7 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
         </aside>
       )}
 
-      {draft && explanation.capabilities.author && (
+      {draft && effectiveCapabilities.author && (
         <section className="mapping-studio-section" aria-labelledby="mapping-review-title">
           <div className="mapping-section-heading">
             <div>
@@ -490,12 +502,13 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
         </section>
       )}
 
-      {draft && explanation.capabilities.author && activeWorkspaceId && (
+      {draft && effectiveCapabilities.author && activeWorkspaceId && activeWorkspaceRole && (
         <MappingTestLabPanel
           workspaceId={activeWorkspaceId}
           draft={draft}
-          compileEnabled={explanation.capabilities.compile}
-          executeEnabled={explanation.capabilities.execute}
+          compileEnabled={effectiveCapabilities.compile}
+          executeEnabled={effectiveCapabilities.execute}
+          workspaceRole={activeWorkspaceRole}
         />
       )}
 

@@ -187,10 +187,21 @@ O conteúdo das fixtures é limpo após o envio e nunca vai para `localStorage`.
 `capabilities` de forma fail-closed: enquanto a API declarar `compile=false`, nenhum botão de
 compilação é exposto. TCL pode ser compilado, mas ainda não possui runner determinístico na API.
 
+Quando uma release XSLT chega a `test_passed`, o Studio consome a governança do Slice 7: Revisor ou
+Administrador fiscal pode aprovar com justificativa; Owner ou Administrador fiscal pode publicar
+em desenvolvimento, validação ou produção e executar rollback para a publicação anterior. A API
+revalida o papel do workspace e registra as transições; o React nunca promove automaticamente pela
+simples presença de `RequiredGatesPassed=true`. Releases publicadas não reabrem o formulário do Test
+Lab e seus artefatos permanecem imutáveis. O `GET` completo da release ainda não devolve todos os
+metadados de governança, e a API ainda não expõe leitura de transições nem concorrência `If-Match`
+nessas três operações.
+
 > **EN:** Mapping Studio reviews TCL/XSLT proposals with optimistic concurrency and renders
 > Sysmiddle as strictly read-only. Fiscal Test Lab observes asynchronous compilation, exposes the
 > immutable snapshot and runs individual XSLT fixtures with XSD, canonical diff, coverage and
 > provenance. Fixtures are not persisted in the browser, and capabilities are enforced fail-closed.
+> Slice 7 adds explicit RBAC-protected approval, publication and rollback actions; technical gates
+> never trigger an automatic promotion, and published releases cannot be retested or edited.
 
 A rota `/admin` consulta a sessão do gateway e exige autorização administrativa. A proteção no
 React melhora a experiência, mas não substitui a autorização aplicada no servidor.

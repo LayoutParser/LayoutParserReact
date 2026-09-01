@@ -153,11 +153,24 @@ function parseMappingExplanation(value: unknown): MappingExplanation {
     throw invalidExplanation();
   }
 
+  const engine = value.engine as MappingEngine;
+  const capabilities = parseCapabilities(value.capabilities);
+
+  // O cliente não confia em capabilities mutáveis para Sysmiddle. Além de esconder controles,
+  // recusamos o payload inteiro para que uma resposta adulterada não seja exibida como capacidade
+  // legítima em deep link, cache intermediário ou estado reidratado.
+  if (
+    engine === 'sysmiddle' &&
+    (capabilities.author || capabilities.compile || capabilities.publish)
+  ) {
+    throw invalidExplanation();
+  }
+
   return {
     mappingId: value.mappingId,
     version: value.version,
-    engine: value.engine as MappingEngine,
-    capabilities: parseCapabilities(value.capabilities),
+    engine,
+    capabilities,
     sourceSchema: parseSchema(value.sourceSchema),
     targetSchema: parseSchema(value.targetSchema),
     rules: value.rules.map(parseExplainedRule),
