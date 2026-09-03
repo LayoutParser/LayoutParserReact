@@ -279,11 +279,34 @@ export const workspaceService = {
   ): Promise<CursorPage<DocumentAnalysisSummary>> {
     const workspace = resourceSegment(workspaceId, 'Workspace');
     const project = resourceSegment(projectId, 'Projeto');
-    const response = await apiClient.get<CursorPage<DocumentAnalysisSummary>>(
-      `/api/workspaces/${workspace}/projects/${project}/analyses`,
-      { params: filters }
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get<CursorPage<DocumentAnalysisSummary>>(
+        `/api/workspaces/${workspace}/projects/${project}/analyses`,
+        { params: filters }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          throw new WorkspaceRequestError(
+            'unauthorized',
+            'Sua sessão não permite acessar as análises deste projeto.'
+          );
+        }
+        if (!error.response || status === 503 || (status !== undefined && status >= 500)) {
+          throw new WorkspaceRequestError(
+            'unavailable',
+            'O histórico de análises está temporariamente indisponível.'
+          );
+        }
+      }
+
+      throw new WorkspaceRequestError(
+        'request_failed',
+        'Não foi possível carregar o histórico de análises deste projeto.'
+      );
+    }
   },
 
   async getMappingExplanation(
