@@ -37,6 +37,22 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'workspace/analyses',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/WorkspaceAnalysisHistory/WorkspaceAnalysisHistory')
+          ).default,
+        }),
+      },
+      {
+        path: 'workspace/analyses/:projectId',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/WorkspaceAnalysisHistory/WorkspaceAnalysisHistory')
+          ).default,
+        }),
+      },
+      {
         path: 'workspace/mapping-studio',
         lazy: async () => ({
           Component: (await import('./components/mapping-studio/MappingStudioPage')).default,

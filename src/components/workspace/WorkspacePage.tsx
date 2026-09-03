@@ -99,10 +99,11 @@ const WorkspacePage = () => {
             <Link to="/upload">Abrir processamento</Link>
           </article>
 
-          <article className="workspace-action-card">
-            <span className="workspace-action-card__status">Próximo slice</span>
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
             <h3>Histórico de análises</h3>
-            <p>As análises persistidas aparecerão aqui após o contrato de projetos e retenção.</p>
+            <p>Consulte as análises fiscais persistidas de um projeto, com paginação por cursor.</p>
+            <Link to="/workspace/analyses">Abrir histórico</Link>
           </article>
 
           <article className="workspace-action-card workspace-action-card--available">
