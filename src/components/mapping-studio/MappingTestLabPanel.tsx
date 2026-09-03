@@ -9,6 +9,7 @@ import type {
   MappingTestRunJob,
 } from '../../types/mappingRelease';
 import type { WorkspaceRole } from '../../types/workspace';
+import MappingArtifactDiffView from './MappingArtifactDiffView/MappingArtifactDiffView';
 import MappingGovernanceReadiness from './MappingGovernanceReadiness';
 
 interface MappingTestLabPanelProps {
@@ -69,6 +70,12 @@ const MappingTestLabPanel = ({
   const [expectedXml, setExpectedXml] = useState('');
   const [xsdVersion, setXsdVersion] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [diffState, setDiffState] = useState<{
+    kind: string;
+    baseline: MappingReleaseArtifact | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
   const release = releaseResult?.releaseId === releaseIdFromUrl ? releaseResult.value : null;
 
   const acceptedRules = draft.rules.filter(rule =>
@@ -209,6 +216,39 @@ const MappingTestLabPanel = ({
     }
   };
 
+  const toggleDiff = (artifact: MappingReleaseArtifact) => {
+    if (diffState?.kind === artifact.kind) {
+      setDiffState(null);
+      return;
+    }
+
+    const previousReleaseId = release?.previousPublishedReleaseId ?? null;
+    if (!previousReleaseId) {
+      setDiffState({ kind: artifact.kind, baseline: null, loading: false, error: null });
+      return;
+    }
+
+    setDiffState({ kind: artifact.kind, baseline: null, loading: true, error: null });
+    void mappingReleaseService
+      .getRelease(workspaceId, draft.draftId, previousReleaseId)
+      .then(previousRelease => {
+        const baseline =
+          previousRelease.artifacts.find(item => item.kind === artifact.kind) ?? null;
+        setDiffState({ kind: artifact.kind, baseline, loading: false, error: null });
+      })
+      .catch(diffError => {
+        setDiffState({
+          kind: artifact.kind,
+          baseline: null,
+          loading: false,
+          error:
+            diffError instanceof Error
+              ? diffError.message
+              : 'Não foi possível carregar a release anterior para comparação.',
+        });
+      });
+  };
+
   const compileActive = Boolean(compileJob && activeStatuses.has(compileJob.status));
   const testActive = Boolean(testJob && activeStatuses.has(testJob.status));
 
@@ -316,13 +356,22 @@ const MappingTestLabPanel = ({
                     <strong>{artifact.kind.toUpperCase()}</strong>
                     <small>Hash {artifact.hash}</small>
                   </div>
-                  <button
-                    type="button"
-                    className="mapping-button"
-                    onClick={() => downloadArtifact(artifact, release.releaseId)}
-                  >
-                    Baixar artefato {artifact.kind.toUpperCase()}
-                  </button>
+                  <div className="mapping-artifact-actions">
+                    <button
+                      type="button"
+                      className="mapping-button"
+                      onClick={() => toggleDiff(artifact)}
+                    >
+                      {diffState?.kind === artifact.kind ? 'Ocultar diff' : 'Ver diff'}
+                    </button>
+                    <button
+                      type="button"
+                      className="mapping-button"
+                      onClick={() => downloadArtifact(artifact, release.releaseId)}
+                    >
+                      Baixar artefato {artifact.kind.toUpperCase()}
+                    </button>
+                  </div>
                 </header>
                 <details>
                   <summary>Visualizar código gerado</summary>
@@ -330,6 +379,16 @@ const MappingTestLabPanel = ({
                     <code>{artifact.content}</code>
                   </pre>
                 </details>
+                {diffState?.kind === artifact.kind && (
+                  <MappingArtifactDiffView
+                    baseline={diffState.baseline}
+                    current={artifact}
+                    baselineLabel="Última release publicada"
+                    currentLabel={`Release ${release.releaseId}`}
+                    loading={diffState.loading}
+                    error={diffState.error}
+                  />
+                )}
               </article>
             ))}
           </div>

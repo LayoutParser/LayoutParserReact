@@ -575,6 +575,12 @@
   border-radius: var(--radius-lg);
 }
 
+.mapping-artifact-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .mapping-artifact-list small {
   display: block;
   margin-top: var(--spacing-xs);
