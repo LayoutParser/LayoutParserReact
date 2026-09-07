@@ -11,6 +11,10 @@ interface MappingArtifactDiffViewProps {
   currentLabel: string;
   loading?: boolean;
   error?: string | null;
+  /** IDs de `MappingDraftRule` que compõem o snapshot da release de referência (`null` se indisponível). */
+  baselineSourceRuleIds?: string[] | null;
+  /** IDs de `MappingDraftRule` que compõem o snapshot da release atual. */
+  currentSourceRuleIds?: string[] | null;
 }
 
 /**
@@ -24,6 +28,8 @@ const MappingArtifactDiffView = ({
   currentLabel,
   loading = false,
   error = null,
+  baselineSourceRuleIds = null,
+  currentSourceRuleIds = null,
 }: MappingArtifactDiffViewProps) => {
   if (loading) {
     return (
@@ -69,6 +75,16 @@ const MappingArtifactDiffView = ({
   const ops = diffLines(baseline.content, current.content);
   const hasChanges = ops.some(op => op.type !== 'unchanged');
 
+  const addedRuleIds =
+    baselineSourceRuleIds && currentSourceRuleIds
+      ? currentSourceRuleIds.filter(ruleId => !baselineSourceRuleIds.includes(ruleId))
+      : [];
+  const removedRuleIds =
+    baselineSourceRuleIds && currentSourceRuleIds
+      ? baselineSourceRuleIds.filter(ruleId => !currentSourceRuleIds.includes(ruleId))
+      : [];
+  const hasRuleLinkageData = Boolean(baselineSourceRuleIds && currentSourceRuleIds);
+
   return (
     <section className="mapping-diff-view" aria-label={`Diff do artefato ${current.kind}`}>
       <header className="mapping-diff-view__header">
@@ -82,6 +98,33 @@ const MappingArtifactDiffView = ({
           <code>{current.hash}</code>
         </div>
       </header>
+
+      {hasRuleLinkageData && (
+        <aside
+          className="mapping-diff-view__rule-linkage"
+          aria-label="Regras vinculadas ao snapshot"
+        >
+          {addedRuleIds.length === 0 && removedRuleIds.length === 0 ? (
+            <p role="status">
+              Mesmo conjunto de {currentSourceRuleIds?.length ?? 0} regra(s) fonte entre as duas
+              releases; a diferença acima vem apenas de recompilação/edição do artefato.
+            </p>
+          ) : (
+            <>
+              {addedRuleIds.length > 0 && (
+                <p>
+                  Regras incluídas nesta release: <code>{addedRuleIds.join(', ')}</code>
+                </p>
+              )}
+              {removedRuleIds.length > 0 && (
+                <p>
+                  Regras que saíram do snapshot: <code>{removedRuleIds.join(', ')}</code>
+                </p>
+              )}
+            </>
+          )}
+        </aside>
+      )}
 
       {!hasChanges ? (
         <p className="mapping-diff-view__unchanged" role="status">

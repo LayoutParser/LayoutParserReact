@@ -35,3 +35,14 @@ busca (`fetchPage`) como função pura sem `setState`, e movendo `setState` para
 
 Commits: `f2e2efe` (#197) e `0d10972` (#203), ambos direto em `develop` — orientação explícita do
 usuário nesta tarefa, embora o CLAUDE.md peça branch dedicada por padrão.
+
+**Atualização 2026-09-07 (QA FAIL na #197):** o `WorkspaceAnalysisHistory` original não expunha
+filtro nenhum, apesar de `AnalysisFilters` já suportar `documentType`. Implementei o seletor de
+tipo fiscal na UI (commit `7ba6947`, direto em `develop`). Os outros três gaps do QA
+(reabertura preservando layout/versão/proveniência, exclusão/expiração com auditoria,
+indicador de "metadata-only") continuam **bloqueados por contrato**: confirmei em
+`LayoutParserApi/Controllers/WorkspacesController.cs` que só existem `GET /api/workspaces/me`
+e `GET /api/workspaces/{id}` — não há nenhum controller de análises (`analyses`) na API real.
+Ou seja, mesmo o `listAnalyses` que já está em produção no front consome um endpoint que ainda
+não existe no lado .NET. Antes de implementar reabertura/exclusão/metadata-only, confirme de novo
+se a API já ganhou esse controller (buscar por `analyses` em `Controllers/` do repo da API).
