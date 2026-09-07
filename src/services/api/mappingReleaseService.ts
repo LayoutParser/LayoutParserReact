@@ -9,7 +9,9 @@ import type {
   MappingGovernanceSnapshot,
   MappingRelease,
   MappingReleaseArtifact,
+  MappingReleaseListResponse,
   MappingReleaseStatus,
+  MappingReleaseSummary,
   MappingTestRunDivergence,
   MappingTestRunJob,
   MappingTestRunSummary,
@@ -327,6 +329,66 @@ function assertGovernanceResource(
   return snapshot;
 }
 
+function parseReleaseSummary(value: unknown): MappingReleaseSummary {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.releaseId) ||
+    !isNonEmptyString(value.workspaceId) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.engine) ||
+    !engines.has(value.engine as MappingAuthoringEngine) ||
+    !isNonEmptyString(value.status) ||
+    !releaseStatuses.has(value.status as MappingReleaseStatus) ||
+    !isNonEmptyString(value.environment) ||
+    !isNullableString(value.approvedByUserId) ||
+    !isNullableValidDate(value.approvedAt) ||
+    !isNullableString(value.approvalJustification) ||
+    !isNullableString(value.publishedByUserId) ||
+    !isNullableValidDate(value.publishedAt) ||
+    !isNullableString(value.previousPublishedReleaseId) ||
+    !isNonEmptyString(value.correlationId) ||
+    !isNonEmptyString(value.eTag)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    releaseId: value.releaseId,
+    workspaceId: value.workspaceId,
+    draftId: value.draftId,
+    engine: value.engine as MappingAuthoringEngine,
+    status: value.status as MappingReleaseStatus,
+    environment: value.environment,
+    approvedByUserId: value.approvedByUserId,
+    approvedAt: value.approvedAt,
+    approvalJustification: value.approvalJustification,
+    publishedByUserId: value.publishedByUserId,
+    publishedAt: value.publishedAt,
+    previousPublishedReleaseId: value.previousPublishedReleaseId,
+    correlationId: value.correlationId,
+    eTag: value.eTag,
+  };
+}
+
+function parseReleaseListResponse(value: unknown): MappingReleaseListResponse {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !isNonNegativeInteger(value.page) ||
+    !isNonNegativeInteger(value.pageSize) ||
+    !isNonNegativeInteger(value.totalCount)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    items: value.items.map(parseReleaseSummary),
+    page: value.page,
+    pageSize: value.pageSize,
+    totalCount: value.totalCount,
+  };
+}
+
 function parseJob(value: unknown): MappingCompileJob {
   if (
     !isRecord(value) ||
@@ -402,6 +464,30 @@ function mapRequestError(error: unknown): never {
 }
 
 export const mappingReleaseService = {
+  /** Lista releases do workspace (issue #198) — GET /api/workspaces/{workspaceId}/mapping-releases. */
+  async listReleases(
+    workspaceId: string,
+    page = 1,
+    pageSize = 20
+  ): Promise<MappingReleaseListResponse> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    if (!Number.isInteger(page) || page < 1) {
+      throw new MappingReleaseRequestError('invalid_input', '"page" deve ser >= 1.');
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      throw new MappingReleaseRequestError('invalid_input', '"pageSize" deve estar entre 1 e 100.');
+    }
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-releases`,
+        { params: { page, pageSize } }
+      );
+      return parseReleaseListResponse(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
   async compileDraft(workspaceId: string, draftId: string): Promise<MappingCompileJob> {
     const workspace = resourceSegment(workspaceId, 'Workspace');
     const draft = resourceSegment(draftId, 'Draft');

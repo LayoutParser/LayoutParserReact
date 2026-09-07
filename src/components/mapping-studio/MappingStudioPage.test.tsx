@@ -2,12 +2,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mappingDraftService } from '../../services/api/mappingDraftService';
+import { mappingReleaseService } from '../../services/api/mappingReleaseService';
 import { workspaceService } from '../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import MappingStudioPage from './MappingStudioPage';
 
 vi.mock('../../services/api/workspaceService', () => ({
   workspaceService: { getMappingExplanation: vi.fn() },
+}));
+
+vi.mock('../../services/api/mappingReleaseService', () => ({
+  mappingReleaseService: { listReleases: vi.fn() },
 }));
 
 vi.mock('../../services/api/mappingDraftService', async importOriginal => {
@@ -114,6 +119,12 @@ describe('MappingStudioPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    vi.mocked(mappingReleaseService.listReleases).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      totalCount: 0,
+    });
     useWorkspaceStore.setState({
       status: 'ready',
       activeWorkspaceId: 'workspace-1',
@@ -142,6 +153,43 @@ describe('MappingStudioPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Mapper atual da NF-e' })).toBeVisible();
     expect(window.localStorage).toHaveLength(0);
+  });
+
+  it('lista releases do workspace ativo e linka para o draft correspondente (issue #198)', async () => {
+    vi.mocked(mappingReleaseService.listReleases).mockResolvedValue({
+      items: [
+        {
+          releaseId: 'release-1',
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          engine: 'xslt',
+          status: 'test_passed',
+          environment: 'development',
+          approvedByUserId: null,
+          approvedAt: null,
+          approvalJustification: null,
+          publishedByUserId: null,
+          publishedAt: null,
+          previousPublishedReleaseId: null,
+          correlationId: 'correlation-1',
+          eTag: 'AAAAAAAAAAE=',
+        },
+      ],
+      page: 1,
+      pageSize: 20,
+      totalCount: 1,
+    });
+
+    renderRoute('/workspace/mapping-studio');
+
+    const link = await screen.findByRole('link', { name: /XSLT.*draft-1.*Testes aprovados/s });
+    expect(link).toHaveAttribute('href', '/workspace/mapping-studio/draft-1/draft');
+    expect(mappingReleaseService.listReleases).toHaveBeenCalledWith('workspace-1');
+  });
+
+  it('mostra estado vazio do catálogo quando o workspace não tem releases', async () => {
+    renderRoute('/workspace/mapping-studio');
+    expect(await screen.findByText('Nenhuma release ainda')).toBeVisible();
   });
 
   it('renderiza Sysmiddle somente leitura sem controles de autoria', async () => {
