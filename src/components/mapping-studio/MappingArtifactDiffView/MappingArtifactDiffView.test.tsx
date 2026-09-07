@@ -82,6 +82,39 @@ describe('MappingArtifactDiffView', () => {
     expect(screen.getByText('linha-nova')).toBeVisible();
   });
 
+  it('mostra as regras incluídas e removidas do snapshot entre as duas releases', () => {
+    render(
+      <MappingArtifactDiffView
+        baseline={artifact({ content: 'linha-antiga', hash: 'hash-old' })}
+        current={artifact({ content: 'linha-nova', hash: 'hash-new' })}
+        baselineLabel="Release anterior"
+        currentLabel="Release atual"
+        baselineSourceRuleIds={['rule-1', 'rule-2']}
+        currentSourceRuleIds={['rule-1', 'rule-3']}
+      />
+    );
+
+    expect(screen.getByText(/Regras incluídas nesta release/)).toBeVisible();
+    expect(screen.getByText('rule-3')).toBeVisible();
+    expect(screen.getByText(/Regras que saíram do snapshot/)).toBeVisible();
+    expect(screen.getByText('rule-2')).toBeVisible();
+  });
+
+  it('indica quando o mesmo conjunto de regras gerou os dois artefatos', () => {
+    render(
+      <MappingArtifactDiffView
+        baseline={artifact({ content: 'linha-antiga', hash: 'hash-old' })}
+        current={artifact({ content: 'linha-nova', hash: 'hash-new' })}
+        baselineLabel="Release anterior"
+        currentLabel="Release atual"
+        baselineSourceRuleIds={['rule-1', 'rule-2']}
+        currentSourceRuleIds={['rule-1', 'rule-2']}
+      />
+    );
+
+    expect(screen.getByText(/Mesmo conjunto de 2 regra\(s\) fonte/)).toBeVisible();
+  });
+
   it('recusa comparar artefatos de tipos diferentes', () => {
     render(
       <MappingArtifactDiffView

@@ -1,28 +1,34 @@
 ---
 name: project-fiscal-package-wizard-and-mapping-catalog-gap
-description: PBI #201 wizard implementado sobre service já existente; PBI #198 catálogo totalmente bloqueado por falta de qualquer endpoint de listagem na API.
+description: PBI #201 wizard completo (catálogo de projetos, inventário Excel/XSD e revisão incremental fechados via LayoutParserApi#309); PBI #198 catálogo de mappings segue totalmente bloqueado por falta de endpoint de listagem.
 metadata:
   type: project
 ---
 
-## PBI #201 — wizard de pacote fiscal
+## PBI #201 — wizard de pacote fiscal (gap fechado em 2026-09-07)
 
 - `mappingPackageService`/`types/mappingPackage.ts` (PR #208) existiam desde 31/08 mas **nenhum
-  componente os consumia** até este trabalho. Implementado
+  componente os consumia** até o trabalho de 2026-09-04. Implementado
   `src/components/mapping-studio/FiscalPackageWizard/` (form + resultado da revisão), rota
   `workspace/fiscal-package` e link em `WorkspacePage`.
-- Confirmado na API (`LayoutParserApi` branch `develop`,
-  `Controllers/FiscalMappingPackagesController.cs`): só existem
-  `POST .../projects/{projectId}/mapping-packages` (cria pacote + revisão 1) e
-  `GET .../mapping-packages/{packageId}`. `FiscalProject.cs` tem comentário explícito: "CRUD
-  completo de projeto fica fora de escopo".
-- **Sem endpoint de listagem de projetos** → `projectId` continua sendo colado manualmente
-  (GUID), com aviso na própria tela. **Sem inventário normalizado de Excel/XSD** → a tela só
-  mostra hash/tamanho/status de inspeção de antivírus por artefato, não estrutura da planilha.
-  **Sem endpoint de criação de nova revisão** → não há botão de nova revisão.
+- **2026-09-04:** confirmado na API só existiam `POST .../projects/{projectId}/mapping-packages`
+  e `GET .../mapping-packages/{packageId}` — sem listagem de projetos, inventário normalizado ou
+  revisão incremental. Reportado como FAIL de QA / bloqueio de contrato nos 3 pontos.
+- **2026-09-07 (LayoutParserApi#309, commit `8864f8b`):** os 3 gaps foram fechados em produção.
+  Front atualizado no mesmo dia para consumir:
+  - `GET /api/workspaces/{workspaceId}/projects` → `mappingPackageService.listProjects`;
+    `FiscalPackageWizard` agora usa `<select>` populado pelo catálogo quando disponível, com
+    fallback para GUID manual só se a listagem falhar ou vier vazia.
+  - `POST /api/workspaces/{workspaceId}/mapping-packages/{packageId}/revisions` →
+    `mappingPackageService.createRevision`; tela de resultado ganhou o fluxo "Enviar nova
+    revisão" (form próprio, sem duplicar upload da primeira revisão).
+  - `GET /api/workspaces/{workspaceId}/mapping-packages/{packageId}/artifacts/{artifactId}/excel-inventory`
+    → `mappingPackageService.getExcelInventory`; botão "Ver inventário da planilha" por artefato
+    `spec`, mostrando `decisionSheets` (aba/colunas/quantidade de regras) e `skippedSheets`.
+- Contrato registrado em `contracts/api-endpoints.json` (v6, `deliveredBy: LayoutParserApi#309`).
 - Padrão usado: `fiscalContext` (artefato obrigatório do multipart) é gerado no front como um
   `File` JSON a partir dos campos do wizard (documentType/schemaVersion/operation/jurisdiction),
-  não pedido como upload separado ao usuário.
+  não pedido como upload separado ao usuário. Isso não mudou nesta rodada.
 
 ## PBI #198 — catálogo e ciclo de vida de mappings fiscais
 

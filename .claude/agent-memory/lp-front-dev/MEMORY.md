@@ -41,8 +41,8 @@
   #197/#203: entrada manual de projectId (sem catálogo ainda), erro mapeado no service, diff LCS
   caseiro sem lib nova.
 - [Wizard de pacote fiscal e bloqueio do catálogo](project_fiscal_package_wizard_and_mapping_catalog_gap_2026_09_04.md) —
-  #201 implementado sobre service já existente (sem catálogo de projetos); #198 sem nenhum
-  endpoint de listagem na API, bloqueio total documentado em vez de UI simulada.
+  #201 completo desde 07/09 (catálogo de projetos, inventário Excel/XSD, revisão incremental via
+  API#309); #198 (catálogo de mappings) segue bloqueado, sem endpoint de listagem na API.
 - [Catálogo de mapping releases conectado](project_mapping_release_catalog_wired_2026_09_07.md) —
   #198 desbloqueado por LayoutParserApi#307; `listReleases` + `MappingReleaseCatalog` na
   entrada do Mapping Studio.

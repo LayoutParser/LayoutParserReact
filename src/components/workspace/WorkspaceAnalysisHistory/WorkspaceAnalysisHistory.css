@@ -65,6 +65,22 @@
   align-items: flex-start;
 }
 
+.workspace-analysis-history__filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.workspace-analysis-history__filter select {
+  min-height: var(--control-height);
+  padding-inline: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
 .workspace-analysis-history__error {
   padding: var(--spacing-md);
   background: var(--color-danger-bg);

@@ -17,11 +17,17 @@ vi.mock('../../../services/api/mappingPackageService', async importOriginal => {
       createIdempotencyKey: vi.fn(() => 'idempotency-key-1'),
       createPackage: vi.fn(),
       getPackage: vi.fn(),
+      listProjects: vi.fn(),
+      createRevision: vi.fn(),
+      getExcelInventory: vi.fn(),
     },
   };
 });
 
 const createPackageMock = vi.mocked(mappingPackageService.createPackage);
+const listProjectsMock = vi.mocked(mappingPackageService.listProjects);
+const createRevisionMock = vi.mocked(mappingPackageService.createRevision);
+const getExcelInventoryMock = vi.mocked(mappingPackageService.getExcelInventory);
 
 const packageResult = {
   packageId: 'package-1',
@@ -41,6 +47,15 @@ const packageResult = {
           sha256: 'abc123',
           sizeBytes: 2048,
           originalFileName: 'sample.txt',
+          inspectionStatus: 'clean' as const,
+          uploadedAt: '2026-09-04T10:00:00Z',
+        },
+        {
+          artifactId: 'artifact-2',
+          kind: 'spec' as const,
+          sha256: 'def456',
+          sizeBytes: 4096,
+          originalFileName: 'spec.xlsx',
           inspectionStatus: 'clean' as const,
           uploadedAt: '2026-09-04T10:00:00Z',
         },
@@ -75,6 +90,10 @@ const fillRequiredFields = () => {
 describe('FiscalPackageWizard', () => {
   beforeEach(() => {
     createPackageMock.mockReset();
+    createRevisionMock.mockReset();
+    getExcelInventoryMock.mockReset();
+    listProjectsMock.mockReset();
+    listProjectsMock.mockResolvedValue([]);
     useWorkspaceStore.setState({
       status: 'ready',
       workspaces: [
@@ -91,18 +110,6 @@ describe('FiscalPackageWizard', () => {
     });
   });
 
-  it('explica a lacuna de contrato (sem catálogo de projetos)', () => {
-    render(
-      <MemoryRouter>
-        <FiscalPackageWizard />
-      </MemoryRouter>
-    );
-
-    expect(
-      screen.getByText(/Catálogo de projetos e nova revisão ainda dependem da API/)
-    ).toBeInTheDocument();
-  });
-
   it('mantém o envio desabilitado até preencher os campos obrigatórios', () => {
     render(
       <MemoryRouter>
@@ -111,6 +118,50 @@ describe('FiscalPackageWizard', () => {
     );
 
     expect(screen.getByRole('button', { name: /Enviar pacote fiscal/ })).toBeDisabled();
+  });
+
+  it('avisa quando o catálogo de projetos não pode ser carregado', async () => {
+    listProjectsMock.mockRejectedValue(
+      new MappingPackageRequestError('unavailable', 'Catálogo de projetos indisponível.')
+    );
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByText(/Não foi possível carregar o catálogo de projetos/)
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/ID do projeto/)).toBeInTheDocument();
+  });
+
+  it('usa a listagem de projetos para seleção quando disponível', async () => {
+    listProjectsMock.mockResolvedValue([
+      {
+        projectId: 'project-1',
+        workspaceId: 'workspace-1',
+        name: 'Projeto Fiscal A',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        projectId: 'project-2',
+        workspaceId: 'workspace-1',
+        name: 'Projeto Fiscal B',
+        createdAt: '2026-01-02T00:00:00Z',
+      },
+    ]);
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('option', { name: 'Projeto Fiscal A' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Projeto Fiscal B' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/ID do projeto \(GUID existente\)/)).not.toBeInTheDocument();
   });
 
   it('envia o pacote e mostra o resultado da revisão criada', async () => {
@@ -154,5 +205,82 @@ describe('FiscalPackageWizard', () => {
     fireEvent.submit(submitButton.closest('form') as HTMLFormElement);
 
     expect(await screen.findByText('Artefato de layout inválido.')).toBeInTheDocument();
+  });
+
+  it('exibe o inventário normalizado da planilha ao consultar um artefato spec', async () => {
+    createPackageMock.mockResolvedValue(packageResult);
+    getExcelInventoryMock.mockResolvedValue({
+      decisionSheets: [{ sheetName: 'Regras', columns: ['Campo', 'Valor'], ruleCount: 12 }],
+      skippedSheets: ['Notas'],
+    });
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver inventário da planilha/ }));
+
+    await waitFor(() =>
+      expect(getExcelInventoryMock).toHaveBeenCalledWith('workspace-1', 'package-1', 'artifact-2')
+    );
+    expect(await screen.findByText(/12 regra\(s\) · colunas: Campo, Valor/)).toBeInTheDocument();
+    expect(screen.getByText('Notas')).toBeInTheDocument();
+  });
+
+  it('cria uma nova revisão a partir do pacote existente', async () => {
+    createPackageMock.mockResolvedValue(packageResult);
+    const revisedPackage = {
+      ...packageResult,
+      revisions: [
+        ...packageResult.revisions,
+        {
+          revisionId: 'revision-2',
+          revisionNumber: 2,
+          createdAt: '2026-09-07T10:00:00Z',
+          artifacts: [packageResult.revisions[0].artifacts[0]],
+        },
+      ],
+    };
+    createRevisionMock.mockResolvedValue(revisedPackage);
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Enviar nova revisão/ }));
+    setFileInput(screen.getByLabelText(/Amostra de entrada/), buildFile('sample-v2.txt'));
+
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Confirmar nova revisão/ })
+        .closest('form') as HTMLFormElement
+    );
+
+    await waitFor(() => expect(createRevisionMock).toHaveBeenCalledTimes(1));
+    expect(createRevisionMock.mock.calls[0][0]).toMatchObject({
+      workspaceId: 'workspace-1',
+      packageId: 'package-1',
+    });
+    expect(await screen.findByText('Revisão 2')).toBeInTheDocument();
   });
 });

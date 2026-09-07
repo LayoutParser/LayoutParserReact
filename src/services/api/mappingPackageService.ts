@@ -2,8 +2,13 @@ import axios from 'axios';
 import type {
   ArtifactInspectionStatus,
   CreateMappingPackageInput,
+  CreateMappingPackageRevisionInput,
+  ExcelInventoryResult,
+  ExcelSheetInventory,
   FiscalMappingPackageDetail,
+  FiscalProjectSummary,
   MappingPackageArtifactKind,
+  MappingPackageArtifactUpload,
   MappingPackageArtifactSummary,
   MappingPackageRevisionSummary,
 } from '../../types/mappingPackage';
@@ -140,6 +145,70 @@ function parsePackage(value: unknown): FiscalMappingPackageDetail {
   };
 }
 
+function parseProject(value: unknown): FiscalProjectSummary {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.projectId) ||
+    !isNonEmptyString(value.workspaceId) ||
+    !isNonEmptyString(value.name) ||
+    !isValidDate(value.createdAt)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    projectId: value.projectId,
+    workspaceId: value.workspaceId,
+    name: value.name,
+    createdAt: value.createdAt,
+  };
+}
+
+function parseProjectList(data: unknown): FiscalProjectSummary[] {
+  if (!isRecord(data) || !Array.isArray(data.projects)) {
+    throw invalidResponse();
+  }
+  return data.projects.map(parseProject);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+function parseSheetInventory(value: unknown): ExcelSheetInventory {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.sheetName) ||
+    !isStringArray(value.columns) ||
+    typeof value.ruleCount !== 'number' ||
+    !Number.isSafeInteger(value.ruleCount) ||
+    value.ruleCount < 0
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    sheetName: value.sheetName,
+    columns: value.columns,
+    ruleCount: value.ruleCount,
+  };
+}
+
+function parseExcelInventory(data: unknown): ExcelInventoryResult {
+  if (
+    !isRecord(data) ||
+    !Array.isArray(data.decisionSheets) ||
+    !isStringArray(data.skippedSheets)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    decisionSheets: data.decisionSheets.map(parseSheetInventory),
+    skippedSheets: data.skippedSheets,
+  };
+}
+
 function invalidResponse(): MappingPackageRequestError {
   return new MappingPackageRequestError(
     'invalid_response',
@@ -155,22 +224,15 @@ function resourceSegment(value: string, label: string): string {
   return encodeURIComponent(normalized);
 }
 
-function validateUpload(input: CreateMappingPackageInput): void {
-  if (!isNonEmptyString(input.idempotencyKey)) {
-    throw new MappingPackageRequestError(
-      'invalid_input',
-      'A chave idempotente da tentativa é obrigatória.'
-    );
-  }
-
-  if (input.artifacts.length === 0 || input.artifacts.length > MAX_ARTIFACTS) {
+function validateArtifacts(artifacts: MappingPackageArtifactUpload[]): void {
+  if (artifacts.length === 0 || artifacts.length > MAX_ARTIFACTS) {
     throw new MappingPackageRequestError(
       'invalid_input',
       `Envie entre 1 e ${MAX_ARTIFACTS} artefatos por pacote.`
     );
   }
 
-  for (const artifact of input.artifacts) {
+  for (const artifact of artifacts) {
     const extension = artifact.file.name.slice(artifact.file.name.lastIndexOf('.')).toLowerCase();
     if (extension !== expectedExtension[artifact.kind]) {
       throw new MappingPackageRequestError(
@@ -232,7 +294,13 @@ export const mappingPackageService = {
   async createPackage(input: CreateMappingPackageInput): Promise<FiscalMappingPackageDetail> {
     const workspace = resourceSegment(input.workspaceId, 'Workspace');
     const project = resourceSegment(input.projectId, 'Projeto');
-    validateUpload(input);
+    if (!isNonEmptyString(input.idempotencyKey)) {
+      throw new MappingPackageRequestError(
+        'invalid_input',
+        'A chave idempotente da tentativa é obrigatória.'
+      );
+    }
+    validateArtifacts(input.artifacts);
 
     const formData = new FormData();
     if (input.name?.trim()) {
@@ -269,6 +337,75 @@ export const mappingPackageService = {
         `/api/workspaces/${workspace}/mapping-packages/${packageResource}`
       );
       return parsePackage(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /** Lista os projetos fiscais do workspace, para navegação/seleção (Gap 1 — issue #201). */
+  async listProjects(workspaceId: string): Promise<FiscalProjectSummary[]> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+
+    try {
+      const response = await apiClient.get<unknown>(`/api/workspaces/${workspace}/projects`);
+      return parseProjectList(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Cria uma nova revisão de um pacote já existente (Gap 2 — issue #201). Diferente de
+   * {@link createPackage}, não há chave de idempotência: um reenvio idêntico intencional cria
+   * uma revisão nova (é uma correção, não um reenvio de rede).
+   */
+  async createRevision(
+    input: CreateMappingPackageRevisionInput
+  ): Promise<FiscalMappingPackageDetail> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const packageResource = resourceSegment(input.packageId, 'Pacote');
+    validateArtifacts(input.artifacts);
+
+    const formData = new FormData();
+    input.artifacts.forEach(({ kind, file }) => formData.append(kind, file));
+
+    try {
+      const response = await apiClient.post<unknown>(
+        `/api/workspaces/${workspace}/mapping-packages/${packageResource}/revisions`,
+        formData,
+        {
+          onUploadProgress: event => {
+            if (!input.onProgress || !event.total || event.total <= 0) {
+              return;
+            }
+            input.onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+          },
+        }
+      );
+      return parsePackage(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Inventário de estrutura (abas/colunas/linhas) de um artefato `spec` (XLSX) da revisão mais
+   * recente (Gap 3 — issue #201). Nunca devolve o conteúdo bruto da planilha.
+   */
+  async getExcelInventory(
+    workspaceId: string,
+    packageId: string,
+    artifactId: string
+  ): Promise<ExcelInventoryResult> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const packageResource = resourceSegment(packageId, 'Pacote');
+    const artifact = resourceSegment(artifactId, 'Artefato');
+
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-packages/${packageResource}/artifacts/${artifact}/excel-inventory`
+      );
+      return parseExcelInventory(response.data);
     } catch (error) {
       return mapRequestError(error);
     }

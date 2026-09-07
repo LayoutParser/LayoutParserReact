@@ -42,3 +42,31 @@ export interface CreateMappingPackageInput {
   artifacts: MappingPackageArtifactUpload[];
   onProgress?: (percentage: number) => void;
 }
+
+/** Projeto fiscal do workspace (Gap 1 — issue #201). Leitura pura, sem CRUD. */
+export interface FiscalProjectSummary {
+  projectId: string;
+  workspaceId: string;
+  name: string;
+  createdAt: string;
+}
+
+/** Cria uma nova revisão de um pacote já existente (Gap 2 — issue #201). */
+export interface CreateMappingPackageRevisionInput {
+  workspaceId: string;
+  packageId: string;
+  artifacts: MappingPackageArtifactUpload[];
+  onProgress?: (percentage: number) => void;
+}
+
+/** Inventário de uma aba do Excel reconhecida como tabela de decisão fiscal (Gap 3 — issue #201). */
+export interface ExcelSheetInventory {
+  sheetName: string;
+  columns: string[];
+  ruleCount: number;
+}
+
+export interface ExcelInventoryResult {
+  decisionSheets: ExcelSheetInventory[];
+  skippedSheets: string[];
+}

@@ -73,6 +73,7 @@ const MappingTestLabPanel = ({
   const [diffState, setDiffState] = useState<{
     kind: string;
     baseline: MappingReleaseArtifact | null;
+    baselineSourceRuleIds: string[] | null;
     loading: boolean;
     error: string | null;
   } | null>(null);
@@ -224,22 +225,41 @@ const MappingTestLabPanel = ({
 
     const previousReleaseId = release?.previousPublishedReleaseId ?? null;
     if (!previousReleaseId) {
-      setDiffState({ kind: artifact.kind, baseline: null, loading: false, error: null });
+      setDiffState({
+        kind: artifact.kind,
+        baseline: null,
+        baselineSourceRuleIds: null,
+        loading: false,
+        error: null,
+      });
       return;
     }
 
-    setDiffState({ kind: artifact.kind, baseline: null, loading: true, error: null });
+    setDiffState({
+      kind: artifact.kind,
+      baseline: null,
+      baselineSourceRuleIds: null,
+      loading: true,
+      error: null,
+    });
     void mappingReleaseService
       .getRelease(workspaceId, draft.draftId, previousReleaseId)
       .then(previousRelease => {
         const baseline =
           previousRelease.artifacts.find(item => item.kind === artifact.kind) ?? null;
-        setDiffState({ kind: artifact.kind, baseline, loading: false, error: null });
+        setDiffState({
+          kind: artifact.kind,
+          baseline,
+          baselineSourceRuleIds: previousRelease.sourceRuleIds,
+          loading: false,
+          error: null,
+        });
       })
       .catch(diffError => {
         setDiffState({
           kind: artifact.kind,
           baseline: null,
+          baselineSourceRuleIds: null,
           loading: false,
           error:
             diffError instanceof Error
@@ -387,6 +407,8 @@ const MappingTestLabPanel = ({
                     currentLabel={`Release ${release.releaseId}`}
                     loading={diffState.loading}
                     error={diffState.error}
+                    baselineSourceRuleIds={diffState.baselineSourceRuleIds}
+                    currentSourceRuleIds={release.sourceRuleIds}
                   />
                 )}
               </article>

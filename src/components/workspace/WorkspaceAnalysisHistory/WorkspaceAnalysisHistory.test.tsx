@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { workspaceService } from '../../../services/api/workspaceService';
@@ -80,6 +80,37 @@ describe('WorkspaceAnalysisHistory', () => {
     await waitFor(() => expect(screen.getByText('nota-fiscal.txt')).toBeVisible());
     expect(workspaceService.listAnalyses).toHaveBeenCalledWith('workspace-1', 'project-1', {});
     expect(screen.getByText('Concluída')).toBeVisible();
+  });
+
+  it('refiltra por tipo de documento fiscal', async () => {
+    useWorkspaceStore.setState({
+      status: 'ready',
+      activeWorkspaceId: 'workspace-1',
+      workspaces: [
+        {
+          workspaceId: 'workspace-1',
+          name: 'Workspace fiscal',
+          kind: 'personal',
+          role: 'owner',
+          createdAt: '2026-08-31T12:00:00Z',
+        },
+      ],
+    });
+    vi.mocked(workspaceService.listAnalyses).mockResolvedValue({ items: [], nextCursor: null });
+
+    renderAt('/workspace/analyses/project-1');
+
+    await waitFor(() =>
+      expect(workspaceService.listAnalyses).toHaveBeenCalledWith('workspace-1', 'project-1', {})
+    );
+
+    fireEvent.change(screen.getByLabelText('Tipo de documento'), { target: { value: 'nfe' } });
+
+    await waitFor(() =>
+      expect(workspaceService.listAnalyses).toHaveBeenLastCalledWith('workspace-1', 'project-1', {
+        documentType: 'nfe',
+      })
+    );
   });
 
   it('mostra estado vazio quando o projeto não tem análises', async () => {
