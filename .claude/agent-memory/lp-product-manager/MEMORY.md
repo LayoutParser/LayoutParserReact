@@ -12,6 +12,8 @@
   em In Review; #200/#205/#188/#206 bloqueados por dependência cross-repo na API.
 - [Atualização de gates fiscais 2026-09-04](project_fiscal_gates_update_2026_09_04.md) — #201
   In Review (parcial), #198 Blocked (nada implementado); corrige memória anterior sobre #198.
+- [DRIFT de endpoint em #197 2026-09-07](project_fiscal_197_endpoint_drift_2026_09_07.md) — #197
+  movida para Blocked/p0: endpoint de histórico de análises não existe na API (contract-qa).
 - [Sincronização de status 2026-09-07](project_backend_status_sync_2026_09_07.md) — #188 Done
   (PR #189 já mergeado+deployed, premissa do pedido estava desatualizada), #198 Ready, #201
   In Review, #200 Blocked aguardando teste cross-workspace e ADR; fechar #188 ficou bloqueado
