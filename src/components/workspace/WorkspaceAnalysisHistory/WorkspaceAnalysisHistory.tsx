@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { workspaceService, WorkspaceRequestError } from '../../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
-import type { AnalysisStatus, DocumentAnalysisSummary } from '../../../types/workspace';
+import type {
+  AnalysisStatus,
+  DocumentAnalysisSummary,
+  FiscalDocumentType,
+} from '../../../types/workspace';
 import './WorkspaceAnalysisHistory.css';
 
 const statusLabels: Record<AnalysisStatus, string> = {
@@ -12,6 +16,19 @@ const statusLabels: Record<AnalysisStatus, string> = {
   failed: 'Falhou',
   expired: 'Expirada',
 };
+
+const documentTypeLabels: Record<FiscalDocumentType, string> = {
+  nfe: 'NF-e',
+  cte: 'CT-e',
+  mdfe: 'MDF-e',
+  nfse: 'NFS-e',
+  nfcom: 'NFCom',
+};
+
+const documentTypeOptions = Object.keys(documentTypeLabels) as FiscalDocumentType[];
+
+const isFiscalDocumentType = (value: string): value is FiscalDocumentType =>
+  (documentTypeOptions as string[]).includes(value);
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -68,6 +85,7 @@ const WorkspaceAnalysisHistoryList = ({ projectId }: { projectId: string }) => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [documentType, setDocumentType] = useState<FiscalDocumentType | ''>('');
 
   // Busca pura: não toca estado. Quem chama decide como refletir o resultado (efeito, retry ou
   // "carregar mais"), evitando setState síncrono dentro do corpo do efeito.
@@ -76,9 +94,10 @@ const WorkspaceAnalysisHistoryList = ({ projectId }: { projectId: string }) => {
       if (!activeWorkspaceId) return Promise.reject(new Error('Workspace ainda não carregado.'));
       return workspaceService.listAnalyses(activeWorkspaceId, projectId, {
         ...(cursor ? { cursor } : {}),
+        ...(documentType ? { documentType } : {}),
       });
     },
-    [activeWorkspaceId, projectId]
+    [activeWorkspaceId, projectId, documentType]
   );
 
   const applyPage = (
@@ -139,6 +158,12 @@ const WorkspaceAnalysisHistoryList = ({ projectId }: { projectId: string }) => {
       .finally(() => setLoadingMore(false));
   };
 
+  // Trocar o filtro reinicia a paginação: o cursor atual não é válido para outro recorte.
+  const handleDocumentTypeChange = (value: string) => {
+    setDocumentType(isFiscalDocumentType(value) ? value : '');
+    setLoading(true);
+  };
+
   if (workspaceStatus === 'idle' || workspaceStatus === 'loading' || loading) {
     return (
       <main
@@ -186,6 +211,20 @@ const WorkspaceAnalysisHistoryList = ({ projectId }: { projectId: string }) => {
           <p className="workspace-eyebrow">Projeto {projectId}</p>
           <h1>Análises persistidas</h1>
         </div>
+        <label className="workspace-analysis-history__filter">
+          Tipo de documento
+          <select
+            value={documentType}
+            onChange={event => handleDocumentTypeChange(event.target.value)}
+          >
+            <option value="">Todos</option>
+            {documentTypeOptions.map(option => (
+              <option key={option} value={option}>
+                {documentTypeLabels[option]}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
       {error && (
