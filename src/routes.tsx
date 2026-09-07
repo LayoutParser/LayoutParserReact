@@ -65,6 +65,14 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'workspace/fiscal-package',
+        lazy: async () => ({
+          Component: (
+            await import('./components/mapping-studio/FiscalPackageWizard/FiscalPackageWizard')
+          ).default,
+        }),
+      },
+      {
         path: 'upload',
         lazy: async () => ({
           Component: (await import('./components/layout/LayoutParserPage')).default,

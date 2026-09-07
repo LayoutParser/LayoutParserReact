@@ -4,6 +4,7 @@ import {
   MappingDraftRequestError,
   mappingDraftService,
 } from '../../services/api/mappingDraftService';
+import { mappingReleaseService } from '../../services/api/mappingReleaseService';
 import { workspaceService } from '../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import type {
@@ -12,6 +13,7 @@ import type {
   MappingSuggestionJob,
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
+import type { MappingReleaseSummary } from '../../types/mappingRelease';
 import type { MappingExplanation, MappingRuleExplanation } from '../../types/workspace';
 import MappingRuleReviewCard from './MappingRuleReviewCard';
 import MappingTestLabPanel from './MappingTestLabPanel';
@@ -36,8 +38,99 @@ const supportLabels: Record<MappingRuleExplanation['supportLevel'], string> = {
   unsupported: 'Não suportada',
 };
 
+const releaseStatusLabels: Record<MappingReleaseSummary['status'], string> = {
+  draft_compiled: 'Compilado',
+  test_passed: 'Testes aprovados',
+  test_failed: 'Testes reprovados',
+  in_review: 'Em revisão',
+  approved: 'Aprovado',
+  published: 'Publicado',
+  deprecated: 'Depreciado',
+  archived: 'Arquivado',
+};
+
+const MappingReleaseCatalog = ({ workspaceId }: { workspaceId: string }) => {
+  const [releases, setReleases] = useState<MappingReleaseSummary[]>([]);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    void mappingReleaseService
+      .listReleases(workspaceId)
+      .then(response => {
+        if (disposed) return;
+        setReleases(response.items);
+        setStatus('ready');
+      })
+      .catch(loadError => {
+        if (disposed) return;
+        setReleases([]);
+        setStatus('error');
+        setError(
+          loadError instanceof Error ? loadError.message : 'Não foi possível listar as releases.'
+        );
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [workspaceId]);
+
+  if (status === 'loading') {
+    return (
+      <section className="mapping-studio-section" aria-busy="true" aria-live="polite">
+        <span className="mapping-loader" aria-hidden="true" />
+        <p>Carregando releases do workspace…</p>
+      </section>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <section className="mapping-studio-section" role="alert">
+        <p className="mapping-kicker">Catálogo indisponível</p>
+        <p>{error}</p>
+      </section>
+    );
+  }
+
+  if (releases.length === 0) {
+    return (
+      <section className="mapping-studio-section">
+        <div className="mapping-empty-state">
+          <h3>Nenhuma release ainda</h3>
+          <p>Compile um draft TCL/XSLT para que ele apareça neste catálogo.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mapping-studio-section" aria-labelledby="mapping-catalog-title">
+      <div className="mapping-section-heading">
+        <div>
+          <p className="mapping-kicker">Catálogo do workspace</p>
+          <h2 id="mapping-catalog-title">Releases disponíveis</h2>
+        </div>
+      </div>
+      <ul className="mapping-review-list">
+        {releases.map(release => (
+          <li key={release.releaseId}>
+            <Link to={`/workspace/mapping-studio/${encodeURIComponent(release.draftId)}/draft`}>
+              <strong>{release.engine.toUpperCase()}</strong> · {release.draftId}
+              <span> — {releaseStatusLabels[release.status]}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 const MappingStudioEntry = () => {
   const navigate = useNavigate();
+  const { activeWorkspaceId } = useWorkspaceStore();
   const [mappingId, setMappingId] = useState('');
   const [version, setVersion] = useState<'draft' | 'current'>('draft');
 
@@ -84,11 +177,14 @@ const MappingStudioEntry = () => {
           </button>
         </form>
         <aside>
-          O catálogo navegável de projetos e mappings ainda depende dos endpoints de listagem da
-          API. Esta entrada técnica mantém o Slice 3/4 utilizável sem armazenar IDs no navegador.
+          Mappers Sysmiddle publicados ainda não têm catálogo de descoberta — abra-os pelo
+          identificador acima. Releases de draft TCL/XSLT já podem ser listadas abaixo.
         </aside>
         <Link to="/workspace">Voltar ao workspace</Link>
       </section>
+      {activeWorkspaceId && (
+        <MappingReleaseCatalog key={activeWorkspaceId} workspaceId={activeWorkspaceId} />
+      )}
     </main>
   );
 };

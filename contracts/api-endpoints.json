@@ -125,6 +125,12 @@
       "deliveredBy": "LayoutParserApi#243"
     },
     {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-releases",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#307"
+    },
+    {
       "method": "POST",
       "path": "/api/workspaces/:param/mapping-releases/:param/approve",
       "owner": "LayoutParserApi",

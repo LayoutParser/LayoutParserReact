@@ -114,6 +114,16 @@ const WorkspacePage = () => {
             </p>
             <Link to="/workspace/mapping-studio">Abrir Mapping Studio</Link>
           </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
+            <h3>Pacote de especificação fiscal</h3>
+            <p>
+              Monte a primeira revisão com amostra, layout, planilha e XSD. Projeto é informado
+              manualmente até a API oferecer catálogo de projetos.
+            </p>
+            <Link to="/workspace/fiscal-package">Enviar pacote</Link>
+          </article>
         </div>
       </section>
     </main>

@@ -107,3 +107,32 @@ export interface CreateMappingTestRunInput {
   expectedXml: string;
   xsdVersion?: string;
 }
+
+/**
+ * Item resumido de release devolvido pela listagem paginada (issue #198). Espelha o
+ * `ToReleaseResponse` do `MappingGovernanceController` — não inclui artefatos, diagnósticos
+ * de compilação nem o resumo do test run (só o GET de detalhe traz isso).
+ */
+export interface MappingReleaseSummary {
+  releaseId: string;
+  workspaceId: string;
+  draftId: string;
+  engine: MappingAuthoringEngine;
+  status: MappingReleaseStatus;
+  environment: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalJustification: string | null;
+  publishedByUserId: string | null;
+  publishedAt: string | null;
+  previousPublishedReleaseId: string | null;
+  correlationId: string;
+  eTag: string;
+}
+
+export interface MappingReleaseListResponse {
+  items: MappingReleaseSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}

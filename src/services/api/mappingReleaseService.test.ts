@@ -291,4 +291,52 @@ describe('mappingReleaseService', () => {
       mappingReleaseService.approveRelease('workspace-1', 'release-1', 'Revisão concluída.')
     ).rejects.toMatchObject({ kind: 'invalid_response' });
   });
+
+  it('lista releases paginadas do workspace (issue #198)', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        items: [
+          {
+            releaseId: 'release-1',
+            workspaceId: 'workspace-1',
+            draftId: 'draft-1',
+            engine: 'xslt',
+            status: 'draft_compiled',
+            environment: 'development',
+            approvedByUserId: null,
+            approvedAt: null,
+            approvalJustification: null,
+            publishedByUserId: null,
+            publishedAt: null,
+            previousPublishedReleaseId: null,
+            correlationId: 'correlation-1',
+            eTag: 'AAAAAAAAAAE=',
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+      },
+    });
+
+    await expect(mappingReleaseService.listReleases('workspace-1')).resolves.toEqual({
+      items: [expect.objectContaining({ releaseId: 'release-1', status: 'draft_compiled' })],
+      page: 1,
+      pageSize: 20,
+      totalCount: 1,
+    });
+    expect(apiClient.get).toHaveBeenCalledWith('/api/workspaces/workspace-1/mapping-releases', {
+      params: { page: 1, pageSize: 20 },
+    });
+  });
+
+  it('recusa paginação fora dos limites antes de chamar a API', async () => {
+    await expect(mappingReleaseService.listReleases('workspace-1', 0)).rejects.toMatchObject({
+      kind: 'invalid_input',
+    });
+    await expect(mappingReleaseService.listReleases('workspace-1', 1, 101)).rejects.toMatchObject({
+      kind: 'invalid_input',
+    });
+    expect(apiClient.get).not.toHaveBeenCalled();
+  });
 });

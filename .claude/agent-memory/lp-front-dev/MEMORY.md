@@ -37,5 +37,18 @@
 - [Mapping Studio — Slices 6 e 7](project_mapping_studio_slices_6_7_2026_09_01.md) — gate Sysmiddle,
   governança approve/publish/rollback com RBAC e bloqueios remanescentes do piloto FIAT real.
 
+- [Histórico de análises e diff de artefatos](project_workspace_analysis_history_and_artifact_diff_2026_09_03.md) —
+  #197/#203: entrada manual de projectId (sem catálogo ainda), erro mapeado no service, diff LCS
+  caseiro sem lib nova.
+- [Wizard de pacote fiscal e bloqueio do catálogo](project_fiscal_package_wizard_and_mapping_catalog_gap_2026_09_04.md) —
+  #201 implementado sobre service já existente (sem catálogo de projetos); #198 sem nenhum
+  endpoint de listagem na API, bloqueio total documentado em vez de UI simulada.
+- [Catálogo de mapping releases conectado](project_mapping_release_catalog_wired_2026_09_07.md) —
+  #198 desbloqueado por LayoutParserApi#307; `listReleases` + `MappingReleaseCatalog` na
+  entrada do Mapping Studio.
+
+- [Dependabot e peers desalinhados](feedback_dependabot_peer_bump_gaps.md) — bump de um pacote
+  sem o peer correspondente quebra `npm ci` só no próximo install limpo; checar em cadeia.
+
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
