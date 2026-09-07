@@ -90,3 +90,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
+
+.fiscal-package-inventory {
+  display: grid;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.fiscal-package-revision-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}

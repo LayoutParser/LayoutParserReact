@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "sourceOfTruth": "LayoutParserApi",
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
@@ -44,6 +44,24 @@
       "path": "/api/workspaces/:param/mapping-packages/:param",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#236"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/projects",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-packages/:param/revisions",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-packages/:param/artifacts/:param/excel-inventory",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
     },
     {
       "method": "GET",
