@@ -183,4 +183,32 @@ describe('MappingGovernanceReadiness', () => {
     );
     expect(onReleaseChange).toHaveBeenCalledWith(expect.objectContaining({ status: 'deprecated' }));
   });
+
+  it('issue #225: uma release publicada não expõe nenhuma ação de edição/autoria, só rollback', () => {
+    render(
+      <MappingGovernanceReadiness
+        workspaceId="workspace-1"
+        workspaceRole="fiscal_admin"
+        release={{
+          ...release,
+          status: 'published',
+          testRunSummary: passedSummary,
+          environment: 'production',
+          approvedByUserId: 'reviewer-1',
+          approvedAt: '2026-09-01T10:00:00Z',
+          approvalJustification: 'Revisão fiscal concluída.',
+          publishedByUserId: 'admin-1',
+          publishedAt: '2026-09-01T10:05:00Z',
+          previousPublishedReleaseId: 'release-0',
+        }}
+        onReleaseChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Aprovar release' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Publicar release' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reverter para a versão anterior' })).toBeVisible();
+    expect(mappingReleaseService.approveRelease).not.toHaveBeenCalled();
+    expect(mappingReleaseService.publishRelease).not.toHaveBeenCalled();
+  });
 });
