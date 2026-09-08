@@ -7,6 +7,7 @@ import type {
   MappingReleaseStatus,
 } from '../../types/mappingRelease';
 import type { WorkspaceRole } from '../../types/workspace';
+import { isMappingGovernanceActionAllowed } from '../../utils/mappingGovernanceGuards';
 
 interface MappingGovernanceReadinessProps {
   workspaceId: string;
@@ -106,6 +107,15 @@ const MappingGovernanceReadiness = ({
   const publicationAllowed = canPublish(workspaceRole);
 
   const runAction = async (action: GovernanceAction) => {
+    if (!isMappingGovernanceActionAllowed(release.status, action)) {
+      setSuccess(null);
+      setError(
+        release.status === 'published'
+          ? 'Esta release está publicada e é imutável; a única transição permitida é o rollback.'
+          : 'Esta ação não é válida para o status atual da release.'
+      );
+      return;
+    }
     setBusyAction(action);
     setError(null);
     setSuccess(null);
