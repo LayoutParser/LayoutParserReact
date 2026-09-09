@@ -17,6 +17,7 @@ import AutoLayoutDetectionPanel, {
 import AnalysisModeTabs from '../analysis/AnalysisModeTabs';
 import DocumentSummary from '../analysis/DocumentSummary';
 import FieldSearch from '../analysis/FieldSearch';
+import GenerateSampleDocumentButton from '../analysis/GenerateSampleDocumentButton/GenerateSampleDocumentButton';
 import Button from '../shared/Button';
 import Modal from '../shared/Modal';
 import type { AutoParseResponse, LayoutDetectionCandidate, ParseRequest } from '../../types/api';
@@ -490,6 +491,7 @@ const LayoutParserPage: React.FC = () => {
                   não teria nenhum efeito visível — por isso escondemos a busca nesse modo,
                   em vez de deixar um controle que parece funcionar mas não faz nada em tela. */}
               {activeMode !== 'xml-transformacao' && <FieldSearch />}
+              <GenerateSampleDocumentButton />
             </div>
           ) : (
             <div className="structure-placeholder">
