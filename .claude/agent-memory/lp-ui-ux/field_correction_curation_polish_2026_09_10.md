@@ -19,6 +19,7 @@ a classe `xml-transformation-delivery-feedback` já usada em `XmlTransformationD
 mudança nesses arquivos — só confirmei consistência.
 
 **Story #244 (FieldCorrectionCuration) tinha markup só funcional, precisou de polish real:**
+
 - Cores de status hardcoded (`#dcfce7`, `#166534`, `#fee2e2`, `#991b1b`) → trocadas por tokens
   (`--color-success-bg/text`, `--color-danger-bg/text`), seguindo o padrão já usado em
   `WorkspaceAnalysisHistory.css` (referência mais próxima na mesma pasta `workspace/`).

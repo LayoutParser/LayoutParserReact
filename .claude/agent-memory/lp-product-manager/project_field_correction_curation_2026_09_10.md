@@ -26,10 +26,10 @@ Em 2026-09-10, três ações de sincronização do backlog de correção de camp
    produção em 2026-09-10 pela API:
    - `GET /api/transformation/field-correction/pending`
    - `POST /api/transformation/field-correction/{reportId}/review` (body `{decision:
-     "accepted"|"rejected"}`, idempotente; só `reviewed_accepted` alimenta o dataset de
+"accepted"|"rejected"}`, idempotente; só `reviewed_accepted` alimenta o dataset de
      treino de IA).
-   Sem bloqueio de contrato — foi direto para `Ready` (Tipo `Story`, Prioridade `P2`,
-   `area: frontend`) no Project #3, item `PVTI_lADODnBfYs4BgM9hzg6Zk4s`.
+     Sem bloqueio de contrato — foi direto para `Ready` (Tipo `Story`, Prioridade `P2`,
+     `area: frontend`) no Project #3, item `PVTI_lADODnBfYs4BgM9hzg6Zk4s`.
 
 **Por quê:** consolidar o board como fonte de verdade — issues existentes sem item no Project
 quebram rastreabilidade de sprint/roadmap; label `blocked` desatualizada esconde trabalho

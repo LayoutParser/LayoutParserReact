@@ -17,6 +17,7 @@ DTOs em `Models/Fiscal/FieldCorrection.cs`, issue #345/#346), mas o schema do it
 **inferido** incorretamente pelo front em `src/types/fieldCorrectionCuration.ts`.
 
 Divergências (nome do campo front vs real `FieldCorrectionReportSummary`):
+
 - `nodePath` → real é `fieldPath`
 - `originalValue` → real é `observedValue`
 - `correctedValue` → real é `expectedValue`
