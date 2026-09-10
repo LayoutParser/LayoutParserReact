@@ -165,6 +165,12 @@
       "path": "/api/workspaces/:param/mapping-releases/:param/rollback",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#248"
+    },
+    {
+      "method": "POST",
+      "path": "/api/layouts/:param/generate-sample",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#355/#356"
     }
   ]
 }
