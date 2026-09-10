@@ -61,9 +61,13 @@ export const useFieldCorrectionCurationStore = create<FieldCorrectionCurationSta
 
     set(state => ({ reviewing: { ...state.reviewing, [reportId]: true } }));
     try {
-      const updated = await fieldCorrectionCurationService.review(reportId, decision);
+      // A API responde só { reportId, status } — merge parcial no item existente, nunca
+      // substitui o relatório inteiro (a resposta não traz fieldPath/observedValue/etc.).
+      const { status } = await fieldCorrectionCurationService.review(reportId, decision);
       set(state => ({
-        reports: state.reports.map(report => (report.reportId === reportId ? updated : report)),
+        reports: state.reports.map(report =>
+          report.reportId === reportId ? { ...report, status } : report
+        ),
       }));
     } catch (error) {
       set({

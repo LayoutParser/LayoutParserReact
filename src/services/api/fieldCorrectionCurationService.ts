@@ -5,6 +5,7 @@ import type {
   FieldCorrectionDecision,
   FieldCorrectionPendingResponse,
   FieldCorrectionReport,
+  FieldCorrectionReviewResponse,
 } from '../../types/fieldCorrectionCuration';
 import apiClient from '../api';
 
@@ -56,6 +57,15 @@ const convertFieldCorrectionCurationError = (error: unknown): FieldCorrectionCur
     });
   }
 
+  if (response.status === 409) {
+    return new FieldCorrectionCurationError({
+      kind: 'conflict',
+      message:
+        'Este relatório já foi revisado por outro curador — apenas itens pendentes podem ser decididos.',
+      httpStatus: 409,
+    });
+  }
+
   return new FieldCorrectionCurationError({
     kind: 'server_error',
     message: 'O servidor encontrou uma falha ao processar a curadoria de correção de campo.',
@@ -66,8 +76,7 @@ const convertFieldCorrectionCurationError = (error: unknown): FieldCorrectionCur
 export const fieldCorrectionCurationService = {
   /**
    * Busca a fila de correções de campo pendentes de revisão, via
-   * GET /api/transformation/field-correction/pending (LayoutParserApi#345 — em produção desde
-   * 2026-09-10).
+   * GET /api/transformation/field-correction/pending (issue #346).
    */
   async getPending(): Promise<FieldCorrectionReport[]> {
     try {
@@ -82,15 +91,16 @@ export const fieldCorrectionCurationService = {
 
   /**
    * Registra a decisão do curador (aceitar/rejeitar) sobre um relatório, via
-   * POST /api/transformation/field-correction/{reportId}/review. O endpoint é idempotente: um
-   * reenvio da mesma decisão (retry de rede, duplo clique) não é tratado como erro pela UI.
+   * POST /api/transformation/field-correction/{reportId}/review. A resposta é mínima
+   * (`{ reportId, status }`), não o relatório completo — a API só transiciona o status.
+   * Um segundo review do mesmo reporte responde 409 (não é idempotente/no-op).
    */
   async review(
     reportId: string,
     decision: FieldCorrectionDecision
-  ): Promise<FieldCorrectionReport> {
+  ): Promise<FieldCorrectionReviewResponse> {
     try {
-      const response = await apiClient.post<FieldCorrectionReport>(
+      const response = await apiClient.post<FieldCorrectionReviewResponse>(
         `/api/transformation/field-correction/${encodeURIComponent(reportId)}/review`,
         { decision }
       );

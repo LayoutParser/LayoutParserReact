@@ -39,13 +39,17 @@ describe('fieldCorrectionCurationService', () => {
     const report = {
       reportId: 'rpt-1',
       documentId: 'doc-1',
-      nodePath: '/NFe/infNFe/det[1]/prod/vProd',
-      originalValue: '10,00',
-      correctedValue: '10,50',
-      reportedAt: '2026-09-10T12:00:00Z',
+      candidateId: 'cand-1',
+      fieldPath: '/NFe/infNFe/det[1]/prod/vProd',
+      observedValue: '10,00',
+      expectedValue: '10,50',
+      reportedByUserId: 'user-1',
+      createdAtUtc: '2026-09-10T12:00:00Z',
       status: 'pending' as const,
     };
-    vi.mocked(apiClient.get).mockResolvedValue({ data: { reports: [report] } });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, count: 1, reports: [report] },
+    });
 
     await expect(fieldCorrectionCurationService.getPending()).resolves.toEqual([report]);
     expect(apiClient.get).toHaveBeenCalledWith('/api/transformation/field-correction/pending');
@@ -61,13 +65,9 @@ describe('fieldCorrectionCurationService', () => {
   });
 
   it('envia a decisão via POST /api/transformation/field-correction/{reportId}/review', async () => {
+    // A API responde só { reportId, status } — não o relatório completo.
     const updated = {
       reportId: 'rpt-1',
-      documentId: 'doc-1',
-      nodePath: '/NFe/infNFe/det[1]/prod/vProd',
-      originalValue: '10,00',
-      correctedValue: '10,50',
-      reportedAt: '2026-09-10T12:00:00Z',
       status: 'reviewed_accepted' as const,
     };
     vi.mocked(apiClient.post).mockResolvedValue({ data: updated });
@@ -101,6 +101,15 @@ describe('fieldCorrectionCurationService', () => {
 
     expect(error).toBeInstanceOf(FieldCorrectionCurationError);
     expect(error).toMatchObject({ kind: 'not_found', httpStatus: 404 });
+  });
+
+  it('converte 409 da revisão em kind conflict (reporte já revisado)', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(409));
+
+    const error = await fieldCorrectionCurationService.review('rpt-1', 'accepted').catch(e => e);
+
+    expect(error).toBeInstanceOf(FieldCorrectionCurationError);
+    expect(error).toMatchObject({ kind: 'conflict', httpStatus: 409 });
   });
 
   it('converte falha de rede (sem response) em kind network_error', async () => {

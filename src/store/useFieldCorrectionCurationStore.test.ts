@@ -9,10 +9,12 @@ vi.mock('../services/api/fieldCorrectionCurationService', () => ({
 const pendingReport = {
   reportId: 'rpt-1',
   documentId: 'doc-1',
-  nodePath: '/NFe/infNFe/det[1]/prod/vProd',
-  originalValue: '10,00',
-  correctedValue: '10,50',
-  reportedAt: '2026-09-10T12:00:00Z',
+  candidateId: 'cand-1',
+  fieldPath: '/NFe/infNFe/det[1]/prod/vProd',
+  observedValue: '10,00',
+  expectedValue: '10,50',
+  reportedByUserId: 'user-1',
+  createdAtUtc: '2026-09-10T12:00:00Z',
   status: 'pending' as const,
 };
 
@@ -47,15 +49,20 @@ describe('useFieldCorrectionCurationStore', () => {
     });
   });
 
-  it('registra a decisão e atualiza o item com a resposta da API', async () => {
+  it('registra a decisão e faz merge parcial do item com a resposta mínima da API', async () => {
     useFieldCorrectionCurationStore.setState({ status: 'ready', reports: [pendingReport] });
-    const updated = { ...pendingReport, status: 'reviewed_accepted' as const };
-    vi.mocked(fieldCorrectionCurationService.review).mockResolvedValue(updated);
+    // A API de review responde só { reportId, status } — não o relatório completo.
+    vi.mocked(fieldCorrectionCurationService.review).mockResolvedValue({
+      reportId: 'rpt-1',
+      status: 'reviewed_accepted',
+    });
 
     await useFieldCorrectionCurationStore.getState().decide('rpt-1', 'accepted');
 
     expect(fieldCorrectionCurationService.review).toHaveBeenCalledWith('rpt-1', 'accepted');
-    expect(useFieldCorrectionCurationStore.getState().reports).toEqual([updated]);
+    expect(useFieldCorrectionCurationStore.getState().reports).toEqual([
+      { ...pendingReport, status: 'reviewed_accepted' },
+    ]);
     expect(useFieldCorrectionCurationStore.getState().reviewing['rpt-1']).toBeUndefined();
   });
 
