@@ -17,6 +17,14 @@ interface XmlTreeProps {
   focusNodeId?: string | null;
   onSelectNode?: (node: XmlSelectableNode) => void;
   onFocusRequestHandled?: () => void;
+  /**
+   * Habilita o gatilho "Reportar divergência" nos nós folha (Story #234). Sem candidato ativo
+   * de transformação, o gatilho não faz sentido — o chamador decide quando exibir.
+   */
+  canReportDivergence?: boolean;
+  /** Indica se um nó folha já tem reporte pendente, para o indicador visual distinto. */
+  isNodeReported?: (node: XmlSelectableNode) => boolean;
+  onReportDivergence?: (node: XmlSelectableNode) => void;
 }
 
 const XmlTree: React.FC<XmlTreeProps> = ({
@@ -27,6 +35,9 @@ const XmlTree: React.FC<XmlTreeProps> = ({
   focusNodeId = null,
   onSelectNode,
   onFocusRequestHandled,
+  canReportDivergence = false,
+  isNodeReported,
+  onReportDivergence,
 }) => {
   const { root, error } = useMemo(
     () => parseXmlToTree(xml, xmlNamespaces ?? {}),
@@ -158,40 +169,66 @@ const XmlTree: React.FC<XmlTreeProps> = ({
   ) => {
     const expanded = node.kind === 'element' && expandedIds.has(node.id);
     const selected = selectedNodeId === node.id;
+    // Gatilho de divergência só nos nós folha (sem descendentes) — critério de aceite 1.
+    const showDivergenceTrigger =
+      !hasDescendants && canReportDivergence && Boolean(onReportDivergence);
+    const reported = showDivergenceTrigger && (isNodeReported?.(node) ?? false);
     return (
       <li key={node.id} className="xml-tree-node" role="none">
-        <button
-          ref={element => {
-            if (element) itemRefs.current.set(node.id, element);
-            else itemRefs.current.delete(node.id);
-          }}
-          type="button"
-          role="treeitem"
-          data-xml-node-id={node.id}
-          className={`xml-tree-node-header ${selected ? 'xml-tree-node-header--selected' : ''}`}
-          aria-expanded={hasDescendants ? expanded : undefined}
-          aria-selected={selected}
-          aria-level={level}
-          tabIndex={focusedNodeId === node.id ? 0 : -1}
-          onFocus={() => setFocusedNodeId(node.id)}
-          onClick={event => {
-            if ((event.target as HTMLElement).closest('.xml-tree-toggle')) {
-              toggleNode(node.id);
-              return;
-            }
-            onSelectNode?.(node);
-          }}
-          onKeyDown={event => handleKeyDown(event, node, hasDescendants, expanded)}
-        >
-          {hasDescendants ? (
-            <span className="xml-tree-toggle" aria-hidden="true">
-              {expanded ? '−' : '+'}
-            </span>
-          ) : (
-            <span className="xml-tree-spacer" aria-hidden="true" />
+        <div className="xml-tree-node-row">
+          <button
+            ref={element => {
+              if (element) itemRefs.current.set(node.id, element);
+              else itemRefs.current.delete(node.id);
+            }}
+            type="button"
+            role="treeitem"
+            data-xml-node-id={node.id}
+            className={`xml-tree-node-header ${selected ? 'xml-tree-node-header--selected' : ''} ${
+              reported ? 'xml-tree-node-header--reported' : ''
+            }`}
+            aria-expanded={hasDescendants ? expanded : undefined}
+            aria-selected={selected}
+            aria-level={level}
+            tabIndex={focusedNodeId === node.id ? 0 : -1}
+            onFocus={() => setFocusedNodeId(node.id)}
+            onClick={event => {
+              if ((event.target as HTMLElement).closest('.xml-tree-toggle')) {
+                toggleNode(node.id);
+                return;
+              }
+              onSelectNode?.(node);
+            }}
+            onKeyDown={event => handleKeyDown(event, node, hasDescendants, expanded)}
+          >
+            {hasDescendants ? (
+              <span className="xml-tree-toggle" aria-hidden="true">
+                {expanded ? '−' : '+'}
+              </span>
+            ) : (
+              <span className="xml-tree-spacer" aria-hidden="true" />
+            )}
+            {label}
+            {reported && (
+              <span
+                className="xml-tree-reported-badge"
+                title="Divergência reportada (pendente)"
+                aria-label="Divergência reportada, pendente"
+              >
+                🚩
+              </span>
+            )}
+          </button>
+          {showDivergenceTrigger && (
+            <button
+              type="button"
+              className="xml-tree-report-btn"
+              onClick={() => onReportDivergence?.(node)}
+            >
+              {reported ? 'Editar divergência' : 'Reportar divergência'}
+            </button>
           )}
-          {label}
-        </button>
+        </div>
         {hasDescendants && expanded && (
           <ul className="xml-tree-children" role="group">
             {descendants}

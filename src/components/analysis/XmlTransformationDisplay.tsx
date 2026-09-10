@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { useFieldStore } from '../../store/useFieldStore';
 import { useTraceabilityStore } from '../../store/useTraceabilityStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
+import { useFieldCorrectionStore } from '../../store/useFieldCorrectionStore';
 import { transformationService } from '../../services/api/transformationService';
 import { logService } from '../../services/api/logService';
 import {
@@ -13,9 +14,13 @@ import { resolveLayoutGuid } from '../../utils/layoutGuid';
 import { copyTextToClipboard, createXmlFileName } from '../../utils/xmlDelivery';
 import { buildTransformationDiagnostics } from '../../utils/transformationDiagnostics';
 import { extractAiFallbackTicket } from '../../utils/aiFallback';
+import { getObservedNodeValue } from '../../utils/fieldCorrection';
 import { useAiFallbackPolling } from '../../hooks/useAiFallbackPolling';
 import { layoutMatchesProvenance } from '../../utils/provenance';
+import type { XmlSelectableNode } from '../../utils/xmlTree';
+import type { FieldCorrectionReport } from '../../types/fieldCorrection';
 import XmlTree from './XmlTree';
+import FieldDivergenceModal from './FieldDivergenceModal';
 import './XmlTransformationDisplay.css';
 
 const PATHWAY_LABEL: Record<string, string> = {
@@ -80,6 +85,7 @@ const XmlTransformationDisplay: React.FC = () => {
     setDiagnosing,
     setDiagnosticError,
     setDiagnostic,
+    correlationId,
   } = useTransformationStore();
 
   // Sem ordenação por score (back-end ainda não preenche de verdade): candidato ativo é o
@@ -88,6 +94,61 @@ const XmlTransformationDisplay: React.FC = () => {
     () => candidates.find(c => c.candidateId === activeCandidateId) ?? candidates[0] ?? null,
     [candidates, activeCandidateId]
   );
+
+  // Reporte de divergência de campo por nó (Story #234) — estado local, sem endpoint de escrita
+  // na API ainda (ver src/types/fieldCorrection.ts). `reportingNode` é o nó com o formulário
+  // aberto; `null` mantém o modal fechado.
+  const { reportsByKey, upsertReport } = useFieldCorrectionStore();
+  const [reportingNode, setReportingNode] = useState<XmlSelectableNode | null>(null);
+  const [divergenceFeedback, setDivergenceFeedback] = useState<XmlDeliveryFeedback | null>(null);
+
+  const isNodeReported = useCallback(
+    (node: XmlSelectableNode): boolean => {
+      if (!activeCandidateId) return false;
+      return Boolean(reportsByKey[`${activeCandidateId}::${node.id}`]);
+    },
+    [activeCandidateId, reportsByKey]
+  );
+
+  const existingReportForReportingNode: FieldCorrectionReport | null =
+    reportingNode && activeCandidateId
+      ? (reportsByKey[`${activeCandidateId}::${reportingNode.id}`] ?? null)
+      : null;
+
+  const handleReportDivergence = (node: XmlSelectableNode) => {
+    setReportingNode(node);
+  };
+
+  const handleSubmitDivergenceReport = (values: {
+    expectedValue: string;
+    justification: string;
+  }) => {
+    if (!reportingNode || !activeCandidate) return;
+
+    const now = new Date().toISOString();
+    const existing = existingReportForReportingNode;
+    upsertReport({
+      nodeId: reportingNode.id,
+      fieldPath: reportingNode.xpath,
+      candidateId: activeCandidate.candidateId,
+      pathway: activeCandidate.pathway,
+      correlationId,
+      observedValue: getObservedNodeValue(reportingNode),
+      expectedValue: values.expectedValue,
+      justification: values.justification,
+      status: 'pending',
+      reportedAt: existing?.reportedAt ?? now,
+      updatedAt: now,
+    });
+
+    setReportingNode(null);
+    setDivergenceFeedback({
+      kind: 'success',
+      message: existing
+        ? 'Divergência atualizada (pendente — ainda não enviada à API).'
+        : 'Divergência registrada localmente (pendente — ainda não enviada à API).',
+    });
+  };
 
   const transformationDiagnostics = useMemo(
     () => buildTransformationDiagnostics(candidatesWarnings),
@@ -632,6 +693,16 @@ const XmlTransformationDisplay: React.FC = () => {
                 </div>
               )}
 
+              {divergenceFeedback && (
+                <p
+                  className={`xml-transformation-delivery-feedback xml-transformation-delivery-feedback--${divergenceFeedback.kind}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {divergenceFeedback.message}
+                </p>
+              )}
+
               {/* Árvore navegável (expand/collapse) a partir do XML bruto — parseado via
                   `DOMParser` nativo, sem dependência nova. O valor copiado/baixado continua
                   sendo `activeCandidate.transformedXml`, não uma versão derivada da árvore. */}
@@ -645,6 +716,9 @@ const XmlTransformationDisplay: React.FC = () => {
                   selectField(null);
                   selectXmlNode(node);
                 }}
+                canReportDivergence={Boolean(activeCandidate)}
+                isNodeReported={isNodeReported}
+                onReportDivergence={handleReportDivergence}
               />
             </div>
           )}
@@ -660,6 +734,20 @@ const XmlTransformationDisplay: React.FC = () => {
             transformação final.
           </p>
         )}
+
+      {reportingNode && activeCandidate && (
+        <FieldDivergenceModal
+          isOpen
+          onClose={() => setReportingNode(null)}
+          fieldPath={reportingNode.xpath}
+          observedValue={getObservedNodeValue(reportingNode)}
+          pathwayLabel={PATHWAY_LABEL[activeCandidate.pathway] || activeCandidate.pathway}
+          candidateId={activeCandidate.candidateId}
+          correlationId={correlationId}
+          existingReport={existingReportForReportingNode}
+          onSubmit={handleSubmitDivergenceReport}
+        />
+      )}
     </div>
   );
 };
