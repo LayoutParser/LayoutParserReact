@@ -9,6 +9,7 @@ Em 2026-09-09 refinei `src/components/analysis/GenerateSampleDocumentButton/` (i
 `@lp-front-dev`) sem tocar lógica/estado: só CSS, markup de apresentação e acessibilidade.
 
 Mudanças:
+
 - CSS trocado de cores hardcoded (`#666`, `#b3261e` etc.) para os tokens já usados em
   `XmlTransformationDisplay.css` (`--color-danger-bg`, `--spacing-*`, `--radius-md`,
   `--focus-ring`, `--control-height` etc.) — mesmo vocabulário visual do resto da aba de análise.

@@ -21,6 +21,7 @@ usuário no front). API autorizou início de desenho de UI/mock antes do endpoin
 Geração é 100% determinística por regra no lado API (sem IA); front só consome.
 
 **Dependência externa (não é item nosso, não fechar por nós):**
+
 - LayoutParserApi#355 (cobertura TextPositional) — em implementação, ainda não em produção.
 - LayoutParserApi#356 (cobertura Xml) — não iniciado, depende de #355.
 - ADR: `docs/architecture/adr-geracao-documento-exemplo-2026-09-09.md` no repo LayoutParserApi.

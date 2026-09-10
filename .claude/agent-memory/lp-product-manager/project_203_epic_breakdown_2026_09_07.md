@@ -14,6 +14,7 @@ menores e independentemente verificáveis, cada uma com dependência explícita 
 um PBI monolítico que mistura trabalho bloqueado por API com trabalho que pode avançar hoje.
 
 Sub-issues criadas (todas no milestone "P0 — Plataforma Fiscal e Workspaces", Project 3):
+
 - #225 — 203e Imutabilidade de release publicada (`type: task`, p1). Sem dependência de API,
   prioridade 1 (barata, fecha critério real hoje).
 - #226 — 203a Editor de TCL/XSL/XSLT com RBAC (`type: pbi`, p1). BLOQUEADO até API expor
