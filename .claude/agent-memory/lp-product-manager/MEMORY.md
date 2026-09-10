@@ -27,6 +27,10 @@
 - [Gerar documento de exemplo](project_generate_sample_document_2026_09_09.md) — PBI #237 +
   Stories #238-#241, bloqueadas por LayoutParserApi#355/#356 (produção); mock autorizado primeiro.
 
+- [Curadoria de correção de campo](project_field_correction_curation_2026_09_10.md) — #232/#234
+  entraram no Project #3, #234 desbloqueada (API#345 em produção), Story #244 (curador,
+  Ready) criada para fila pending/review distinta do fluxo do analista.
+
 Regras duráveis: GitHub é o registro operacional; Epic → PBI → Story → Task/Gate/Bug; não criar
 issue por commit; fechamento exige evidência; conteúdo real de TXT/XML e segredos não entram no
 backlog; dependências dos outros repositórios permanecem explícitas e não são “resolvidas” pelo front.

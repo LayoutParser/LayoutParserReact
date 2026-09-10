@@ -171,6 +171,18 @@
       "path": "/api/layouts/:param/generate-sample",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#355/#356"
+    },
+    {
+      "method": "GET",
+      "path": "/api/transformation/field-correction/pending",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#345"
+    },
+    {
+      "method": "POST",
+      "path": "/api/transformation/field-correction/:param/review",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#345"
     }
   ]
 }
