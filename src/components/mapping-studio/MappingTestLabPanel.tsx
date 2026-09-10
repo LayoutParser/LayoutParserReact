@@ -21,6 +21,10 @@ interface MappingTestLabPanelProps {
 }
 
 const activeStatuses = new Set(['queued', 'running']);
+// Severidades bloqueantes retornadas pela API em `compileDiagnostics`. Não há endpoint de
+// validação sintática/estática dedicado (confirmado com a API): a Task #227 reordena o uso do
+// diagnóstico já existente para atuar como validação PRÉVIA à execução, em vez de só pós-compilação.
+const blockingDiagnosticSeverities = new Set(['error', 'fatal']);
 const testableReleaseStatuses = new Set<MappingRelease['status']>([
   'draft_compiled',
   'test_passed',
@@ -37,6 +41,9 @@ const releaseStatusLabels: Record<MappingRelease['status'], string> = {
   deprecated: 'Descontinuada',
   archived: 'Arquivada',
 };
+
+const isBlockingDiagnostic = (severity: string) =>
+  blockingDiagnosticSeverities.has(severity.toLowerCase());
 
 const downloadArtifact = (artifact: MappingReleaseArtifact, releaseId: string) => {
   const extension = artifact.kind.toLowerCase() === 'tcl' ? 'tcl' : 'xslt';
@@ -195,6 +202,14 @@ const MappingTestLabPanel = ({
 
   const startTestRun = async () => {
     if (!release) return;
+    // Validação estática pré-execução (Task #227): bloqueia o disparo do Test Lab antes de
+    // chamar o pipeline, reaproveitando `compileDiagnostics` em vez de só validar pós-compilação.
+    if (release.compileDiagnostics.some(diagnostic => isBlockingDiagnostic(diagnostic.severity))) {
+      setError(
+        'Execução bloqueada: a release tem diagnóstico de erro na compilação. Corrija o mapeamento e recompile antes de rodar o Test Lab.'
+      );
+      return;
+    }
     setError(null);
     try {
       const nextJob = await mappingReleaseService.createTestRun({
@@ -271,6 +286,9 @@ const MappingTestLabPanel = ({
 
   const compileActive = Boolean(compileJob && activeStatuses.has(compileJob.status));
   const testActive = Boolean(testJob && activeStatuses.has(testJob.status));
+  const hasBlockingDiagnostics = Boolean(
+    release?.compileDiagnostics.some(diagnostic => isBlockingDiagnostic(diagnostic.severity))
+  );
 
   return (
     <section className="mapping-studio-section" aria-labelledby="mapping-test-lab-title">
@@ -356,8 +374,15 @@ const MappingTestLabPanel = ({
           </dl>
 
           {release.compileDiagnostics.length > 0 && (
-            <aside className="mapping-limitations">
-              <strong>Diagnósticos de compilação</strong>
+            <aside
+              className="mapping-limitations"
+              role={hasBlockingDiagnostics ? 'alert' : undefined}
+            >
+              <strong>
+                {hasBlockingDiagnostics
+                  ? 'Diagnósticos de compilação — execução bloqueada'
+                  : 'Diagnósticos de compilação'}
+              </strong>
               <ul>
                 {release.compileDiagnostics.map(diagnostic => (
                   <li key={`${diagnostic.ruleId}-${diagnostic.message}`}>
@@ -463,7 +488,7 @@ const MappingTestLabPanel = ({
                 <button
                   type="submit"
                   className="mapping-button mapping-button--primary"
-                  disabled={testActive}
+                  disabled={testActive || hasBlockingDiagnostics}
                 >
                   {testActive ? 'Executando gates…' : 'Executar Test Lab'}
                 </button>

@@ -163,6 +163,23 @@ describe('MappingTestLabPanel', () => {
     expect(window.localStorage).toHaveLength(0);
   });
 
+  it('bloqueia a execução do Test Lab quando há diagnóstico de erro na compilação (Task #227)', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      compileDiagnostics: [
+        { ruleId: 'rule-1', severity: 'error', message: 'XPath inválido em sourceRefs.' },
+      ],
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByText('Diagnósticos de compilação — execução bloqueada')
+    ).toBeVisible();
+    const runButton = screen.getByRole('button', { name: 'Executar Test Lab' });
+    expect(runButton).toBeDisabled();
+    expect(mappingReleaseService.createTestRun).not.toHaveBeenCalled();
+  });
+
   it('não permite executar nova fixture sobre release publicada e imutável', async () => {
     vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
       ...release,
