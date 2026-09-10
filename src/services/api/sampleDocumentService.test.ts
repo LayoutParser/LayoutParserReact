@@ -1,41 +1,116 @@
-import { describe, expect, it } from 'vitest';
-import {
-  GenerateSampleDocumentError,
-  MOCK_NO_MAPPER_LAYOUT_GUID,
-  sampleDocumentService,
-} from './sampleDocumentService';
+import axios from 'axios';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import apiClient from '../api';
+import { GenerateSampleDocumentError, sampleDocumentService } from './sampleDocumentService';
 
-describe('sampleDocumentService (mock — LayoutParserApi#355/#356 ainda não implantado)', () => {
-  it('gera um documento posicional sintético respeitando o contrato de resposta', async () => {
-    const response = await sampleDocumentService.generateSampleDocument('LAY_guid-123', {
+vi.mock('../api', () => ({
+  default: {
+    post: vi.fn(),
+  },
+}));
+
+/** Reproduz a forma de `AxiosError` que os catches do serviço inspecionam via `axios.isAxiosError`. */
+const axiosError = (status: number): unknown => {
+  const error = new Error(`Request failed with status code ${status}`) as Error & {
+    isAxiosError: true;
+    response: { status: number };
+  };
+  error.isAxiosError = true;
+  error.response = { status };
+  return error;
+};
+
+describe('sampleDocumentService', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(axios, 'isAxiosError').mockImplementation(
+      (value: unknown): value is import('axios').AxiosError =>
+        typeof value === 'object' &&
+        value !== null &&
+        (value as { isAxiosError?: boolean }).isAxiosError === true
+    );
+  });
+
+  it('chama POST /api/layouts/{layoutGuid}/generate-sample com o corpo informado', async () => {
+    const response = {
+      generatedDocument: 'HDR000001EXEMPLO0001',
+      format: 'positional' as const,
+      warnings: [],
+    };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: response });
+
+    await expect(
+      sampleDocumentService.generateSampleDocument('LAY_guid-123', {
+        numberOfRecords: 2,
+        seed: 42,
+      })
+    ).resolves.toEqual(response);
+
+    expect(apiClient.post).toHaveBeenCalledWith('/api/layouts/LAY_guid-123/generate-sample', {
       numberOfRecords: 2,
       seed: 42,
     });
-
-    expect(response.format).toBe('positional');
-    expect(response.generatedDocument.split('\n')).toHaveLength(2);
-    expect(response.warnings.length).toBeGreaterThan(0);
   });
 
-  it('rejeita com kind unknown_layout (400) quando o layoutGuid está vazio', async () => {
+  it('encode o layoutGuid na URL', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { generatedDocument: '<a/>', format: 'xml', warnings: [] },
+    });
+
+    await sampleDocumentService.generateSampleDocument('LAY guid/123');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/api/layouts/LAY%20guid%2F123/generate-sample',
+      {}
+    );
+  });
+
+  it('rejeita com kind unknown_layout (400) quando o layoutGuid está vazio, sem chamar a API', async () => {
     await expect(sampleDocumentService.generateSampleDocument('')).rejects.toMatchObject({
       kind: 'unknown_layout',
       httpStatus: 400,
     });
+    expect(apiClient.post).not.toHaveBeenCalled();
   });
 
-  it('rejeita com kind no_mapper (404) para o sentinela de layout sem mapeador', async () => {
-    const error = await sampleDocumentService
-      .generateSampleDocument(MOCK_NO_MAPPER_LAYOUT_GUID)
-      .catch(e => e);
+  it('converte o 400 da API em kind unknown_layout', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(400));
+
+    const error = await sampleDocumentService.generateSampleDocument('LAY_guid-123').catch(e => e);
+
+    expect(error).toBeInstanceOf(GenerateSampleDocumentError);
+    expect(error).toMatchObject({ kind: 'unknown_layout', httpStatus: 400 });
+  });
+
+  it('converte o 404 da API em kind no_mapper', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(404));
+
+    const error = await sampleDocumentService.generateSampleDocument('LAY_guid-123').catch(e => e);
 
     expect(error).toBeInstanceOf(GenerateSampleDocumentError);
     expect(error).toMatchObject({ kind: 'no_mapper', httpStatus: 404 });
     expect(error.message).toContain('TCL/XSL/XSLT');
   });
 
-  it('usa 1 registro por padrão quando numberOfRecords não é informado', async () => {
-    const response = await sampleDocumentService.generateSampleDocument('LAY_guid-123');
-    expect(response.generatedDocument.split('\n')).toHaveLength(1);
+  it('converte falha 5xx em kind server_error', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(500));
+
+    const error = await sampleDocumentService.generateSampleDocument('LAY_guid-123').catch(e => e);
+
+    expect(error).toBeInstanceOf(GenerateSampleDocumentError);
+    expect(error).toMatchObject({ kind: 'server_error', httpStatus: 500 });
+  });
+
+  it('converte falha de rede (sem response) em kind network_error', async () => {
+    const error = new Error('Network Error') as Error & { isAxiosError: true };
+    error.isAxiosError = true;
+    vi.mocked(apiClient.post).mockRejectedValue(error);
+
+    const rejected = await sampleDocumentService
+      .generateSampleDocument('LAY_guid-123')
+      .catch(e => e);
+
+    expect(rejected).toBeInstanceOf(GenerateSampleDocumentError);
+    expect(rejected).toMatchObject({ kind: 'network_error' });
   });
 });

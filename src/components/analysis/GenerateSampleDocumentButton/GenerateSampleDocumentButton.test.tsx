@@ -1,8 +1,25 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import axios from 'axios';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import apiClient from '../../../services/api';
 import { useAppStore } from '../../../store/useAppStore';
-import { MOCK_NO_MAPPER_LAYOUT_GUID } from '../../../services/api/sampleDocumentService';
 import GenerateSampleDocumentButton from './GenerateSampleDocumentButton';
+
+vi.mock('../../../services/api', () => ({
+  default: {
+    post: vi.fn(),
+  },
+}));
+
+const axiosError = (status: number): unknown => {
+  const error = new Error(`Request failed with status code ${status}`) as Error & {
+    isAxiosError: true;
+    response: { status: number };
+  };
+  error.isAxiosError = true;
+  error.response = { status };
+  return error;
+};
 
 const setLoadedDocument = (overrides: Partial<{ layoutType: string; layoutGuid: string }> = {}) => {
   useAppStore.getState().setSelectedLayout(
@@ -19,6 +36,13 @@ const setLoadedDocument = (overrides: Partial<{ layoutType: string; layoutGuid: 
 describe('GenerateSampleDocumentButton', () => {
   beforeEach(() => {
     useAppStore.getState().reset();
+    vi.clearAllMocks();
+    vi.spyOn(axios, 'isAxiosError').mockImplementation(
+      (value: unknown): value is import('axios').AxiosError =>
+        typeof value === 'object' &&
+        value !== null &&
+        (value as { isAxiosError?: boolean }).isAxiosError === true
+    );
   });
 
   it('não renderiza nada sem layout/parse bem-sucedido', () => {
@@ -26,18 +50,17 @@ describe('GenerateSampleDocumentButton', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('mostra aviso de indisponibilidade para layout Xml, sem chamar o serviço', () => {
+  it('exibe o botão também para layout Xml, agora que o endpoint cobre ambos os formatos', () => {
     setLoadedDocument({ layoutType: 'Xml' });
     render(<GenerateSampleDocumentButton />);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('ainda não está disponível');
+    expect(screen.getByRole('button', { name: 'Gerar documento de exemplo' })).toBeEnabled();
   });
 
   // Decisão (course-correction do coordenador): não existe no contrato nenhum campo real que
   // diga "layout tem mapper TCL/XSL/XSLT vinculado" — nem acoplamos à avaliação prévia de
   // `execute-candidates`, que esconderia o botão sem motivo aparente para o usuário. O botão
-  // fica sempre visível para layouts não-Xml; é a resposta do endpoint (404 `no_mapper`) quem
-  // decide, tratada como erro amigável abaixo.
+  // fica sempre visível; é a resposta do endpoint (404 `no_mapper`) quem decide, tratada como
+  // erro amigável abaixo.
   it('sempre exibe o botão para layout TextPositional, mesmo sem avaliação prévia de candidatos', () => {
     setLoadedDocument();
     render(<GenerateSampleDocumentButton />);
@@ -45,7 +68,8 @@ describe('GenerateSampleDocumentButton', () => {
   });
 
   it('trata o 404 (no_mapper) do endpoint como mensagem amigável', async () => {
-    setLoadedDocument({ layoutGuid: MOCK_NO_MAPPER_LAYOUT_GUID });
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(404));
+    setLoadedDocument();
     render(<GenerateSampleDocumentButton />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gerar documento de exemplo' }));
@@ -54,6 +78,9 @@ describe('GenerateSampleDocumentButton', () => {
   });
 
   it('exibe o documento gerado em caso de sucesso, com ações de copiar/baixar, e move o foco para o resultado', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { generatedDocument: 'HDR000001EXEMPLO0001', format: 'positional', warnings: [] },
+    });
     setLoadedDocument();
     render(<GenerateSampleDocumentButton />);
 
@@ -66,7 +93,8 @@ describe('GenerateSampleDocumentButton', () => {
   });
 
   it('move o foco para a mensagem de erro ao falhar', async () => {
-    setLoadedDocument({ layoutGuid: MOCK_NO_MAPPER_LAYOUT_GUID });
+    vi.mocked(apiClient.post).mockRejectedValue(axiosError(404));
+    setLoadedDocument();
     render(<GenerateSampleDocumentButton />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gerar documento de exemplo' }));

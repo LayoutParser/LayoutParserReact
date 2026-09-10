@@ -1,15 +1,12 @@
 // Tipos para "Gerar documento de exemplo" a partir de um layout já cadastrado.
 //
-// Contrato de referência (LayoutParserApi#355/#356) — AINDA NÃO implantado em produção:
+// Contrato (LayoutParserApi#355/#356) — em produção desde 2026-09-10, cobrindo TextPositional
+// e Xml:
 //   POST /api/layouts/{layoutGuid}/generate-sample
 //     body: { numberOfRecords?: int (default 1), seed?: int }
 //     response: { generatedDocument: string, format: "xml" | "positional", warnings: string[] }
 //     400 — layoutGuid desconhecido
 //     404 — layout existe mas NÃO tem mapper (TCL/XSL/XSLT) vinculado ainda
-//
-// `sampleDocumentService.ts` implementa este contrato hoje por trás de um MOCK (issue #241);
-// quando a API subir, o único ponto de troca é o corpo de `generateSampleDocument` naquele
-// arquivo.
 
 export interface GenerateSampleDocumentRequest {
   numberOfRecords?: number;

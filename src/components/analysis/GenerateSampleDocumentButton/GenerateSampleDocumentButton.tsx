@@ -4,6 +4,7 @@ import {
   GenerateSampleDocumentError,
   sampleDocumentService,
 } from '../../../services/api/sampleDocumentService';
+import type { SampleDocumentFormat } from '../../../types/sampleDocument';
 import { resolveLayoutGuid } from '../../../utils/layoutGuid';
 import { copyTextToClipboard, createXmlFileName } from '../../../utils/xmlDelivery';
 import Button from '../../shared/Button';
@@ -14,23 +15,20 @@ type RequestState = 'idle' | 'loading' | 'success' | 'error';
 /**
  * Botão "Gerar documento de exemplo" (issues #238–#241).
  *
- * Contrato de referência: POST /api/layouts/{layoutGuid}/generate-sample
- * (LayoutParserApi#355/#356) — ainda NÃO em produção. `sampleDocumentService` implementa o
- * mesmo formato de resposta por trás de um mock; ver aquele arquivo para o ponto de troca.
+ * Contrato: POST /api/layouts/{layoutGuid}/generate-sample (LayoutParserApi#355/#356) — em
+ * produção desde 2026-09-10, cobrindo tanto TextPositional quanto Xml.
  *
  * Condições de exibição/habilitação (#238):
- * - Layout do tipo Xml: a API de geração para esse formato (#356) nem começou — mostramos um
- *   aviso fixo em vez do botão (#240), sem chamar o serviço.
- * - Layout TextPositional: NÃO existe hoje, em nenhum lugar do contrato (`Layout`,
- *   `ParsedLayout`, `ParseResponse`, catálogo de releases), um campo real que diga "este
- *   layout tem mapper TCL/XSL/XSLT vinculado". `transformationsReason === 'no_mapper'`
- *   existe, mas é documentado (ver `AnalysisModeTabs.tsx`) como exclusivo do pathway
- *   Sysmiddle — usá-lo aqui seria inventar um significado que o campo não tem. Também não
- *   acoplamos à avaliação de `execute-candidates` (aba "XML Transformação Final"): isso
- *   esconderia o botão sem nenhum motivo visível para quem não passou por aquela aba antes,
- *   uma UX enganosa. Sem sinal real de catálogo, o botão fica SEMPRE visível para layouts não
- *   XML e é a própria chamada ao endpoint quem decide: um 404 (`no_mapper`) vira a mensagem
- *   amigável tratada abaixo (issue #239) — essa resposta é a fonte da verdade.
+ * - NÃO existe hoje, em nenhum lugar do contrato (`Layout`, `ParsedLayout`, `ParseResponse`,
+ *   catálogo de releases), um campo real que diga "este layout tem mapper TCL/XSL/XSLT
+ *   vinculado". `transformationsReason === 'no_mapper'` existe, mas é documentado (ver
+ *   `AnalysisModeTabs.tsx`) como exclusivo do pathway Sysmiddle — usá-lo aqui seria inventar
+ *   um significado que o campo não tem. Também não acoplamos à avaliação de
+ *   `execute-candidates` (aba "XML Transformação Final"): isso esconderia o botão sem nenhum
+ *   motivo visível para quem não passou por aquela aba antes, uma UX enganosa. Sem sinal real
+ *   de catálogo, o botão fica SEMPRE visível (TextPositional ou Xml) e é a própria chamada ao
+ *   endpoint quem decide: um 404 (`no_mapper`) vira a mensagem amigável tratada abaixo
+ *   (issue #239) — essa resposta é a fonte da verdade.
  */
 interface DeliveryFeedback {
   kind: 'success' | 'error';
@@ -43,6 +41,7 @@ const GenerateSampleDocumentButton: React.FC = () => {
   const [state, setState] = useState<RequestState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [generatedDocument, setGeneratedDocument] = useState<string | null>(null);
+  const [generatedFormat, setGeneratedFormat] = useState<SampleDocumentFormat>('positional');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [deliveryFeedback, setDeliveryFeedback] = useState<DeliveryFeedback | null>(null);
 
@@ -63,16 +62,6 @@ const GenerateSampleDocumentButton: React.FC = () => {
     return null;
   }
 
-  const isXmlLayout = selectedLayout.layoutType === 'Xml';
-
-  if (isXmlLayout) {
-    return (
-      <div className="generate-sample-document generate-sample-document--unavailable" role="status">
-        Geração de documento de exemplo ainda não está disponível para layouts do tipo XML.
-      </div>
-    );
-  }
-
   const handleGenerate = async () => {
     const layoutGuid = resolveLayoutGuid(parseResult.layout?.layoutGuid, selectedLayout.layoutGuid);
 
@@ -85,6 +74,7 @@ const GenerateSampleDocumentButton: React.FC = () => {
     try {
       const response = await sampleDocumentService.generateSampleDocument(layoutGuid ?? '');
       setGeneratedDocument(response.generatedDocument);
+      setGeneratedFormat(response.format);
       setWarnings(response.warnings);
       setState('success');
     } catch (error) {
@@ -117,14 +107,15 @@ const GenerateSampleDocumentButton: React.FC = () => {
     if (!generatedDocument) return;
 
     try {
-      const blob = new Blob([generatedDocument], { type: 'text/plain' });
+      const isXml = generatedFormat === 'xml';
+      const blob = new Blob([generatedDocument], {
+        type: isXml ? 'application/xml' : 'text/plain',
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = createXmlFileName(
-        selectedLayout.name ?? 'documento-exemplo',
-        'amostra'
-      ).replace(/\.xml$/, '.txt');
+      const fileName = createXmlFileName(selectedLayout.name ?? 'documento-exemplo', 'amostra');
+      link.download = isXml ? fileName : fileName.replace(/\.xml$/, '.txt');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -154,7 +145,7 @@ const GenerateSampleDocumentButton: React.FC = () => {
 
       {state === 'idle' && (
         <p className="generate-sample-document-hint">
-          Gera um documento TXT de amostra a partir deste layout, usando dados fictícios.
+          Gera um documento de amostra a partir deste layout, usando dados fictícios.
         </p>
       )}
 
