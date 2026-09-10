@@ -124,6 +124,16 @@ const WorkspacePage = () => {
             </p>
             <Link to="/workspace/fiscal-package">Enviar pacote</Link>
           </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
+            <h3>Curadoria de correções de campo</h3>
+            <p>
+              Revise divergências de campo reportadas pelo analista fiscal e decida aceitar ou
+              rejeitar antes do dataset de treino de IA.
+            </p>
+            <Link to="/workspace/field-correction-curation">Abrir curadoria</Link>
+          </article>
         </div>
       </section>
     </main>
