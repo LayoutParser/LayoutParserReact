@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { useTransformationStore } from '../../../store/useTransformationStore';
 import {
   GenerateSampleDocumentError,
   sampleDocumentService,
@@ -21,15 +20,19 @@ type RequestState = 'idle' | 'loading' | 'success' | 'error';
  * Condições de exibição/habilitação (#238):
  * - Layout do tipo Xml: a API de geração para esse formato (#356) nem começou — mostramos um
  *   aviso fixo em vez do botão (#240), sem chamar o serviço.
- * - Layout TextPositional: o contrato não tem, hoje, um campo dedicado "tem mapper TCL/XSL/XSLT
- *   vinculado" (só o resultado observado da avaliação real em `execute-candidates` mostra
- *   isso — ver `useTransformationStore.candidates`, populado pela aba "XML Transformação
- *   Final"). Por isso o botão só aparece depois que essa avaliação encontrou ao menos um
- *   candidato; é o sinal real mais próximo disponível hoje, não um novo campo inventado.
+ * - Layout TextPositional: NÃO existe hoje, em nenhum lugar do contrato (`Layout`,
+ *   `ParsedLayout`, `ParseResponse`, catálogo de releases), um campo real que diga "este
+ *   layout tem mapper TCL/XSL/XSLT vinculado". `transformationsReason === 'no_mapper'`
+ *   existe, mas é documentado (ver `AnalysisModeTabs.tsx`) como exclusivo do pathway
+ *   Sysmiddle — usá-lo aqui seria inventar um significado que o campo não tem. Também não
+ *   acoplamos à avaliação de `execute-candidates` (aba "XML Transformação Final"): isso
+ *   esconderia o botão sem nenhum motivo visível para quem não passou por aquela aba antes,
+ *   uma UX enganosa. Sem sinal real de catálogo, o botão fica SEMPRE visível para layouts não
+ *   XML e é a própria chamada ao endpoint quem decide: um 404 (`no_mapper`) vira a mensagem
+ *   amigável tratada abaixo (issue #239) — essa resposta é a fonte da verdade.
  */
 const GenerateSampleDocumentButton: React.FC = () => {
   const { selectedLayout, parseResult } = useAppStore();
-  const { candidates, hasEvaluatedCandidates } = useTransformationStore();
 
   const [state, setState] = useState<RequestState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -48,12 +51,6 @@ const GenerateSampleDocumentButton: React.FC = () => {
         Geração de documento de exemplo ainda não está disponível para layouts do tipo XML.
       </div>
     );
-  }
-
-  const hasLinkedMapper = candidates.length > 0;
-
-  if (!hasEvaluatedCandidates || !hasLinkedMapper) {
-    return null;
   }
 
   const handleGenerate = async () => {
