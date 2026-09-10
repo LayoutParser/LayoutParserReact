@@ -69,11 +69,17 @@ const FieldCorrectionCuration = () => {
       <header className="field-correction-curation__header">
         <p className="field-correction-curation__eyebrow">Curadoria de correções de campo</p>
         <h1>Revise divergências antes do dataset de treino</h1>
+      </header>
+
+      <div className="field-correction-curation__notice" role="note">
+        <span className="field-correction-curation__notice-icon" aria-hidden="true">
+          ℹ
+        </span>
         <p>
           Apenas correções <strong>aceitas</strong> alimentam o dataset de treino de IA. Correções
           rejeitadas ficam registradas, mas não entram no treinamento.
         </p>
-      </header>
+      </div>
 
       {error && (
         <p className="field-correction-curation__error" role="alert">
@@ -93,53 +99,67 @@ const FieldCorrectionCuration = () => {
             const isDecided = report.status !== 'pending';
 
             return (
-              <li key={report.reportId} className="field-correction-curation__item">
+              <li
+                key={report.reportId}
+                className="field-correction-curation__item"
+                data-status={report.status}
+              >
                 <div className="field-correction-curation__item-main">
-                  <code>{report.nodePath}</code>
+                  <code>{report.fieldPath}</code>
                   <span className="field-correction-curation__status" data-status={report.status}>
+                    {report.status === 'reviewed_accepted' && <span aria-hidden="true">✓ </span>}
+                    {report.status === 'reviewed_rejected' && <span aria-hidden="true">✕ </span>}
                     {statusLabels[report.status]}
                   </span>
                 </div>
 
                 <div className="field-correction-curation__values">
                   <div>
-                    <span>Valor original</span>
-                    <strong>{report.originalValue}</strong>
+                    <span>Valor observado</span>
+                    <strong>{report.observedValue}</strong>
                   </div>
                   <div>
-                    <span>Valor corrigido</span>
-                    <strong>{report.correctedValue}</strong>
+                    <span>Valor esperado</span>
+                    <strong>{report.expectedValue}</strong>
                   </div>
                 </div>
 
-                {report.comment && (
-                  <p className="field-correction-curation__comment">{report.comment}</p>
+                {report.justification && (
+                  <p className="field-correction-curation__comment">{report.justification}</p>
                 )}
 
                 <div className="field-correction-curation__item-meta">
                   <span>Documento {report.documentId}</span>
-                  <span>Reportado em {formatDate(report.reportedAt)}</span>
-                  {report.reportedBy && <span>por {report.reportedBy}</span>}
+                  <span>Reportado em {formatDate(report.createdAtUtc)}</span>
+                  {report.reportedByUserId && <span>por {report.reportedByUserId}</span>}
                 </div>
 
-                <div className="field-correction-curation__actions">
-                  <button
-                    type="button"
-                    className="field-correction-curation__button field-correction-curation__button--accept"
-                    disabled={isDecided || isReviewing}
-                    onClick={() => void decide(report.reportId, 'accepted')}
-                  >
-                    {isReviewing ? 'Enviando…' : 'Aceitar'}
-                  </button>
-                  <button
-                    type="button"
-                    className="field-correction-curation__button field-correction-curation__button--reject"
-                    disabled={isDecided || isReviewing}
-                    onClick={() => void decide(report.reportId, 'rejected')}
-                  >
-                    {isReviewing ? 'Enviando…' : 'Rejeitar'}
-                  </button>
-                </div>
+                {isDecided ? (
+                  <p className="field-correction-curation__decided" role="status">
+                    {report.status === 'reviewed_accepted'
+                      ? 'Correção aceita — entra no dataset de treino.'
+                      : 'Correção rejeitada — não entra no dataset de treino.'}
+                  </p>
+                ) : (
+                  <div className="field-correction-curation__actions">
+                    <button
+                      type="button"
+                      className="field-correction-curation__button field-correction-curation__button--accept"
+                      disabled={isReviewing}
+                      onClick={() => void decide(report.reportId, 'accepted')}
+                    >
+                      {isReviewing ? 'Enviando…' : 'Aceitar'}
+                    </button>
+                    <button
+                      type="button"
+                      className="field-correction-curation__button field-correction-curation__button--reject"
+                      disabled={isReviewing}
+                      onClick={() => void decide(report.reportId, 'rejected')}
+                    >
+                      {isReviewing ? 'Enviando…' : 'Rejeitar'}
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}

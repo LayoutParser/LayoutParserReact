@@ -10,3 +10,4 @@
   roving focus, seleção explícita e apresentação honesta de confiança.
 - [Report de divergência de campo (#232)](field_correction_report_2026_09_08.md) — formulário estruturado por nó, não chat; payload proposto.
 - [Polish do GenerateSampleDocumentButton (#238-#241)](generate_sample_document_polish_2026_09_09.md) — tokens, foco automático, copiar/baixar reaproveitando xmlDelivery.ts.
+- [Polish #234/#244 (2026-09-10)](field_correction_curation_polish_2026_09_10.md) — #234 já estava alinhada; #244 ganhou tokens de cor, aviso destacado e confirmação forte de decisão.
