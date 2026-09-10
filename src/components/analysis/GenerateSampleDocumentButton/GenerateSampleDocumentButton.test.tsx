@@ -53,12 +53,25 @@ describe('GenerateSampleDocumentButton', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('TCL/XSL/XSLT'));
   });
 
-  it('exibe o documento gerado em caso de sucesso', async () => {
+  it('exibe o documento gerado em caso de sucesso, com ações de copiar/baixar, e move o foco para o resultado', async () => {
     setLoadedDocument();
     render(<GenerateSampleDocumentButton />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Gerar documento de exemplo' }));
 
-    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
+    const result = await screen.findByRole('status', { name: '' });
+    await waitFor(() => expect(result).toHaveFocus());
+    expect(screen.getByRole('button', { name: 'Copiar documento' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Baixar documento' })).toBeInTheDocument();
+  });
+
+  it('move o foco para a mensagem de erro ao falhar', async () => {
+    setLoadedDocument({ layoutGuid: MOCK_NO_MAPPER_LAYOUT_GUID });
+    render(<GenerateSampleDocumentButton />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gerar documento de exemplo' }));
+
+    const alert = await screen.findByRole('alert');
+    await waitFor(() => expect(alert).toHaveFocus());
   });
 });
