@@ -15,6 +15,8 @@ import type {
 } from '../../types/mappingDraft';
 import type { MappingReleaseSummary } from '../../types/mappingRelease';
 import type { MappingExplanation, MappingRuleExplanation } from '../../types/workspace';
+import MappingFiscalProfilePanel from './MappingFiscalProfilePanel';
+import MappingReleaseDiffPanel from './MappingReleaseDiffPanel';
 import MappingRuleReviewCard from './MappingRuleReviewCard';
 import MappingTestLabPanel from './MappingTestLabPanel';
 import './MappingStudioPage.css';
@@ -538,6 +540,14 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
         </aside>
       )}
 
+      {draft && effectiveCapabilities.author && activeWorkspaceId && (
+        <MappingFiscalProfilePanel
+          workspaceId={activeWorkspaceId}
+          draft={draft}
+          onDraftChange={setDraft}
+        />
+      )}
+
       {draft && effectiveCapabilities.author && (
         <section className="mapping-studio-section" aria-labelledby="mapping-review-title">
           <div className="mapping-section-heading">
@@ -606,6 +616,10 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
           executeEnabled={effectiveCapabilities.execute}
           workspaceRole={activeWorkspaceRole}
         />
+      )}
+
+      {draft && effectiveCapabilities.author && activeWorkspaceId && (
+        <MappingReleaseDiffPanel workspaceId={activeWorkspaceId} draftId={draft.draftId} />
       )}
 
       <section className="mapping-studio-section" aria-labelledby="mapping-explanation-title">
