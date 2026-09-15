@@ -8,6 +8,7 @@ vi.mock('../api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -191,4 +192,89 @@ describe('mappingDraftService', () => {
       });
     }
   );
+
+  describe('setFiscalProfile (issue #198)', () => {
+    const profile = {
+      documentType: 'nfe' as const,
+      schemaVersion: '4.00',
+      operation: 'saida',
+      jurisdiction: 'SP',
+    };
+
+    it('grava o perfil fiscal e devolve o draft com fiscalProfile/resolvedXsd', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({
+        data: {
+          ...draft,
+          fiscalProfile: profile,
+          resolvedXsd: { documentType: 'nfe', schemaVersion: '4.00', xsdPath: '/xsd/nfe/4.00.xsd' },
+        },
+      });
+
+      const result = await mappingDraftService.setFiscalProfile({
+        workspaceId: 'workspace-1',
+        draftId: 'draft-1',
+        profile,
+      });
+
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/fiscal-profile',
+        profile
+      );
+      expect(result.fiscalProfile).toEqual(profile);
+      expect(result.resolvedXsd).toEqual({
+        documentType: 'nfe',
+        schemaVersion: '4.00',
+        xsdPath: '/xsd/nfe/4.00.xsd',
+      });
+    });
+
+    it('recusa perfil incompleto antes de chamar a API', async () => {
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile: { ...profile, schemaVersion: '' },
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      expect(apiClient.put).not.toHaveBeenCalled();
+    });
+
+    it('mapeia 422 (documentType sem XSD configurado / schemaVersion não instalada) para rejected', async () => {
+      vi.mocked(apiClient.put).mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 422,
+          data: { error: 'schemaVersion 4.00 não está instalada para nfe.' },
+        },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile,
+        })
+      ).rejects.toMatchObject({
+        kind: 'rejected',
+        message: 'schemaVersion 4.00 não está instalada para nfe.',
+      });
+    });
+
+    it('mapeia 404 (sem identidade/membership) para not_found', async () => {
+      vi.mocked(apiClient.put).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile,
+        })
+      ).rejects.toMatchObject({ kind: 'not_found' });
+    });
+  });
 });
