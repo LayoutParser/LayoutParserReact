@@ -20,6 +20,7 @@ const passedSummary = {
   xsdValid: true,
   xsdErrors: [],
   divergences: [],
+  divergencesByRuleId: null,
 };
 
 const release: MappingRelease = {
@@ -43,6 +44,13 @@ const release: MappingRelease = {
   publishedByUserId: null,
   publishedAt: null,
   previousPublishedReleaseId: null,
+  fiscalProfile: null,
+  resolvedXsd: null,
+  requiredCoverage: null,
+  artifactSource: 'generated',
+  derivedFromReleaseId: null,
+  manualEditReason: null,
+  manuallyEditedArtifactKinds: [],
 };
 
 const snapshot = (status: MappingGovernanceSnapshot['status']): MappingGovernanceSnapshot => ({

@@ -2,6 +2,8 @@ import axios from 'axios';
 import type { MappingAuthoringEngine, MappingDraftEvidence } from '../../types/mappingDraft';
 import type {
   CreateMappingTestRunInput,
+  EditMappingArtifactInput,
+  MappingArtifactSource,
   MappingAsyncJobStatus,
   MappingCompileDiagnostic,
   MappingCompileJob,
@@ -9,14 +11,25 @@ import type {
   MappingGovernanceSnapshot,
   MappingRelease,
   MappingReleaseArtifact,
+  MappingReleaseDiff,
+  MappingReleaseDiffElementChange,
   MappingReleaseListResponse,
   MappingReleaseStatus,
   MappingReleaseSummary,
+  MappingRequiredCoverage,
   MappingTestRunDivergence,
   MappingTestRunJob,
   MappingTestRunSummary,
 } from '../../types/mappingRelease';
+import type {
+  FiscalDocumentType,
+  FiscalProfile,
+  ResolvedXsdReference,
+} from '../../types/workspace';
 import apiClient from '../api';
+
+const fiscalDocumentTypes = new Set<FiscalDocumentType>(['nfe', 'cte', 'mdfe', 'nfse', 'nfcom']);
+const artifactSources = new Set<MappingArtifactSource>(['generated', 'manual_edit']);
 
 const engines = new Set<MappingAuthoringEngine>(['tcl', 'xslt']);
 const releaseStatuses = new Set<MappingReleaseStatus>([
@@ -41,17 +54,25 @@ export type MappingReleaseRequestErrorKind =
   | 'invalid_response'
   | 'unauthorized'
   | 'not_found'
+  | 'conflict'
+  | 'precondition'
   | 'rejected'
   | 'unavailable'
   | 'request_failed';
 
 export class MappingReleaseRequestError extends Error {
   readonly kind: MappingReleaseRequestErrorKind;
+  readonly currentArtifact: MappingReleaseArtifact | null;
 
-  constructor(kind: MappingReleaseRequestErrorKind, message: string) {
+  constructor(
+    kind: MappingReleaseRequestErrorKind,
+    message: string,
+    currentArtifact: MappingReleaseArtifact | null = null
+  ) {
     super(message);
     this.name = 'MappingReleaseRequestError';
     this.kind = kind;
+    this.currentArtifact = currentArtifact;
   }
 }
 
@@ -171,6 +192,19 @@ function parseDivergence(value: unknown): MappingTestRunDivergence {
   };
 }
 
+function parseDivergencesByRuleId(
+  value: unknown
+): Record<string, MappingTestRunDivergence[]> | null {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value)) throw invalidResponse();
+  const result: Record<string, MappingTestRunDivergence[]> = {};
+  for (const [ruleId, divergences] of Object.entries(value)) {
+    if (!Array.isArray(divergences)) throw invalidResponse();
+    result[ruleId] = divergences.map(parseDivergence);
+  }
+  return result;
+}
+
 function parseTestSummary(value: unknown): MappingTestRunSummary {
   if (
     !isRecord(value) ||
@@ -196,6 +230,7 @@ function parseTestSummary(value: unknown): MappingTestRunSummary {
     xsdValid: value.xsdValid,
     xsdErrors: value.xsdErrors,
     divergences: value.divergences.map(parseDivergence),
+    divergencesByRuleId: parseDivergencesByRuleId(value.divergencesByRuleId),
   };
 
   if (
@@ -222,6 +257,67 @@ function assertReleaseStateConsistency(
   ) {
     throw invalidResponse();
   }
+}
+
+function parseFiscalProfile(value: unknown): FiscalProfile {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.operation) ||
+    (value.jurisdiction !== undefined && !isNullableString(value.jurisdiction))
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    operation: value.operation,
+    ...(value.jurisdiction === undefined
+      ? {}
+      : { jurisdiction: value.jurisdiction as string | null }),
+  };
+}
+
+function parseNullableFiscalProfile(value: unknown): FiscalProfile | null {
+  return value === undefined || value === null ? null : parseFiscalProfile(value);
+}
+
+function parseResolvedXsd(value: unknown): ResolvedXsdReference {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.xsdPath)
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    xsdPath: value.xsdPath,
+  };
+}
+
+function parseNullableResolvedXsd(value: unknown): ResolvedXsdReference | null {
+  return value === undefined || value === null ? null : parseResolvedXsd(value);
+}
+
+function parseRequiredCoverage(value: unknown): MappingRequiredCoverage | null {
+  if (value === undefined || value === null) return null;
+  if (
+    !isRecord(value) ||
+    typeof value.percent !== 'number' ||
+    !Number.isFinite(value.percent) ||
+    value.percent < 0 ||
+    value.percent > 100 ||
+    !isStringArray(value.uncovered)
+  ) {
+    throw invalidResponse();
+  }
+  return { percent: value.percent, uncovered: value.uncovered };
 }
 
 function parseRelease(value: unknown): MappingRelease {
@@ -272,6 +368,19 @@ function parseRelease(value: unknown): MappingRelease {
     publishedByUserId: parseOptionalString(value.publishedByUserId),
     publishedAt: parseOptionalDate(value.publishedAt),
     previousPublishedReleaseId: parseOptionalString(value.previousPublishedReleaseId),
+    fiscalProfile: parseNullableFiscalProfile(value.fiscalProfile),
+    resolvedXsd: parseNullableResolvedXsd(value.resolvedXsd),
+    requiredCoverage: parseRequiredCoverage(value.requiredCoverage),
+    artifactSource:
+      value.artifactSource !== undefined &&
+      artifactSources.has(value.artifactSource as MappingArtifactSource)
+        ? (value.artifactSource as MappingArtifactSource)
+        : 'generated',
+    derivedFromReleaseId: parseOptionalString(value.derivedFromReleaseId),
+    manualEditReason: parseOptionalString(value.manualEditReason),
+    manuallyEditedArtifactKinds: isStringArray(value.manuallyEditedArtifactKinds)
+      ? value.manuallyEditedArtifactKinds
+      : [],
   };
 }
 
@@ -389,6 +498,46 @@ function parseReleaseListResponse(value: unknown): MappingReleaseListResponse {
   };
 }
 
+/**
+ * Parser do diff A×B de releases (issue #198). Shape não confirmado contra fonte canônica —
+ * ver o comentário em `MappingReleaseDiff` (types/mappingRelease.ts). Validação intencionalmente
+ * permissiva no nível de item para não quebrar caso o shape real divirja; falha apenas se a
+ * resposta não tiver `changes` como array.
+ */
+function parseDiffChange(value: unknown): MappingReleaseDiffElementChange {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.element) ||
+    !isNonEmptyString(value.changeKind) ||
+    !isNullableString(value.fromValue) ||
+    !isNullableString(value.toValue)
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    element: value.element,
+    changeKind: value.changeKind,
+    fromValue: value.fromValue,
+    toValue: value.toValue,
+  };
+}
+
+function parseReleaseDiff(value: unknown): MappingReleaseDiff {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.fromReleaseId) ||
+    !isNonEmptyString(value.toReleaseId) ||
+    !Array.isArray(value.changes)
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    fromReleaseId: value.fromReleaseId,
+    toReleaseId: value.toReleaseId,
+    changes: value.changes.map(parseDiffChange),
+  };
+}
+
 function parseJob(value: unknown): MappingCompileJob {
   if (
     !isRecord(value) ||
@@ -442,6 +591,28 @@ function mapRequestError(error: unknown): never {
       throw new MappingReleaseRequestError(
         'not_found',
         'O draft, job, workspace ou release não foi encontrado para esta identidade.'
+      );
+    }
+    if (status === 412) {
+      const current = isRecord(error.response?.data) ? error.response.data.current : null;
+      let currentArtifact: MappingReleaseArtifact | null = null;
+      if (current !== null && current !== undefined) {
+        try {
+          currentArtifact = parseArtifact(current);
+        } catch {
+          currentArtifact = null;
+        }
+      }
+      throw new MappingReleaseRequestError(
+        'conflict',
+        message ?? 'O artefato mudou em outra sessão. O estado atual foi recarregado.',
+        currentArtifact
+      );
+    }
+    if (status === 428) {
+      throw new MappingReleaseRequestError(
+        'precondition',
+        message ?? 'A API exigiu o hash atual do artefato (If-Match) para salvar.'
       );
     }
     if (status === 400 || status === 422) {
@@ -535,6 +706,81 @@ export const mappingReleaseService = {
     try {
       const response = await apiClient.get<unknown>(
         `/api/workspaces/${workspace}/mapping-drafts/${draft}/releases/${release}`
+      );
+      return parseRelease(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Diff agregado por elemento de schema entre duas releases do mesmo draft (issue #228).
+   * A API responde 404 se as releases forem de workspace/draft diferentes e 422 se alguma
+   * release não tiver test-run rodado — ambos mapeiam para os kinds já existentes.
+   */
+  async getReleasesDiff(
+    workspaceId: string,
+    draftId: string,
+    fromReleaseId: string,
+    toReleaseId: string
+  ): Promise<MappingReleaseDiff> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const draft = resourceSegment(draftId, 'Draft');
+    const from = fromReleaseId.trim();
+    const to = toReleaseId.trim();
+    if (!from || !to) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'As duas releases (origem e destino) são obrigatórias para o diff.'
+      );
+    }
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/releases/diff`,
+        { params: { fromReleaseId: from, toReleaseId: to } }
+      );
+      return parseReleaseDiff(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Edita manualmente o artefato TCL/XSL/XSLT de um draft (issue #226). Concorrência otimista
+   * via `If-Match` — mesmo padrão de `mappingDraftService.updateRule`. 412 devolve o artefato
+   * atual em `currentArtifact` no erro; 428 indica header ausente; 400 indica header malformado;
+   * 422 indica conteúdo sintaticamente inválido (XSLT validado de fato; TCL por heurística).
+   * A edição gera uma nova `MappingRelease` derivada (`artifactSource: 'manual_edit'`).
+   */
+  async editArtifact(input: EditMappingArtifactInput): Promise<MappingRelease> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const draft = resourceSegment(input.draftId, 'Draft');
+    const engine = resourceSegment(input.engine, 'Engine');
+    const baseHash = input.baseArtifactHash.trim();
+    if (!baseHash) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'O hash do artefato base é obrigatório (If-Match) para editar manualmente.'
+      );
+    }
+    if (!input.content.trim()) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'O conteúdo do artefato não pode ficar vazio.'
+      );
+    }
+    if (!input.justification.trim()) {
+      throw new MappingReleaseRequestError(
+        'invalid_input',
+        'A justificativa é obrigatória para editar manualmente um artefato.'
+      );
+    }
+
+    try {
+      const response = await apiClient.patch<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/artifacts/${engine}`,
+        { content: input.content, justification: input.justification.trim() },
+        { headers: { 'If-Match': `\"${baseHash.replace(/^\"|\"$/g, '')}\"` } }
       );
       return parseRelease(response.data);
     } catch (error) {

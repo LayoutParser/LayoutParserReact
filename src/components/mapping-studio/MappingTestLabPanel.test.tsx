@@ -40,6 +40,8 @@ const draft: MappingDraft = {
       eTag: 'AAAAAAAAAAE=',
     },
   ],
+  fiscalProfile: null,
+  resolvedXsd: null,
 };
 
 const release = {
@@ -70,6 +72,13 @@ const release = {
   publishedByUserId: null,
   publishedAt: null,
   previousPublishedReleaseId: null,
+  fiscalProfile: null,
+  resolvedXsd: null,
+  requiredCoverage: null,
+  artifactSource: 'generated' as const,
+  derivedFromReleaseId: null,
+  manualEditReason: null,
+  manuallyEditedArtifactKinds: [],
 };
 
 function renderPanel(path = '/workspace/mapping-studio/draft-1/draft') {
@@ -192,6 +201,7 @@ describe('MappingTestLabPanel', () => {
         xsdValid: true,
         xsdErrors: [],
         divergences: [],
+        divergencesByRuleId: null,
       },
       environment: 'production',
       approvedByUserId: 'reviewer-1',

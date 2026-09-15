@@ -1,4 +1,5 @@
 import type { MappingAuthoringEngine, MappingDraftEvidence } from './mappingDraft';
+import type { FiscalProfile, ResolvedXsdReference } from './workspace';
 
 export type MappingReleaseStatus =
   | 'draft_compiled'
@@ -43,7 +44,21 @@ export interface MappingTestRunSummary {
   xsdValid: boolean;
   xsdErrors: string[];
   divergences: MappingTestRunDivergence[];
+  /**
+   * Aditivo (issue #228): mesmas divergências de `divergences`, agrupadas por `ruleId` para
+   * granularidade linha-a-linha. `null` quando a API ainda não populou o agrupamento (releases
+   * antigas) — tratar como equivalente a "sem agrupamento disponível", não como erro.
+   */
+  divergencesByRuleId: Record<string, MappingTestRunDivergence[]> | null;
 }
+
+/** Cobertura de campos obrigatórios do schema fiscal para a release (issue #198). */
+export interface MappingRequiredCoverage {
+  percent: number;
+  uncovered: string[];
+}
+
+export type MappingArtifactSource = 'generated' | 'manual_edit';
 
 export interface MappingRelease {
   releaseId: string;
@@ -67,6 +82,19 @@ export interface MappingRelease {
   publishedByUserId: string | null;
   publishedAt: string | null;
   previousPublishedReleaseId: string | null;
+  /** Eco do fiscalProfile do draft no momento da release (issue #198). `null` sem perfil. */
+  fiscalProfile: FiscalProfile | null;
+  resolvedXsd: ResolvedXsdReference | null;
+  /** `null` quando a release não tem `fiscalProfile` (sem base para calcular cobertura). */
+  requiredCoverage: MappingRequiredCoverage | null;
+  /** Origem do artefato (issue #226). `'generated'` cobre releases anteriores à feature. */
+  artifactSource: MappingArtifactSource;
+  /** Release de origem quando `artifactSource === 'manual_edit'`; `null` caso contrário. */
+  derivedFromReleaseId: string | null;
+  /** Justificativa obrigatória da edição manual; `null` quando `artifactSource === 'generated'`. */
+  manualEditReason: string | null;
+  /** Engines (`tcl`/`xslt`/`sysmiddle`) cujo artefato foi editado manualmente nesta release. */
+  manuallyEditedArtifactKinds: string[];
 }
 
 /** Resposta parcial e autoritativa devolvida por approve/publish/rollback. */
@@ -135,4 +163,36 @@ export interface MappingReleaseListResponse {
   page: number;
   pageSize: number;
   totalCount: number;
+}
+
+/**
+ * Body do PATCH .../mapping-drafts/{draftId}/artifacts/{engine} (issue #226). `baseArtifactHash`
+ * vai no header `If-Match`, não no body — ver `mappingReleaseService.editArtifact`.
+ */
+export interface EditMappingArtifactInput {
+  workspaceId: string;
+  draftId: string;
+  engine: MappingAuthoringEngine;
+  baseArtifactHash: string;
+  content: string;
+  justification: string;
+}
+
+/**
+ * Diff agregado por elemento de schema entre duas releases do mesmo draft (issue #228 diff A×B).
+ * Shape NÃO confirmado contra OpenAPI/MCP — a única garantia recebida é "agregado por elemento
+ * de schema, não lista plana"; modelado com um formato mínimo plausível. Revalidar com
+ * `@lp-contract-qa` antes de expandir a UI sobre isso.
+ */
+export interface MappingReleaseDiffElementChange {
+  element: string;
+  changeKind: string;
+  fromValue: string | null;
+  toValue: string | null;
+}
+
+export interface MappingReleaseDiff {
+  fromReleaseId: string;
+  toReleaseId: string;
+  changes: MappingReleaseDiffElementChange[];
 }

@@ -32,6 +32,18 @@ export interface FiscalProfile {
   jurisdiction?: string | null;
 }
 
+/**
+ * Eco derivado de `XsdValidation:DocumentTypes` para o `fiscalProfile` gravado num draft/release
+ * (issue #198, PUT .../mapping-drafts/{draftId}/fiscal-profile). Shape NÃO confirmado contra
+ * OpenAPI/MCP — modelado a partir da descrição funcional recebida (documentType/schemaVersion +
+ * caminho do XSD resolvido); revalidar com `@lp-contract-qa` quando o MCP da API estiver disponível.
+ */
+export interface ResolvedXsdReference {
+  documentType: FiscalDocumentType;
+  schemaVersion: string;
+  xsdPath: string;
+}
+
 export interface FiscalProjectSummary {
   projectId: string;
   workspaceId: string;

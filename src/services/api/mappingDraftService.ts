@@ -8,9 +8,17 @@ import type {
   MappingDraftRuleStatus,
   MappingSuggestionJob,
   MappingSuggestionJobStatus,
+  SetFiscalProfileInput,
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
+import type {
+  FiscalDocumentType,
+  FiscalProfile,
+  ResolvedXsdReference,
+} from '../../types/workspace';
 import apiClient from '../api';
+
+const fiscalDocumentTypes = new Set<FiscalDocumentType>(['nfe', 'cte', 'mdfe', 'nfse', 'nfcom']);
 
 const authoringEngines = new Set<MappingAuthoringEngine>(['tcl', 'xslt']);
 const ruleStatuses = new Set<MappingDraftRuleStatus>([
@@ -139,6 +147,52 @@ function parseRule(value: unknown): MappingDraftRule {
   };
 }
 
+function parseFiscalProfile(value: unknown): FiscalProfile {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.operation) ||
+    (value.jurisdiction !== undefined && !isNullableString(value.jurisdiction))
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    operation: value.operation,
+    ...(value.jurisdiction === undefined
+      ? {}
+      : { jurisdiction: value.jurisdiction as string | null }),
+  };
+}
+
+function parseResolvedXsd(value: unknown): ResolvedXsdReference {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.xsdPath)
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    xsdPath: value.xsdPath,
+  };
+}
+
+function parseNullableFiscalProfile(value: unknown): FiscalProfile | null {
+  return value === undefined || value === null ? null : parseFiscalProfile(value);
+}
+
+function parseNullableResolvedXsd(value: unknown): ResolvedXsdReference | null {
+  return value === undefined || value === null ? null : parseResolvedXsd(value);
+}
+
 function parseDraft(value: unknown): MappingDraft {
   if (
     !isRecord(value) ||
@@ -167,6 +221,8 @@ function parseDraft(value: unknown): MappingDraft {
     engine: value.engine as MappingAuthoringEngine,
     createdAt: value.createdAt,
     rules,
+    fiscalProfile: parseNullableFiscalProfile(value.fiscalProfile),
+    resolvedXsd: parseNullableResolvedXsd(value.resolvedXsd),
   };
 }
 
@@ -366,6 +422,44 @@ export const mappingDraftService = {
         { headers: { 'If-Match': `\"${input.eTag.trim().replace(/^\"|\"$/g, '')}\"` } }
       );
       return parseRule(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Grava o perfil fiscal do draft (issue #198). PUT idempotente — não retroage releases já
+   * emitidas. A API pode recusar com 422 (ex.: documentType sem XSD configurado, schemaVersion
+   * não instalada); isso mapeia para `MappingDraftRequestError('rejected', ...)`.
+   */
+  async setFiscalProfile(input: SetFiscalProfileInput): Promise<MappingDraft> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const draft = resourceSegment(input.draftId, 'Draft');
+    if (
+      !isNonEmptyString(input.profile.documentType) ||
+      !fiscalDocumentTypes.has(input.profile.documentType) ||
+      !isNonEmptyString(input.profile.schemaVersion) ||
+      !isNonEmptyString(input.profile.operation)
+    ) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        'Tipo de documento, versão de schema e operação são obrigatórios para o perfil fiscal.'
+      );
+    }
+
+    try {
+      const response = await apiClient.put<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/fiscal-profile`,
+        {
+          documentType: input.profile.documentType,
+          schemaVersion: input.profile.schemaVersion,
+          operation: input.profile.operation,
+          ...(input.profile.jurisdiction !== undefined
+            ? { jurisdiction: input.profile.jurisdiction }
+            : {}),
+        }
+      );
+      return parseDraft(response.data);
     } catch (error) {
       return mapRequestError(error);
     }
