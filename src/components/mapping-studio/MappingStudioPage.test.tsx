@@ -88,6 +88,8 @@ const draft = {
   engine: 'tcl' as const,
   createdAt: '2026-08-31T19:00:00Z',
   rules: [draftRule],
+  fiscalProfile: null,
+  resolvedXsd: null,
 };
 
 const tclExplanation = {

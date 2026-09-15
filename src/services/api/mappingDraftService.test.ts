@@ -37,6 +37,8 @@ const draft = {
   engine: 'tcl',
   createdAt: '2026-08-31T19:00:00Z',
   rules: [rule],
+  fiscalProfile: null,
+  resolvedXsd: null,
 };
 
 describe('mappingDraftService', () => {

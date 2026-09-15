@@ -92,6 +92,13 @@ describe('mappingReleaseService', () => {
       publishedByUserId: null,
       publishedAt: null,
       previousPublishedReleaseId: null,
+      fiscalProfile: null,
+      resolvedXsd: null,
+      requiredCoverage: null,
+      artifactSource: 'generated',
+      derivedFromReleaseId: null,
+      manualEditReason: null,
+      manuallyEditedArtifactKinds: [],
     });
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/workspaces/workspace-1/mapping-drafts/draft-1/releases/release-1'
