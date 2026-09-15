@@ -5,15 +5,22 @@ import { mappingReleaseService } from '../../services/api/mappingReleaseService'
 import type { MappingDraft } from '../../types/mappingDraft';
 import MappingTestLabPanel from './MappingTestLabPanel';
 
-vi.mock('../../services/api/mappingReleaseService', () => ({
-  mappingReleaseService: {
-    compileDraft: vi.fn(),
-    getCompileJob: vi.fn(),
-    getRelease: vi.fn(),
-    createTestRun: vi.fn(),
-    getTestRunJob: vi.fn(),
-  },
-}));
+vi.mock('../../services/api/mappingReleaseService', async () => {
+  const actual = await vi.importActual<typeof import('../../services/api/mappingReleaseService')>(
+    '../../services/api/mappingReleaseService'
+  );
+  return {
+    MappingReleaseRequestError: actual.MappingReleaseRequestError,
+    mappingReleaseService: {
+      compileDraft: vi.fn(),
+      getCompileJob: vi.fn(),
+      getRelease: vi.fn(),
+      createTestRun: vi.fn(),
+      getTestRunJob: vi.fn(),
+      editArtifact: vi.fn(),
+    },
+  };
+});
 
 const draft: MappingDraft = {
   draftId: 'draft-1',
@@ -216,5 +223,61 @@ describe('MappingTestLabPanel', () => {
     expect(await screen.findByRole('heading', { name: 'Publicada' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Executar Test Lab' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('XML de entrada')).not.toBeInTheDocument();
+  });
+
+  it('mostra a cobertura fiscal obrigatória quando requiredCoverage está presente', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      requiredCoverage: { percent: 82.5, uncovered: ['emit/CNPJ', 'dest/CNPJ'] },
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(await screen.findByText(/Cobertura fiscal obrigatória: 82.5%/)).toBeVisible();
+    expect(screen.getByText(/emit\/CNPJ, dest\/CNPJ/)).toBeVisible();
+  });
+
+  it('agrupa divergências por ruleId quando divergencesByRuleId está populado', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      testRunSummary: {
+        passed: 1,
+        failed: 1,
+        coveragePercent: 50,
+        requiredGatesPassed: false,
+        xsdValid: true,
+        xsdErrors: [],
+        divergences: [
+          {
+            kind: 'value_mismatch',
+            xpath: '/nfe/emit/CNPJ',
+            expected: '123',
+            actual: '456',
+            ruleId: 'rule-1',
+            sourceRefs: ['layout://CNPJ'],
+            evidence: null,
+          },
+        ],
+        divergencesByRuleId: {
+          'rule-1': [
+            {
+              kind: 'value_mismatch',
+              xpath: '/nfe/emit/CNPJ',
+              expected: '123',
+              actual: '456',
+              ruleId: 'rule-1',
+              sourceRefs: ['layout://CNPJ'],
+              evidence: null,
+            },
+          ],
+        },
+      },
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    const toggle = await screen.findByRole('button', { name: 'Agrupar divergências por regra' });
+    fireEvent.click(toggle);
+
+    expect(screen.getByText('Regra rule-1 · 1 divergência(s)')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ver lista plana de divergências' })).toBeVisible();
   });
 });

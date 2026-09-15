@@ -97,15 +97,15 @@ const MappingReleaseDiffPanel = ({ workspaceId, draftId }: MappingReleaseDiffPan
         </button>
       </form>
 
-      {diff && diff.changes.length === 0 && (
+      {diff && (diff.changes ?? []).length === 0 && (
         <p className="mapping-job-status" role="status">
           Nenhuma mudança encontrada entre {diff.fromReleaseId} e {diff.toReleaseId}.
         </p>
       )}
 
-      {diff && diff.changes.length > 0 && (
+      {diff && (diff.changes ?? []).length > 0 && (
         <ul className="mapping-review-list" aria-label="Mudanças por elemento de schema">
-          {diff.changes.map((change, index) => (
+          {(diff.changes ?? []).map((change, index) => (
             <li key={`${change.element}-${index}`}>
               <strong>{change.element}</strong> — {change.changeKind}
               <dl className="mapping-rule-facts">
