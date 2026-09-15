@@ -6,10 +6,12 @@ import type {
   MappingCompileJob,
   MappingRelease,
   MappingReleaseArtifact,
+  MappingTestRunDivergence,
   MappingTestRunJob,
 } from '../../types/mappingRelease';
 import type { WorkspaceRole } from '../../types/workspace';
 import MappingArtifactDiffView from './MappingArtifactDiffView/MappingArtifactDiffView';
+import MappingArtifactManualEditor from './MappingArtifactManualEditor';
 import MappingGovernanceReadiness from './MappingGovernanceReadiness';
 
 interface MappingTestLabPanelProps {
@@ -45,6 +47,30 @@ const releaseStatusLabels: Record<MappingRelease['status'], string> = {
 const isBlockingDiagnostic = (severity: string) =>
   blockingDiagnosticSeverities.has(severity.toLowerCase());
 
+const DivergenceItem = ({ divergence }: { divergence: MappingTestRunDivergence }) => (
+  <article>
+    <strong>
+      {divergence.kind} em {divergence.xpath}
+    </strong>
+    <p>
+      Esperado: <code>{divergence.expected ?? 'ausente'}</code>
+    </p>
+    <p>
+      Atual: <code>{divergence.actual ?? 'ausente'}</code>
+    </p>
+    <p>
+      Regra: {divergence.ruleId ?? 'não resolvida'} · Origem:{' '}
+      {divergence.sourceRefs?.join(', ') || 'não resolvida'}
+    </p>
+  </article>
+);
+
+// Otimista: a API hoje só checa membership no workspace, sem gate de papel dedicado à edição
+// manual de artefato (issue #226). Não é uma garantia de segurança — ver
+// MappingArtifactManualEditor.
+const canEditArtifactManually = (role: WorkspaceRole) =>
+  (['mapper', 'fiscal_admin', 'owner'] as WorkspaceRole[]).includes(role);
+
 const downloadArtifact = (artifact: MappingReleaseArtifact, releaseId: string) => {
   const extension = artifact.kind.toLowerCase() === 'tcl' ? 'tcl' : 'xslt';
   const blob = new Blob([artifact.content], {
@@ -77,6 +103,7 @@ const MappingTestLabPanel = ({
   const [expectedXml, setExpectedXml] = useState('');
   const [xsdVersion, setXsdVersion] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [groupDivergencesByRule, setGroupDivergencesByRule] = useState(false);
   const [diffState, setDiffState] = useState<{
     kind: string;
     baseline: MappingReleaseArtifact | null;
@@ -373,6 +400,20 @@ const MappingTestLabPanel = ({
             </div>
           </dl>
 
+          {release.requiredCoverage && (
+            <p className="mapping-job-status" role="status">
+              Cobertura fiscal obrigatória: {release.requiredCoverage.percent.toFixed(1)}%
+              {release.requiredCoverage.uncovered.length > 0
+                ? ` · não cobertos: ${release.requiredCoverage.uncovered.join(', ')}`
+                : ' · todos os campos obrigatórios cobertos'}
+            </p>
+          )}
+          {!release.requiredCoverage && release.fiscalProfile === null && (
+            <p className="mapping-limitations">
+              Esta release não tem perfil fiscal — sem base para calcular cobertura obrigatória.
+            </p>
+          )}
+
           {release.compileDiagnostics.length > 0 && (
             <aside
               className="mapping-limitations"
@@ -416,8 +457,27 @@ const MappingTestLabPanel = ({
                     >
                       Baixar artefato {artifact.kind.toUpperCase()}
                     </button>
+                    <MappingArtifactManualEditor
+                      workspaceId={workspaceId}
+                      draftId={draft.draftId}
+                      engine={release.engine}
+                      artifact={artifact}
+                      canEdit={canEditArtifactManually(workspaceRole)}
+                      onReleaseCreated={nextRelease =>
+                        setReleaseResult({ releaseId: nextRelease.releaseId, value: nextRelease })
+                      }
+                    />
                   </div>
                 </header>
+                {release.artifactSource === 'manual_edit' && (
+                  <p className="mapping-limitations" role="note">
+                    Artefato editado manualmente
+                    {release.derivedFromReleaseId
+                      ? ` a partir da release ${release.derivedFromReleaseId}`
+                      : ''}
+                    . Justificativa: {release.manualEditReason ?? 'não informada'}.
+                  </p>
+                )}
                 <details>
                   <summary>Visualizar código gerado</summary>
                   <pre>
@@ -533,23 +593,53 @@ const MappingTestLabPanel = ({
                   ))}
                 </ul>
               )}
-              {release.testRunSummary.divergences.map((divergence, index) => (
-                <article key={`${divergence.xpath}-${divergence.kind}-${index}`}>
-                  <strong>
-                    {divergence.kind} em {divergence.xpath}
-                  </strong>
-                  <p>
-                    Esperado: <code>{divergence.expected ?? 'ausente'}</code>
-                  </p>
-                  <p>
-                    Atual: <code>{divergence.actual ?? 'ausente'}</code>
-                  </p>
-                  <p>
-                    Regra: {divergence.ruleId ?? 'não resolvida'} · Origem:{' '}
-                    {divergence.sourceRefs?.join(', ') || 'não resolvida'}
-                  </p>
-                </article>
-              ))}
+
+              {release.testRunSummary.divergencesByRuleId ? (
+                <div>
+                  <button
+                    type="button"
+                    className="mapping-button"
+                    onClick={() => setGroupDivergencesByRule(current => !current)}
+                  >
+                    {groupDivergencesByRule
+                      ? 'Ver lista plana de divergências'
+                      : 'Agrupar divergências por regra'}
+                  </button>
+                  {groupDivergencesByRule ? (
+                    <div className="mapping-review-list">
+                      {Object.entries(release.testRunSummary.divergencesByRuleId).map(
+                        ([ruleId, ruleDivergences]) => (
+                          <details key={ruleId} className="mapping-technical-details">
+                            <summary>
+                              Regra {ruleId} · {ruleDivergences.length} divergência(s)
+                            </summary>
+                            {ruleDivergences.map((divergence, index) => (
+                              <DivergenceItem
+                                key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                                divergence={divergence}
+                              />
+                            ))}
+                          </details>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    release.testRunSummary.divergences.map((divergence, index) => (
+                      <DivergenceItem
+                        key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                        divergence={divergence}
+                      />
+                    ))
+                  )}
+                </div>
+              ) : (
+                release.testRunSummary.divergences.map((divergence, index) => (
+                  <DivergenceItem
+                    key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                    divergence={divergence}
+                  />
+                ))
+              )}
             </div>
           )}
 
