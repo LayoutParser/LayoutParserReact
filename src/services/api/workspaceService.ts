@@ -105,17 +105,26 @@ function parseEvidence(value: unknown): MappingEvidenceReference {
 }
 
 function parseExplainedRule(value: unknown): MappingRuleExplanation {
+  if (!isRecord(value)) {
+    throw invalidExplanation();
+  }
+
+  // A API pode omitir totalmente a chave `condition`/`technicalDetail` quando não há valor
+  // (em vez de enviar `null` explícito). Tratamos ausência de chave como equivalente a `null`
+  // apenas para esses dois campos — os demais continuam exigindo o formato original.
+  const condition = value.condition ?? null;
+  const technicalDetail = value.technicalDetail ?? null;
+
   if (
-    !isRecord(value) ||
     !isNonEmptyString(value.ruleId) ||
     !isStringArray(value.sourceRefs) ||
     !isStringArray(value.targetRefs) ||
-    !isNullableString(value.condition) ||
+    !isNullableString(condition) ||
     !isStringArray(value.operations) ||
     !isNonEmptyString(value.cardinality) ||
     !Array.isArray(value.evidence) ||
     !isNonEmptyString(value.humanDescription) ||
-    !isNullableString(value.technicalDetail) ||
+    !isNullableString(technicalDetail) ||
     !isNonEmptyString(value.supportLevel) ||
     !mappingSupportLevels.has(value.supportLevel as MappingSupportLevel)
   ) {
@@ -126,12 +135,12 @@ function parseExplainedRule(value: unknown): MappingRuleExplanation {
     ruleId: value.ruleId,
     sourceRefs: value.sourceRefs,
     targetRefs: value.targetRefs,
-    condition: value.condition,
+    condition,
     operations: value.operations,
     cardinality: value.cardinality,
     evidence: value.evidence.map(parseEvidence),
     humanDescription: value.humanDescription,
-    technicalDetail: value.technicalDetail,
+    technicalDetail,
     supportLevel: value.supportLevel as MappingSupportLevel,
   };
 }
