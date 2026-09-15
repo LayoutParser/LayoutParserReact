@@ -183,6 +183,24 @@
       "path": "/api/transformation/field-correction/:param/review",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#345"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/fiscal-profile",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/artifacts/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/releases/diff",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
     }
   ]
 }

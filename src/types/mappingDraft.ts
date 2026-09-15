@@ -1,3 +1,5 @@
+import type { FiscalProfile, ResolvedXsdReference } from './workspace';
+
 export type MappingAuthoringEngine = 'tcl' | 'xslt';
 
 export type MappingDraftRuleStatus =
@@ -35,6 +37,21 @@ export interface MappingDraft {
   engine: MappingAuthoringEngine;
   createdAt: string;
   rules: MappingDraftRule[];
+  /**
+   * Perfil fiscal gravado via PUT .../fiscal-profile (issue #198). `null` quando o draft ainda
+   * não teve perfil definido. Reaproveita `FiscalProfile` de `workspace.ts` — a API reportou o
+   * mesmo shape de body para draft/release; se divergir, desdobrar em tipo próprio.
+   */
+  fiscalProfile: FiscalProfile | null;
+  /** Eco derivado de `XsdValidation:DocumentTypes`; `null` sem `fiscalProfile`. */
+  resolvedXsd: ResolvedXsdReference | null;
+}
+
+/** Body do PUT .../mapping-drafts/{draftId}/fiscal-profile (issue #198). */
+export interface SetFiscalProfileInput {
+  workspaceId: string;
+  draftId: string;
+  profile: FiscalProfile;
 }
 
 export interface MappingSuggestionJob {

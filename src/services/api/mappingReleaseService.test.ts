@@ -1,9 +1,10 @@
+import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../api';
 import { mappingReleaseService } from './mappingReleaseService';
 
 vi.mock('../api', () => ({
-  default: { get: vi.fn(), post: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
 }));
 
 const release = {
@@ -92,6 +93,13 @@ describe('mappingReleaseService', () => {
       publishedByUserId: null,
       publishedAt: null,
       previousPublishedReleaseId: null,
+      fiscalProfile: null,
+      resolvedXsd: null,
+      requiredCoverage: null,
+      artifactSource: 'generated',
+      derivedFromReleaseId: null,
+      manualEditReason: null,
+      manuallyEditedArtifactKinds: [],
     });
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/workspaces/workspace-1/mapping-drafts/draft-1/releases/release-1'
@@ -338,5 +346,274 @@ describe('mappingReleaseService', () => {
       kind: 'invalid_input',
     });
     expect(apiClient.get).not.toHaveBeenCalled();
+  });
+
+  it('não descarta divergencesByRuleId ao consultar a release (issue #228)', async () => {
+    const divergence = {
+      kind: 'value_mismatch',
+      xpath: '/NFe/infNFe/emit/CNPJ',
+      expected: '123',
+      actual: '456',
+      ruleId: 'rule-1',
+      sourceRefs: ['layout://CNPJ'],
+      evidence: null,
+    };
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...release,
+        status: 'test_failed',
+        testRunSummary: {
+          passed: 0,
+          failed: 1,
+          coveragePercent: 80,
+          requiredGatesPassed: false,
+          xsdValid: true,
+          xsdErrors: [],
+          divergences: [divergence],
+          divergencesByRuleId: { 'rule-1': [divergence] },
+        },
+      },
+    });
+
+    const result = await mappingReleaseService.getRelease('workspace-1', 'draft-1', 'release-1');
+    expect(result.testRunSummary?.divergencesByRuleId).toEqual({ 'rule-1': [divergence] });
+  });
+
+  it('trata divergencesByRuleId ausente como null, não como erro', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...release,
+        status: 'test_passed',
+        testRunSummary: {
+          passed: 1,
+          failed: 0,
+          coveragePercent: 100,
+          requiredGatesPassed: true,
+          xsdValid: true,
+          xsdErrors: [],
+          divergences: [],
+        },
+      },
+    });
+
+    const result = await mappingReleaseService.getRelease('workspace-1', 'draft-1', 'release-1');
+    expect(result.testRunSummary?.divergencesByRuleId).toBeNull();
+  });
+
+  describe('editArtifact (issue #226)', () => {
+    it('envia If-Match citado e devolve a release derivada', async () => {
+      vi.mocked(apiClient.patch).mockResolvedValue({
+        data: {
+          ...release,
+          releaseId: 'release-2',
+          artifactSource: 'manual_edit',
+          derivedFromReleaseId: 'release-1',
+          manualEditReason: 'Ajuste pontual de namespace.',
+          manuallyEditedArtifactKinds: ['xslt'],
+        },
+      });
+
+      const result = await mappingReleaseService.editArtifact({
+        workspaceId: 'workspace-1',
+        draftId: 'draft-1',
+        engine: 'xslt',
+        baseArtifactHash: 'sha256-release',
+        content: '<xsl:stylesheet version="1.0"><!-- ajustado --></xsl:stylesheet>',
+        justification: 'Ajuste pontual de namespace.',
+      });
+
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/artifacts/xslt',
+        {
+          content: '<xsl:stylesheet version="1.0"><!-- ajustado --></xsl:stylesheet>',
+          justification: 'Ajuste pontual de namespace.',
+        },
+        { headers: { 'If-Match': '"sha256-release"' } }
+      );
+      expect(result).toMatchObject({
+        releaseId: 'release-2',
+        artifactSource: 'manual_edit',
+        derivedFromReleaseId: 'release-1',
+        manualEditReason: 'Ajuste pontual de namespace.',
+        manuallyEditedArtifactKinds: ['xslt'],
+      });
+    });
+
+    it('recusa entrada sem hash base, conteúdo ou justificativa antes de chamar a API', async () => {
+      const baseInput = {
+        workspaceId: 'workspace-1',
+        draftId: 'draft-1',
+        engine: 'xslt' as const,
+        baseArtifactHash: 'sha256-release',
+        content: '<xsl:stylesheet/>',
+        justification: 'Correção pontual.',
+      };
+
+      await expect(
+        mappingReleaseService.editArtifact({ ...baseInput, baseArtifactHash: '  ' })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      await expect(
+        mappingReleaseService.editArtifact({ ...baseInput, content: '   ' })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      await expect(
+        mappingReleaseService.editArtifact({ ...baseInput, justification: '   ' })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      expect(apiClient.patch).not.toHaveBeenCalled();
+    });
+
+    it('devolve o artefato atual em conflito 412', async () => {
+      vi.mocked(apiClient.patch).mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 412,
+          data: {
+            error: 'O artefato mudou em outra sessão.',
+            current: release.artifacts[0],
+          },
+        },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.editArtifact({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          engine: 'xslt',
+          baseArtifactHash: 'hash-desatualizado',
+          content: '<xsl:stylesheet/>',
+          justification: 'Correção pontual.',
+        })
+      ).rejects.toMatchObject({
+        kind: 'conflict',
+        currentArtifact: release.artifacts[0],
+      });
+    });
+
+    it('mapeia 428 (sem If-Match) para precondition', async () => {
+      vi.mocked(apiClient.patch).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 428, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.editArtifact({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          engine: 'xslt',
+          baseArtifactHash: 'sha256-release',
+          content: '<xsl:stylesheet/>',
+          justification: 'Correção pontual.',
+        })
+      ).rejects.toMatchObject({ kind: 'precondition' });
+    });
+
+    it('mapeia 422 (conteúdo sintaticamente inválido) para rejected', async () => {
+      vi.mocked(apiClient.patch).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 422, data: { error: 'XSLT inválido: tag não fechada.' } },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.editArtifact({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          engine: 'xslt',
+          baseArtifactHash: 'sha256-release',
+          content: '<xsl:stylesheet>',
+          justification: 'Correção pontual.',
+        })
+      ).rejects.toMatchObject({ kind: 'rejected', message: 'XSLT inválido: tag não fechada.' });
+    });
+
+    it('mapeia 404 (sem identidade/membership) para not_found', async () => {
+      vi.mocked(apiClient.patch).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.editArtifact({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          engine: 'xslt',
+          baseArtifactHash: 'sha256-release',
+          content: '<xsl:stylesheet/>',
+          justification: 'Correção pontual.',
+        })
+      ).rejects.toMatchObject({ kind: 'not_found' });
+    });
+  });
+
+  describe('getReleasesDiff (issue #228, diff A×B)', () => {
+    it('busca o diff agregado por elemento de schema', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: {
+          fromReleaseId: 'release-1',
+          toReleaseId: 'release-2',
+          changes: [
+            {
+              element: '/NFe/infNFe/emit/CNPJ',
+              changeKind: 'modified',
+              fromValue: '123',
+              toValue: '456',
+            },
+          ],
+        },
+      });
+
+      const diff = await mappingReleaseService.getReleasesDiff(
+        'workspace-1',
+        'draft-1',
+        'release-1',
+        'release-2'
+      );
+
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/releases/diff',
+        { params: { fromReleaseId: 'release-1', toReleaseId: 'release-2' } }
+      );
+      expect(diff.changes).toEqual([
+        {
+          element: '/NFe/infNFe/emit/CNPJ',
+          changeKind: 'modified',
+          fromValue: '123',
+          toValue: '456',
+        },
+      ]);
+    });
+
+    it('recusa releaseIds vazios antes de chamar a API', async () => {
+      await expect(
+        mappingReleaseService.getReleasesDiff('workspace-1', 'draft-1', '', 'release-2')
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      expect(apiClient.get).not.toHaveBeenCalled();
+    });
+
+    it('mapeia 404 (releases de workspace/draft diferentes) para not_found', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.getReleasesDiff('workspace-1', 'draft-1', 'release-1', 'release-9')
+      ).rejects.toMatchObject({ kind: 'not_found' });
+    });
+
+    it('mapeia 422 (release sem test-run rodado) para rejected', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 422, data: { error: 'Release sem test-run executado.' } },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingReleaseService.getReleasesDiff('workspace-1', 'draft-1', 'release-1', 'release-2')
+      ).rejects.toMatchObject({ kind: 'rejected', message: 'Release sem test-run executado.' });
+    });
   });
 });
