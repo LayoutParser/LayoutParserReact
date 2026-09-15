@@ -73,6 +73,14 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'workspace/field-correction-curation',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/FieldCorrectionCuration/FieldCorrectionCuration')
+          ).default,
+        }),
+      },
+      {
         path: 'upload',
         lazy: async () => ({
           Component: (await import('./components/layout/LayoutParserPage')).default,

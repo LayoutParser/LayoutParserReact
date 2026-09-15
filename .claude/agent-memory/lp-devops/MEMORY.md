@@ -1,6 +1,7 @@
 # Memória — @lp-devops (Gage)
 
 - Push, PR, CI, deploy, secrets e MCP são autoridade exclusiva de `@lp-devops`.
+- [Promoção develop→main pausada (SHA 5ba3c1e, 504 em execute-candidates)](project_develop_main_promotion_blocked_504_2026_09_10.md) — aguardando API confirmar correção antes de reabrir PR.
 - [MCP da API validado para detecção automática](project_api_mcp_validation_2026_08_29.md) —
   servidor saudável, endpoint `/api/parse/auto` entregue em branch e tool tipada rastreada em
   #184/#216.

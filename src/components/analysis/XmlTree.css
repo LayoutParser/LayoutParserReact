@@ -169,6 +169,64 @@
   border-left: 1px solid var(--color-border-subtle);
 }
 
+/* Linha do nó + gatilho de "Reportar divergência" (Story #234): botões irmãos, não aninhados
+   (o treeitem já é um <button>, então o gatilho vive fora dele, não dentro). */
+.xml-tree-node-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.xml-tree-node-row .xml-tree-node-header {
+  flex: 1;
+  min-width: 0;
+}
+
+.xml-tree-report-btn {
+  flex: 0 0 auto;
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-info);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  /* Visível ao passar o mouse/focar a linha, sem sumir do fluxo de leitura de leitores de tela
+     (não usa display:none — só opacidade), garantindo alcance via Tab (critério de aceite 1). */
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.xml-tree-node-row:hover .xml-tree-report-btn,
+.xml-tree-node-row:focus-within .xml-tree-report-btn {
+  opacity: 1;
+}
+
+.xml-tree-report-btn:hover {
+  background: var(--color-info-bg);
+}
+
+.xml-tree-report-btn:focus-visible {
+  opacity: 1;
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* Indicador de divergência pendente — cor distinta (azul/info) do vermelho usado para linha
+   inválida de layout, conforme critério de aceite 5. */
+.xml-tree-node-header--reported {
+  background: var(--color-info-bg);
+  border-color: var(--color-info);
+}
+
+.xml-tree-reported-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+}
+
 @media (max-width: 600px) {
   .xml-tree {
     max-height: 52vh;

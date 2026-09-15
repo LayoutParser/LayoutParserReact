@@ -49,6 +49,13 @@
 
 - [Dependabot e peers desalinhados](feedback_dependabot_peer_bump_gaps.md) — bump de um pacote
   sem o peer correspondente quebra `npm ci` só no próximo install limpo; checar em cadeia.
+- [Curadoria de correções de campo (#244)](project_field_correction_curation_story244_2026_09_10.md) —
+  tela do curador implementada; schema de `FieldCorrectionReport` inferido, pendente de
+  confirmação por `@lp-contract-qa`; cuidado para não confundir com o fluxo do analista (#232/#234).
+- [Reporte de divergência de campo (#234)](project_field_divergence_report_story234_2026_09_10.md) —
+  estado só local (`useFieldCorrectionStore`); meu `FieldCorrectionReport` tem schema
+  DIFERENTE do de `fieldCorrectionCuration.ts` (#244) — reconciliar quando a API expuser
+  POST de criação real.
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.
