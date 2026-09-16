@@ -206,4 +206,149 @@ describe('workspaceService', () => {
     await expect(action()).rejects.toThrow();
     expect(apiClient.get).not.toHaveBeenCalled();
   });
+
+  describe('getMappingLayoutTree', () => {
+    it('busca a árvore dupla de um mapping por GUID', async () => {
+      const payload = {
+        source: {
+          roots: [
+            {
+              guid: 'src-root-1',
+              name: 'Documento',
+              kind: 'element',
+              cardinality: { min: 1, max: 1 },
+              children: [
+                {
+                  guid: 'src-leaf-1',
+                  name: 'Campo A',
+                  kind: 'attribute',
+                  cardinality: { min: 0, max: null },
+                  children: [],
+                },
+              ],
+            },
+            {
+              guid: 'src-root-2',
+              name: 'Cabeçalho',
+              kind: 'group',
+              cardinality: { min: null, max: null },
+              children: [],
+            },
+          ],
+        },
+        target: {
+          roots: [
+            {
+              guid: 'tgt-root-1',
+              name: 'NFe',
+              kind: 'element',
+              cardinality: { min: 1, max: 1 },
+              children: [
+                {
+                  guid: 'tgt-leaf-1',
+                  name: 'CampoB',
+                  kind: 'attribute',
+                  cardinality: { min: 1, max: 1 },
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        rules: [
+          { ruleId: 'RULE-1', sourceElementGuid: 'src-leaf-1', targetElementGuid: 'tgt-leaf-1' },
+        ],
+      };
+      vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+      await expect(
+        workspaceService.getMappingLayoutTree('workspace 1', 'mapping/1')
+      ).resolves.toEqual(payload);
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace%201/mappings/mapping%2F1/layout-tree'
+      );
+    });
+
+    it('aceita múltiplas raízes e cardinalidade totalmente nula', async () => {
+      const payload = {
+        source: {
+          roots: [
+            {
+              guid: 'a',
+              name: 'A',
+              kind: 'element',
+              cardinality: { min: null, max: null },
+              children: [],
+            },
+            {
+              guid: 'b',
+              name: 'B',
+              kind: 'element',
+              cardinality: { min: null, max: null },
+              children: [],
+            },
+          ],
+        },
+        target: { roots: [] },
+        rules: [],
+      };
+      vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+      const result = await workspaceService.getMappingLayoutTree('workspace-1', 'mapping-1');
+      expect(result.source.roots).toHaveLength(2);
+      expect(result.target.roots).toHaveLength(0);
+    });
+
+    it.each([
+      null,
+      { source: null, target: { roots: [] }, rules: [] },
+      { source: { roots: [] }, target: { roots: [] }, rules: 'not-an-array' },
+      {
+        source: {
+          roots: [
+            {
+              guid: 'a',
+              name: 'A',
+              kind: 'invalid',
+              cardinality: { min: 1, max: 1 },
+              children: [],
+            },
+          ],
+        },
+        target: { roots: [] },
+        rules: [],
+      },
+      {
+        source: {
+          roots: [
+            {
+              guid: 'a',
+              name: 'A',
+              kind: 'element',
+              cardinality: { min: '1', max: 1 },
+              children: [],
+            },
+          ],
+        },
+        target: { roots: [] },
+        rules: [],
+      },
+      {
+        source: { roots: [] },
+        target: { roots: [] },
+        rules: [{ ruleId: 'r1', sourceElementGuid: 'a' }],
+      },
+    ])('recusa árvore de layout que viola o contrato', async payload => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+      await expect(
+        workspaceService.getMappingLayoutTree('workspace-1', 'mapping-1')
+      ).rejects.toMatchObject({ kind: 'invalid_response' });
+    });
+
+    it('recusa workspace ou mapping vazio antes de chamar a API', async () => {
+      await expect(workspaceService.getMappingLayoutTree('', 'mapping-1')).rejects.toThrow();
+      expect(apiClient.get).not.toHaveBeenCalled();
+    });
+  });
 });
