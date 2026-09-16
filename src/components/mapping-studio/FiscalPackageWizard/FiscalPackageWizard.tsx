@@ -66,6 +66,29 @@ type InventoryState =
   | { status: 'error'; message: string };
 
 /**
+ * Confirmação manual de aba/cabeçalho/colunas de um artefato `spec` (PBI #201 — critério
+ * "planilha permite confirmar aba/cabeçalho/colunas antes de interpretar"). O contrato
+ * `ExcelInventoryResult` não expõe uma linha de cabeçalho separada — as `columns` de cada aba
+ * já chegam normalizadas pela API, então o "cabeçalho" confirmado é a lista de colunas
+ * escolhidas dentro da aba selecionada.
+ */
+interface SheetConfirmationState {
+  sheetName: string;
+  selectedColumns: string[];
+  confirmed: boolean;
+}
+
+const buildInitialConfirmation = (data: ExcelInventoryResult): SheetConfirmationState | null => {
+  const firstSheet = data.decisionSheets[0];
+  if (!firstSheet) return null;
+  return {
+    sheetName: firstSheet.sheetName,
+    selectedColumns: [...firstSheet.columns],
+    confirmed: false,
+  };
+};
+
+/**
  * Wizard de ingestão do pacote de especificação fiscal (PBI #201).
  *
  * Desde a LayoutParserApi#309 (2026-09-05) a API entrega os 3 gaps antes bloqueados: listagem de
@@ -90,6 +113,9 @@ const FiscalPackageWizard = () => {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FiscalMappingPackageDetail | null>(null);
   const [inventories, setInventories] = useState<Record<string, InventoryState>>({});
+  const [sheetConfirmations, setSheetConfirmations] = useState<
+    Record<string, SheetConfirmationState>
+  >({});
   const [revisionFiles, setRevisionFiles] = useState<Partial<Record<UploadableArtifactKind, File>>>(
     {}
   );
@@ -202,6 +228,10 @@ const FiscalPackageWizard = () => {
       .getExcelInventory(activeWorkspaceId, result.packageId, artifactId)
       .then(data => {
         setInventories(current => ({ ...current, [artifactId]: { status: 'ready', data } }));
+        const initialConfirmation = buildInitialConfirmation(data);
+        if (initialConfirmation) {
+          setSheetConfirmations(current => ({ ...current, [artifactId]: initialConfirmation }));
+        }
       })
       .catch(inventoryError => {
         setInventories(current => ({
@@ -215,6 +245,41 @@ const FiscalPackageWizard = () => {
           },
         }));
       });
+  };
+
+  const handleSheetSelect = (artifactId: string, data: ExcelInventoryResult, sheetName: string) => {
+    const sheet = data.decisionSheets.find(candidate => candidate.sheetName === sheetName);
+    if (!sheet) return;
+    setSheetConfirmations(current => ({
+      ...current,
+      [artifactId]: {
+        sheetName: sheet.sheetName,
+        selectedColumns: [...sheet.columns],
+        confirmed: false,
+      },
+    }));
+  };
+
+  const handleColumnToggle = (artifactId: string, column: string, checked: boolean) => {
+    setSheetConfirmations(current => {
+      const state = current[artifactId];
+      if (!state) return current;
+      const selectedColumns = checked
+        ? [...state.selectedColumns, column]
+        : state.selectedColumns.filter(existing => existing !== column);
+      return {
+        ...current,
+        [artifactId]: { ...state, selectedColumns, confirmed: false },
+      };
+    });
+  };
+
+  const handleConfirmSheet = (artifactId: string) => {
+    setSheetConfirmations(current => {
+      const state = current[artifactId];
+      if (!state || state.selectedColumns.length === 0) return current;
+      return { ...current, [artifactId]: { ...state, confirmed: true } };
+    });
   };
 
   const handleRevisionFileChange = (kind: UploadableArtifactKind, file: File | null) => {
@@ -252,6 +317,7 @@ const FiscalPackageWizard = () => {
       setRevisionFiles({});
       setRevisionOpen(false);
       setInventories({});
+      setSheetConfirmations({});
     } catch (submitError) {
       setRevisionError(
         submitError instanceof MappingPackageRequestError
@@ -494,26 +560,125 @@ const FiscalPackageWizard = () => {
                               </p>
                             )}
                             {inventory?.status === 'ready' && (
-                              <div className="mapping-rule-facts">
-                                {inventory.data.decisionSheets.length === 0 && (
-                                  <p>Nenhuma aba de decisão reconhecida nesta planilha.</p>
-                                )}
-                                {inventory.data.decisionSheets.map(sheet => (
-                                  <div key={sheet.sheetName}>
-                                    <dt>{sheet.sheetName}</dt>
-                                    <dd>
-                                      {sheet.ruleCount} regra(s) · colunas:{' '}
-                                      {sheet.columns.join(', ') || '—'}
-                                    </dd>
+                              <>
+                                <div className="mapping-rule-facts">
+                                  {inventory.data.decisionSheets.length === 0 && (
+                                    <p>Nenhuma aba de decisão reconhecida nesta planilha.</p>
+                                  )}
+                                  {inventory.data.decisionSheets.map(sheet => (
+                                    <div key={sheet.sheetName}>
+                                      <dt>{sheet.sheetName}</dt>
+                                      <dd>
+                                        {sheet.ruleCount} regra(s) · colunas:{' '}
+                                        {sheet.columns.join(', ') || '—'}
+                                      </dd>
+                                    </div>
+                                  ))}
+                                  {inventory.data.skippedSheets.length > 0 && (
+                                    <div>
+                                      <dt>Abas ignoradas</dt>
+                                      <dd>{inventory.data.skippedSheets.join(', ')}</dd>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {inventory.data.decisionSheets.length > 0 && (
+                                  <div className="fiscal-package-sheet-confirmation">
+                                    <p>
+                                      Confirme a aba, o cabeçalho e as colunas antes de prosseguir
+                                      para a interpretação pela IA.
+                                    </p>
+                                    <fieldset>
+                                      <legend>Aba</legend>
+                                      {inventory.data.decisionSheets.map(sheet => (
+                                        <label
+                                          key={sheet.sheetName}
+                                          className="fiscal-package-sheet-option"
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`sheet-${artifact.artifactId}`}
+                                            checked={
+                                              sheetConfirmations[artifact.artifactId]?.sheetName ===
+                                              sheet.sheetName
+                                            }
+                                            onChange={() =>
+                                              handleSheetSelect(
+                                                artifact.artifactId,
+                                                inventory.data,
+                                                sheet.sheetName
+                                              )
+                                            }
+                                          />
+                                          {sheet.sheetName}
+                                        </label>
+                                      ))}
+                                    </fieldset>
+
+                                    {sheetConfirmations[artifact.artifactId] && (
+                                      <fieldset>
+                                        <legend>Colunas do cabeçalho</legend>
+                                        {inventory.data.decisionSheets
+                                          .find(
+                                            sheet =>
+                                              sheet.sheetName ===
+                                              sheetConfirmations[artifact.artifactId]?.sheetName
+                                          )
+                                          ?.columns.map(column => (
+                                            <label
+                                              key={column}
+                                              className="fiscal-package-sheet-option"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={sheetConfirmations[
+                                                  artifact.artifactId
+                                                ]?.selectedColumns.includes(column)}
+                                                onChange={event =>
+                                                  handleColumnToggle(
+                                                    artifact.artifactId,
+                                                    column,
+                                                    event.target.checked
+                                                  )
+                                                }
+                                              />
+                                              {column}
+                                            </label>
+                                          ))}
+                                      </fieldset>
+                                    )}
+
+                                    <div className="fiscal-package-sheet-confirmation-actions">
+                                      <button
+                                        type="button"
+                                        className="mapping-button"
+                                        disabled={
+                                          !sheetConfirmations[artifact.artifactId] ||
+                                          sheetConfirmations[artifact.artifactId]?.selectedColumns
+                                            .length === 0 ||
+                                          sheetConfirmations[artifact.artifactId]?.confirmed
+                                        }
+                                        onClick={() => handleConfirmSheet(artifact.artifactId)}
+                                      >
+                                        Confirmar aba, cabeçalho e colunas
+                                      </button>
+                                      <span
+                                        className="mapping-status-badge"
+                                        data-status={
+                                          sheetConfirmations[artifact.artifactId]?.confirmed
+                                            ? 'clean'
+                                            : 'pending'
+                                        }
+                                        role="status"
+                                      >
+                                        {sheetConfirmations[artifact.artifactId]?.confirmed
+                                          ? 'Confirmado para interpretação'
+                                          : 'Pendente de confirmação'}
+                                      </span>
+                                    </div>
                                   </div>
-                                ))}
-                                {inventory.data.skippedSheets.length > 0 && (
-                                  <div>
-                                    <dt>Abas ignoradas</dt>
-                                    <dd>{inventory.data.skippedSheets.join(', ')}</dd>
-                                  </div>
                                 )}
-                              </div>
+                              </>
                             )}
                           </div>
                         )}
