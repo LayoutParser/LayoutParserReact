@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { LayoutTreeNode, LayoutTreeRuleLink, LayoutTreeSide } from '../../types/workspace';
+import type {
+  LayoutTreeNode,
+  LayoutTreeRuleLink,
+  LayoutTreeSide,
+  MappingRuleExplanation,
+} from '../../types/workspace';
 import MappingLayoutTreeView from './MappingLayoutTreeView';
 
 const leafSource: LayoutTreeNode = {
@@ -48,6 +53,21 @@ const target: LayoutTreeSide = { roots: [rootTarget] };
 
 const rules: LayoutTreeRuleLink[] = [
   { ruleId: 'RULE-1', sourceElementGuid: 'src-leaf-1', targetElementGuid: 'tgt-leaf-1' },
+];
+
+const explanationRules: MappingRuleExplanation[] = [
+  {
+    ruleId: 'RULE-1',
+    sourceRefs: ['CampoOrigem'],
+    targetRefs: ['CampoDestino'],
+    condition: 'valor != null',
+    operations: ['copy'],
+    cardinality: '1..1',
+    evidence: [],
+    humanDescription: 'Copia CampoOrigem para CampoDestino quando preenchido.',
+    technicalDetail: 'if (origem != null) {\n  destino = origem;\n} else {\n  destino = "";\n}',
+    supportLevel: 'authoritative',
+  },
 ];
 
 describe('MappingLayoutTreeView', () => {
@@ -160,5 +180,109 @@ describe('MappingLayoutTreeView', () => {
     );
 
     expect(screen.getByText('Nenhum nó de destino disponível.')).toBeVisible();
+  });
+
+  it('mantém o botão "Ver regra" desabilitado sem nó selecionado', () => {
+    render(
+      <MappingLayoutTreeView
+        source={source}
+        target={target}
+        rules={rules}
+        limitations={[]}
+        explanationRules={explanationRules}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Ver regra' })).toBeDisabled();
+  });
+
+  it('mantém o botão "Ver regra" desabilitado ao selecionar nó sem regra vinculada', () => {
+    render(
+      <MappingLayoutTreeView
+        source={source}
+        target={target}
+        rules={rules}
+        limitations={[]}
+        explanationRules={explanationRules}
+      />
+    );
+
+    fireEvent.click(screen.getByText('RaizOrigemB'));
+    expect(screen.getByRole('button', { name: 'Ver regra' })).toBeDisabled();
+  });
+
+  it('habilita o botão "Ver regra" ao selecionar nó com regra vinculada e explicação carregada', () => {
+    render(
+      <MappingLayoutTreeView
+        source={source}
+        target={target}
+        rules={rules}
+        limitations={[]}
+        explanationRules={explanationRules}
+      />
+    );
+
+    fireEvent.click(screen.getByText('CampoOrigem'));
+    expect(screen.getByRole('button', { name: 'Ver regra' })).toBeEnabled();
+  });
+
+  it('mantém o botão "Ver regra" desabilitado quando a explicação ainda não foi carregada', () => {
+    render(
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
+    );
+
+    fireEvent.click(screen.getByText('CampoOrigem'));
+    expect(screen.getByRole('button', { name: 'Ver regra' })).toBeDisabled();
+  });
+
+  it('abre o painel de detalhe da regra com humanDescription e technicalDetail preservando quebras de linha', () => {
+    render(
+      <MappingLayoutTreeView
+        source={source}
+        target={target}
+        rules={rules}
+        limitations={[]}
+        explanationRules={explanationRules}
+      />
+    );
+
+    fireEvent.click(screen.getByText('CampoOrigem'));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver regra' }));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('Regra RULE-1')).toBeVisible();
+    expect(
+      within(dialog).getByText('Copia CampoOrigem para CampoDestino quando preenchido.')
+    ).toBeVisible();
+    const codeBlock = dialog.querySelector('.mapping-layout-tree-rule-detail-code code');
+    expect(codeBlock?.textContent).toBe(
+      'if (origem != null) {\n  destino = origem;\n} else {\n  destino = "";\n}'
+    );
+  });
+
+  it('fecha o painel de detalhe da regra pelo botão de fechar e por Esc', () => {
+    render(
+      <MappingLayoutTreeView
+        source={source}
+        target={target}
+        rules={rules}
+        limitations={[]}
+        explanationRules={explanationRules}
+      />
+    );
+
+    fireEvent.click(screen.getByText('CampoOrigem'));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver regra' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar janela' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // Seleção do nó persiste após fechar o modal; reabrir não exige nova seleção.
+    fireEvent.click(screen.getByRole('button', { name: 'Ver regra' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
