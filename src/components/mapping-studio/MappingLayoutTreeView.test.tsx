@@ -1,11 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type {
-  LayoutTreeNode,
-  LayoutTreeRuleLink,
-  LayoutTreeSide,
-  MappingRuleExplanation,
-} from '../../types/workspace';
+import type { LayoutTreeNode, LayoutTreeRuleLink, LayoutTreeSide } from '../../types/workspace';
 import MappingLayoutTreeView from './MappingLayoutTreeView';
 
 const leafSource: LayoutTreeNode = {
@@ -55,28 +50,10 @@ const rules: LayoutTreeRuleLink[] = [
   { ruleId: 'RULE-1', sourceElementGuid: 'src-leaf-1', targetElementGuid: 'tgt-leaf-1' },
 ];
 
-const explanationRule = (ruleId: string): MappingRuleExplanation => ({
-  ruleId,
-  sourceRefs: ['SRC'],
-  targetRefs: ['TGT'],
-  condition: null,
-  operations: ['copy'],
-  cardinality: '1:1',
-  evidence: [],
-  humanDescription: 'Copia origem para destino.',
-  technicalDetail: null,
-  supportLevel: 'authoritative',
-});
-
 describe('MappingLayoutTreeView', () => {
   it('renderiza múltiplas raízes de origem e a raiz de destino', () => {
     render(
-      <MappingLayoutTreeView
-        source={source}
-        target={target}
-        rules={rules}
-        explanationRules={[explanationRule('RULE-1')]}
-      />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     expect(screen.getByText('RaizOrigemA')).toBeVisible();
@@ -86,7 +63,7 @@ describe('MappingLayoutTreeView', () => {
 
   it('mostra cardinalidade formatada, incluindo nulos como opcional/ilimitado', () => {
     render(
-      <MappingLayoutTreeView source={source} target={target} rules={rules} explanationRules={[]} />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     const cardinalities = Array.from(
@@ -98,53 +75,39 @@ describe('MappingLayoutTreeView', () => {
 
   it('exibe o badge de regra inline no nó de origem vinculado', () => {
     render(
-      <MappingLayoutTreeView
-        source={source}
-        target={target}
-        rules={rules}
-        explanationRules={[explanationRule('RULE-1')]}
-      />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     expect(screen.getAllByText('Regra RULE-1').length).toBeGreaterThan(0);
   });
 
-  it('contabiliza regras da explicação sem correspondência na árvore', () => {
+  it('exibe as limitações vindas da API quando há regras não representadas na árvore', () => {
+    const limitations = [
+      'Mapper tem 107 regra(s) condicional(is)/DSL que não aparecem em Rules[].',
+    ];
     render(
       <MappingLayoutTreeView
         source={source}
         target={target}
         rules={rules}
-        explanationRules={[explanationRule('RULE-1'), explanationRule('RULE-DSL-2')]}
+        limitations={limitations}
       />
     );
 
-    expect(
-      screen.getByText(/1 regra\(s\) da explicação não representável na árvore ainda/)
-    ).toBeVisible();
+    expect(screen.getByText(limitations[0])).toBeVisible();
   });
 
-  it('não mostra o contador quando todas as regras da explicação estão na árvore', () => {
+  it('não mostra o aviso de limitações quando a API não reporta nenhuma', () => {
     render(
-      <MappingLayoutTreeView
-        source={source}
-        target={target}
-        rules={rules}
-        explanationRules={[explanationRule('RULE-1')]}
-      />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
-    expect(screen.queryByText(/não representável/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('destaca o nó correspondente do outro lado ao selecionar um nó com regra', () => {
     render(
-      <MappingLayoutTreeView
-        source={source}
-        target={target}
-        rules={rules}
-        explanationRules={[explanationRule('RULE-1')]}
-      />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     fireEvent.click(screen.getByText('CampoOrigem'));
@@ -154,7 +117,7 @@ describe('MappingLayoutTreeView', () => {
 
   it('mostra o painel de propriedades do nó selecionado', () => {
     render(
-      <MappingLayoutTreeView source={source} target={target} rules={rules} explanationRules={[]} />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     fireEvent.click(screen.getByText('RaizOrigemA'));
@@ -166,7 +129,7 @@ describe('MappingLayoutTreeView', () => {
 
   it('filtra nós por nome em ambas as árvores via busca', () => {
     render(
-      <MappingLayoutTreeView source={source} target={target} rules={rules} explanationRules={[]} />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     fireEvent.change(screen.getByLabelText('Buscar nó nas árvores de origem e destino'), {
@@ -181,7 +144,7 @@ describe('MappingLayoutTreeView', () => {
 
   it('expande e recolhe tudo via toolbar', () => {
     render(
-      <MappingLayoutTreeView source={source} target={target} rules={rules} explanationRules={[]} />
+      <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
 
     expect(screen.queryByText('CampoOrigem')).toBeVisible();
@@ -191,14 +154,9 @@ describe('MappingLayoutTreeView', () => {
     expect(screen.getByText('CampoOrigem')).toBeVisible();
   });
 
-  it('mostra estado vazio quando um lado não tem raízes', () => {
+  it('mostra estado vazio quando um lado não tem raízes (target.roots = [] é dado real, não erro)', () => {
     render(
-      <MappingLayoutTreeView
-        source={source}
-        target={{ roots: [] }}
-        rules={[]}
-        explanationRules={[]}
-      />
+      <MappingLayoutTreeView source={source} target={{ roots: [] }} rules={[]} limitations={[]} />
     );
 
     expect(screen.getByText('Nenhum nó de destino disponível.')).toBeVisible();
