@@ -313,6 +313,37 @@ describe('workspaceService', () => {
       expect(result.limitations).toEqual([]);
     });
 
+    it('aceita nó folha sem a chave `cardinality` (regressão de produção: 964 de 1034 nós reais vêm sem essa chave)', async () => {
+      const payload = {
+        source: {
+          roots: [
+            {
+              elementGuid: 'LIN_e7cc6ed2-4fbe-4dc8-9561-189a94e1b6fe',
+              name: 'HEADER',
+              kind: 'group',
+              cardinality: { min: 1, max: 1 },
+              children: [
+                {
+                  elementGuid: 'FLD_2e97cfe7-8c5e-4da7-af48-a1f49b313b13',
+                  name: 'Data',
+                  kind: 'element',
+                  // sem `cardinality` — chave ausente, não `null`
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        target: { roots: [] },
+        rules: [],
+        limitations: [],
+      };
+      vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+      const result = await workspaceService.getMappingLayoutTree('workspace-1', 'mapping-1');
+      expect(result.source.roots[0].children[0].cardinality).toEqual({ min: null, max: null });
+    });
+
     it.each([
       null,
       { source: null, target: { roots: [] }, rules: [], limitations: [] },
