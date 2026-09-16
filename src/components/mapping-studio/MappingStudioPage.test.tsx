@@ -201,7 +201,6 @@ describe('MappingStudioPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Mapper atual da NF-e' })).toBeVisible();
     expect(screen.getByText('Somente leitura')).toBeVisible();
-    expect(screen.getByText(/não cria, altera, corrige, compila nem publica/i)).toBeVisible();
     expect(screen.getByText('Copia o CNPJ do emitente para o XML.')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Aceitar proposta' })).not.toBeInTheDocument();
     expect(mappingDraftService.getDraft).not.toHaveBeenCalled();

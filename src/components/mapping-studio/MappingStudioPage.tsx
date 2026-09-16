@@ -483,16 +483,6 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
         </span>
       </header>
 
-      {explanation.engine === 'sysmiddle' && (
-        <aside className="mapping-boundary-notice" role="note">
-          <strong>Sysmiddle é explicativo por construção.</strong>
-          <span>
-            Esta tela não cria, altera, corrige, compila nem publica regras Sysmiddle. Os controles
-            de autoria não são renderizados, inclusive por acesso direto à URL.
-          </span>
-        </aside>
-      )}
-
       {error && (
         <p className="mapping-page-error" role="alert">
           {error}
