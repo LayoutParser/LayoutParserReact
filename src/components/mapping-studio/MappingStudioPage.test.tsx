@@ -138,6 +138,7 @@ describe('MappingStudioPage', () => {
       source: { roots: [] },
       target: { roots: [] },
       rules: [],
+      limitations: [],
     });
     useWorkspaceStore.setState({
       status: 'ready',

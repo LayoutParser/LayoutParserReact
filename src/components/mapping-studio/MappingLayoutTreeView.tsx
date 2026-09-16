@@ -4,7 +4,6 @@ import type {
   LayoutTreeNodeKind,
   LayoutTreeRuleLink,
   LayoutTreeSide,
-  MappingRuleExplanation,
 } from '../../types/workspace';
 import './MappingLayoutTreeView.css';
 
@@ -12,10 +11,11 @@ interface MappingLayoutTreeViewProps {
   source: LayoutTreeSide;
   target: LayoutTreeSide;
   rules: LayoutTreeRuleLink[];
-  /** Regras canônicas da explicação (issue #267), usadas só para contabilizar o que não tem
-   * correspondência em `rules` (por `ruleId`) — regras derivadas de DSL, hoje fora do escopo
-   * de correlação visual. */
-  explanationRules: MappingRuleExplanation[];
+  /** Texto pronto da API (`LayoutTreeResponse.limitations`) descrevendo regras
+   * condicionais/DSL que não aparecem em `rules` — substitui o cálculo por `ruleId`
+   * compartilhado com `MappingExplanation.rules`, que nunca foi confirmado contra o contrato
+   * real (issue #267). */
+  limitations: string[];
 }
 
 type Side = 'source' | 'target';
@@ -93,7 +93,7 @@ const MappingLayoutTreeView = ({
   source,
   target,
   rules,
-  explanationRules,
+  limitations,
 }: MappingLayoutTreeViewProps) => {
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -132,12 +132,6 @@ const MappingLayoutTreeView = ({
     });
     return map;
   }, [rules]);
-
-  const treeRuleIds = useMemo(() => new Set(rules.map(rule => rule.ruleId)), [rules]);
-  const unrepresentedRules = useMemo(
-    () => explanationRules.filter(rule => !treeRuleIds.has(rule.ruleId)),
-    [explanationRules, treeRuleIds]
-  );
 
   const activeCorrelation = selected ?? hovered;
   // GUIDs do lado oposto que devem ser destacados por causa do nó ativo (selecionado ou em
@@ -351,12 +345,12 @@ const MappingLayoutTreeView = ({
         </button>
       </div>
 
-      {unrepresentedRules.length > 0 && (
-        <p className="mapping-layout-tree-unrepresented" role="status">
-          {unrepresentedRules.length} regra(s) da explicação não{' '}
-          {unrepresentedRules.length === 1 ? 'representável' : 'representáveis'} na árvore ainda
-          (ex.: regras derivadas de DSL) — consulte a lista de regras abaixo para o detalhe.
-        </p>
+      {limitations.length > 0 && (
+        <ul className="mapping-layout-tree-unrepresented" role="status">
+          {limitations.map(limitation => (
+            <li key={limitation}>{limitation}</li>
+          ))}
+        </ul>
       )}
 
       <div className="mapping-layout-tree-columns">

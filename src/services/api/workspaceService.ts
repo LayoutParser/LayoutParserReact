@@ -215,9 +215,12 @@ function parseLayoutTreeCardinality(value: unknown): LayoutTreeCardinality {
 }
 
 function parseLayoutTreeNode(value: unknown): LayoutTreeNode {
+  // A API devolve o identificador do nó como `elementGuid` (confirmado por captura de rede
+  // real de produção), não `guid`. Mantemos `guid` como nome da propriedade no tipo/domínio do
+  // front (ver comentário em `LayoutTreeNode`), mas a leitura do payload é `elementGuid`.
   if (
     !isRecord(value) ||
-    !isNonEmptyString(value.guid) ||
+    !isNonEmptyString(value.elementGuid) ||
     !isNonEmptyString(value.name) ||
     !isNonEmptyString(value.kind) ||
     !layoutTreeNodeKinds.has(value.kind as LayoutTreeNodeKind) ||
@@ -227,7 +230,7 @@ function parseLayoutTreeNode(value: unknown): LayoutTreeNode {
   }
 
   return {
-    guid: value.guid,
+    guid: value.elementGuid,
     name: value.name,
     kind: value.kind as LayoutTreeNodeKind,
     cardinality: parseLayoutTreeCardinality(value.cardinality),
@@ -259,13 +262,14 @@ function parseLayoutTreeRuleLink(value: unknown): LayoutTreeRuleLink {
 }
 
 function parseLayoutTreeResponse(value: unknown): LayoutTreeResponse {
-  if (!isRecord(value) || !Array.isArray(value.rules)) {
+  if (!isRecord(value) || !Array.isArray(value.rules) || !isStringArray(value.limitations)) {
     throw invalidLayoutTree();
   }
   return {
     source: parseLayoutTreeSide(value.source),
     target: parseLayoutTreeSide(value.target),
     rules: value.rules.map(parseLayoutTreeRuleLink),
+    limitations: value.limitations,
   };
 }
 
