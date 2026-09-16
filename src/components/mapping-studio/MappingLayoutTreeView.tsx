@@ -34,7 +34,10 @@ const kindLabels: Record<LayoutTreeNodeKind, string> = {
 
 function formatCardinality(node: LayoutTreeNode): string {
   const { min, max } = node.cardinality;
-  if (min === null && max === null) return 'opcional';
+  // `{ min: null, max: null }` cobre tanto o `cardinality` ausente no payload (comum em nós
+  // folha) quanto o valor nulo explícito — a API não distingue os dois casos, então o front
+  // também não deve fingir que distingue. "—" é neutro e não afirma nada sobre repetição.
+  if (min === null && max === null) return '—';
   const minLabel = min === null ? '0' : String(min);
   const maxLabel = max === null ? 'ilimitado' : String(max);
   return `${minLabel}..${maxLabel}`;

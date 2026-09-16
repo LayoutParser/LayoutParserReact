@@ -61,7 +61,7 @@ describe('MappingLayoutTreeView', () => {
     expect(screen.getByText('RaizDestino')).toBeVisible();
   });
 
-  it('mostra cardinalidade formatada, incluindo nulos como opcional/ilimitado', () => {
+  it('mostra cardinalidade formatada, incluindo min/max nulos como "—"/ilimitado', () => {
     render(
       <MappingLayoutTreeView source={source} target={target} rules={rules} limitations={[]} />
     );
@@ -70,7 +70,7 @@ describe('MappingLayoutTreeView', () => {
       document.querySelectorAll('.mapping-layout-tree-cardinality')
     ).map(node => node.textContent);
     expect(cardinalities).toContain('(1..1)');
-    expect(cardinalities).toContain('(opcional)');
+    expect(cardinalities).toContain('(—)');
   });
 
   it('exibe o badge de regra inline no nó de origem vinculado', () => {
