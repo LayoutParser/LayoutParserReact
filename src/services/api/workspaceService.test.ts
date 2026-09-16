@@ -118,6 +118,60 @@ describe('workspaceService', () => {
     ).rejects.toMatchObject({ kind: 'invalid_response' });
   });
 
+  it('aceita regras cuja API omite condition/technicalDetail em vez de enviar null', async () => {
+    const baseRule = {
+      ruleId: 'RULE-1',
+      sourceRefs: ['SRC-1'],
+      targetRefs: ['TGT-1'],
+      operations: ['copy'],
+      cardinality: '1:1',
+      evidence: [{ kind: 'sample', reference: 'linha-1' }],
+      humanDescription: 'Copia o campo X para Y.',
+      supportLevel: 'authoritative' as const,
+    };
+
+    const payload = {
+      mappingId: 'mapping-1',
+      version: 'current',
+      engine: 'xslt',
+      capabilities: {
+        execute: true,
+        explain: true,
+        author: true,
+        compile: false,
+        publish: false,
+      },
+      sourceSchema: null,
+      targetSchema: null,
+      description: null,
+      opaqueRuleCount: 0,
+      limitations: [],
+      rules: [
+        // sem `condition` na chave
+        { ...baseRule, ruleId: 'RULE-SEM-CONDITION', technicalDetail: null },
+        // sem `technicalDetail` na chave
+        { ...baseRule, ruleId: 'RULE-SEM-TECHNICAL-DETAIL', condition: null },
+        // sem `condition` nem `technicalDetail`
+        { ...baseRule, ruleId: 'RULE-SEM-AMBOS' },
+        // ambos presentes como null explícito
+        { ...baseRule, ruleId: 'RULE-COM-AMBOS-NULL', condition: null, technicalDetail: null },
+      ],
+    };
+    vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
+
+    const result = await workspaceService.getMappingExplanation(
+      'workspace-1',
+      'mapping-1',
+      'current'
+    );
+
+    expect(result.rules).toHaveLength(4);
+    for (const rule of result.rules) {
+      expect(rule.condition).toBeNull();
+      expect(rule.technicalDetail).toBeNull();
+    }
+  });
+
   it.each([
     { execute: true, explain: true, author: true, compile: false, publish: false },
     { execute: true, explain: true, author: false, compile: true, publish: false },

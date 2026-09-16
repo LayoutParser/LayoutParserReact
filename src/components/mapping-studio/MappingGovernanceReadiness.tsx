@@ -188,6 +188,20 @@ const MappingGovernanceReadiness = ({
         })}
       </ol>
 
+      {release.artifactSource === 'manual_edit' &&
+        (release.status === 'draft_compiled' || release.status === 'test_failed') && (
+          <aside className="mapping-governance__notice" data-readiness="pending" role="note">
+            <strong>Esta release veio de uma edição manual do artefato.</strong>
+            <span>
+              {release.derivedFromReleaseId
+                ? `Derivada da release ${release.derivedFromReleaseId}; `
+                : ''}
+              ela não herda aprovação nem execução de gates. Rode o Fiscal Test Lab com sucesso
+              (status "{statusLabels.test_passed}") antes de poder aprovar ou publicar.
+            </span>
+          </aside>
+        )}
+
       <aside className="mapping-governance__notice" data-readiness={readiness} role="note">
         {release.status === 'test_failed' ? (
           <>

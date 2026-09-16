@@ -463,9 +463,17 @@ const MappingTestLabPanel = ({
                       engine={release.engine}
                       artifact={artifact}
                       canEdit={canEditArtifactManually(workspaceRole)}
-                      onReleaseCreated={nextRelease =>
-                        setReleaseResult({ releaseId: nextRelease.releaseId, value: nextRelease })
-                      }
+                      onReleaseCreated={nextRelease => {
+                        // A edição manual cria uma release NOVA e derivada (issue #226/#229) — sem
+                        // atualizar o releaseId na URL, a tela continuaria observando o job/estado
+                        // da release antiga e esconderia que uma nova regressão é exigida.
+                        setReleaseResult({ releaseId: nextRelease.releaseId, value: nextRelease });
+                        setCompileJob(null);
+                        setTestJob(null);
+                        const nextSearch = new URLSearchParams(searchParams);
+                        nextSearch.set('releaseId', nextRelease.releaseId);
+                        setSearchParams(nextSearch, { replace: true });
+                      }}
                     />
                   </div>
                 </header>
