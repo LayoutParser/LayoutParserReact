@@ -681,7 +681,7 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
             source={layoutTree.source}
             target={layoutTree.target}
             rules={layoutTree.rules}
-            explanationRules={explanation.rules}
+            limitations={layoutTree.limitations}
           />
         )}
       </section>

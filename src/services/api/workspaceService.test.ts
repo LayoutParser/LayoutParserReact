@@ -208,18 +208,21 @@ describe('workspaceService', () => {
   });
 
   describe('getMappingLayoutTree', () => {
-    it('busca a árvore dupla de um mapping por GUID', async () => {
+    it('busca a árvore dupla de um mapping por GUID (payload real usa elementGuid)', async () => {
       const payload = {
+        mapperGuid: 'MAP_f1a6453f-1b2a-44db-b58d-fad5be74bba7',
         source: {
+          layoutGuid: 'LAY_e339073e-32d1-492e-ae8a-dcf6337b21a1',
+          kind: 'text',
           roots: [
             {
-              guid: 'src-root-1',
+              elementGuid: 'src-root-1',
               name: 'Documento',
               kind: 'element',
               cardinality: { min: 1, max: 1 },
               children: [
                 {
-                  guid: 'src-leaf-1',
+                  elementGuid: 'src-leaf-1',
                   name: 'Campo A',
                   kind: 'attribute',
                   cardinality: { min: 0, max: null },
@@ -228,7 +231,7 @@ describe('workspaceService', () => {
               ],
             },
             {
-              guid: 'src-root-2',
+              elementGuid: 'src-root-2',
               name: 'Cabeçalho',
               kind: 'group',
               cardinality: { min: null, max: null },
@@ -237,15 +240,17 @@ describe('workspaceService', () => {
           ],
         },
         target: {
+          layoutGuid: 'LAY_target',
+          kind: 'xml',
           roots: [
             {
-              guid: 'tgt-root-1',
+              elementGuid: 'tgt-root-1',
               name: 'NFe',
               kind: 'element',
               cardinality: { min: 1, max: 1 },
               children: [
                 {
-                  guid: 'tgt-leaf-1',
+                  elementGuid: 'tgt-leaf-1',
                   name: 'CampoB',
                   kind: 'attribute',
                   cardinality: { min: 1, max: 1 },
@@ -258,30 +263,37 @@ describe('workspaceService', () => {
         rules: [
           { ruleId: 'RULE-1', sourceElementGuid: 'src-leaf-1', targetElementGuid: 'tgt-leaf-1' },
         ],
+        limitations: ['Mapper tem 107 regra(s) condicional(is)/DSL que não aparecem em Rules[].'],
       };
       vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
 
-      await expect(
-        workspaceService.getMappingLayoutTree('workspace 1', 'mapping/1')
-      ).resolves.toEqual(payload);
+      const result = await workspaceService.getMappingLayoutTree('workspace 1', 'mapping/1');
+
+      // O parser traduz `elementGuid` (contrato real da API) para `guid` (propriedade interna
+      // do tipo `LayoutTreeNode`), então não comparamos igual ao payload bruto.
+      expect(result.source.roots[0]).toMatchObject({ guid: 'src-root-1', name: 'Documento' });
+      expect(result.source.roots[0].children[0]).toMatchObject({ guid: 'src-leaf-1' });
+      expect(result.target.roots[0]).toMatchObject({ guid: 'tgt-root-1' });
+      expect(result.rules).toEqual(payload.rules);
+      expect(result.limitations).toEqual(payload.limitations);
       expect(apiClient.get).toHaveBeenCalledWith(
         '/api/workspaces/workspace%201/mappings/mapping%2F1/layout-tree'
       );
     });
 
-    it('aceita múltiplas raízes e cardinalidade totalmente nula', async () => {
+    it('aceita múltiplas raízes, cardinalidade totalmente nula e target.roots vazio', async () => {
       const payload = {
         source: {
           roots: [
             {
-              guid: 'a',
+              elementGuid: 'a',
               name: 'A',
               kind: 'element',
               cardinality: { min: null, max: null },
               children: [],
             },
             {
-              guid: 'b',
+              elementGuid: 'b',
               name: 'B',
               kind: 'element',
               cardinality: { min: null, max: null },
@@ -291,23 +303,42 @@ describe('workspaceService', () => {
         },
         target: { roots: [] },
         rules: [],
+        limitations: [],
       };
       vi.mocked(apiClient.get).mockResolvedValue({ data: payload });
 
       const result = await workspaceService.getMappingLayoutTree('workspace-1', 'mapping-1');
       expect(result.source.roots).toHaveLength(2);
       expect(result.target.roots).toHaveLength(0);
+      expect(result.limitations).toEqual([]);
     });
 
     it.each([
       null,
-      { source: null, target: { roots: [] }, rules: [] },
-      { source: { roots: [] }, target: { roots: [] }, rules: 'not-an-array' },
+      { source: null, target: { roots: [] }, rules: [], limitations: [] },
+      {
+        source: { roots: [] },
+        target: { roots: [] },
+        rules: 'not-an-array',
+        limitations: [],
+      },
+      {
+        source: { roots: [] },
+        target: { roots: [] },
+        rules: [],
+        // limitations ausente — o contrato exige a chave, mesmo que vazia
+      },
+      {
+        source: { roots: [] },
+        target: { roots: [] },
+        rules: [],
+        limitations: [1, 2],
+      },
       {
         source: {
           roots: [
             {
-              guid: 'a',
+              elementGuid: 'a',
               name: 'A',
               kind: 'invalid',
               cardinality: { min: 1, max: 1 },
@@ -317,12 +348,30 @@ describe('workspaceService', () => {
         },
         target: { roots: [] },
         rules: [],
+        limitations: [],
+      },
+      {
+        // regressão do bug crítico: payload real usa `elementGuid`, não `guid`
+        source: {
+          roots: [
+            {
+              guid: 'a',
+              name: 'A',
+              kind: 'element',
+              cardinality: { min: 1, max: 1 },
+              children: [],
+            },
+          ],
+        },
+        target: { roots: [] },
+        rules: [],
+        limitations: [],
       },
       {
         source: {
           roots: [
             {
-              guid: 'a',
+              elementGuid: 'a',
               name: 'A',
               kind: 'element',
               cardinality: { min: '1', max: 1 },
@@ -332,11 +381,13 @@ describe('workspaceService', () => {
         },
         target: { roots: [] },
         rules: [],
+        limitations: [],
       },
       {
         source: { roots: [] },
         target: { roots: [] },
         rules: [{ ruleId: 'r1', sourceElementGuid: 'a' }],
+        limitations: [],
       },
     ])('recusa árvore de layout que viola o contrato', async payload => {
       vi.mocked(apiClient.get).mockResolvedValue({ data: payload });

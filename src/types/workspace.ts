@@ -136,6 +136,13 @@ export interface LayoutTreeCardinality {
   max: number | null;
 }
 
+/**
+ * `guid` mapeia o campo `elementGuid` do payload real da API (confirmado por captura de rede
+ * de produção contra `GET .../layout-tree`, mapper MAP_f1a6453f-1b2a-44db-b58d-fad5be74bba7).
+ * O contrato JSON usa `elementGuid`; mantemos a propriedade do tipo como `guid` para não
+ * propagar o rename por todo `MappingLayoutTreeView.tsx` — a tradução acontece só no parser
+ * (`parseLayoutTreeNode`, workspaceService.ts).
+ */
 export interface LayoutTreeNode {
   guid: string;
   name: string;
@@ -163,4 +170,11 @@ export interface LayoutTreeResponse {
   source: LayoutTreeSide;
   target: LayoutTreeSide;
   rules: LayoutTreeRuleLink[];
+  /**
+   * Texto pronto da API descrevendo regras condicionais/DSL que não aparecem em `rules[]`
+   * (origem/destino não são GUIDs de nó resolvíveis). Confirmado por captura de rede real
+   * (`GET .../layout-tree`) — substitui o cálculo por `ruleId` compartilhado com
+   * `MappingExplanation.rules`, que nunca foi confirmado contra o contrato real.
+   */
+  limitations: string[];
 }
