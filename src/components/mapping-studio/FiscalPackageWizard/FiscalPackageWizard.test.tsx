@@ -237,6 +237,91 @@ describe('FiscalPackageWizard', () => {
     expect(screen.getByText('Notas')).toBeInTheDocument();
   });
 
+  it('bloqueia a confirmação até selecionar aba/colunas e libera com a seleção padrão', async () => {
+    createPackageMock.mockResolvedValue(packageResult);
+    getExcelInventoryMock.mockResolvedValue({
+      decisionSheets: [
+        { sheetName: 'Regras', columns: ['Campo', 'Valor'], ruleCount: 12 },
+        { sheetName: 'Regras 2', columns: ['CampoX'], ruleCount: 3 },
+      ],
+      skippedSheets: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver inventário da planilha/ }));
+    await screen.findByText(/Confirme a aba, o cabeçalho e as colunas/);
+
+    const confirmButton = screen.getByRole('button', {
+      name: /Confirmar aba, cabeçalho e colunas/,
+    });
+    expect(confirmButton).toBeEnabled();
+    expect(screen.getByText('Pendente de confirmação')).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+    expect(screen.getByText('Confirmado para interpretação')).toBeInTheDocument();
+    expect(confirmButton).toBeDisabled();
+  });
+
+  it('desconfirma ao trocar aba/coluna, exigindo nova confirmação', async () => {
+    createPackageMock.mockResolvedValue(packageResult);
+    getExcelInventoryMock.mockResolvedValue({
+      decisionSheets: [
+        { sheetName: 'Regras', columns: ['Campo', 'Valor'], ruleCount: 12 },
+        { sheetName: 'Regras 2', columns: ['CampoX'], ruleCount: 3 },
+      ],
+      skippedSheets: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    fireEvent.click(screen.getByRole('button', { name: /Ver inventário da planilha/ }));
+    await screen.findByText(/Confirme a aba, o cabeçalho e as colunas/);
+
+    const confirmButton = screen.getByRole('button', {
+      name: /Confirmar aba, cabeçalho e colunas/,
+    });
+    fireEvent.click(confirmButton);
+    expect(screen.getByText('Confirmado para interpretação')).toBeInTheDocument();
+
+    // Desmarcar uma coluna deve exigir reconfirmação.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Valor' }));
+    expect(screen.getByText('Pendente de confirmação')).toBeInTheDocument();
+
+    // Reconfirmar com a nova seleção.
+    fireEvent.click(confirmButton);
+    expect(screen.getByText('Confirmado para interpretação')).toBeInTheDocument();
+
+    // Trocar de aba também exige reconfirmação e reseta as colunas dessa aba.
+    fireEvent.click(screen.getByRole('radio', { name: 'Regras 2' }));
+    expect(screen.getByText('Pendente de confirmação')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'CampoX' })).toBeChecked();
+  });
+
   it('cria uma nova revisão a partir do pacote existente', async () => {
     createPackageMock.mockResolvedValue(packageResult);
     const revisedPackage = {

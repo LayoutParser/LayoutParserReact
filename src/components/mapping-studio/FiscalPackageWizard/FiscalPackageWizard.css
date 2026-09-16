@@ -101,3 +101,35 @@
   display: flex;
   gap: var(--spacing-sm);
 }
+
+.fiscal-package-sheet-confirmation {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.fiscal-package-sheet-confirmation fieldset {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.fiscal-package-sheet-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+.fiscal-package-sheet-confirmation-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
