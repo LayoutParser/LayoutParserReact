@@ -123,3 +123,44 @@ export interface MappingExplanation {
   opaqueRuleCount: number;
   limitations: string[];
 }
+
+/**
+ * Árvore dupla do Mapping Studio (issue #267, contrato LayoutParserApi#425/PR #427).
+ * `roots` é sempre lista — o layout pode ter mais de um elemento raiz real; o front nunca
+ * assume raiz única. Cardinalidade confirmada pela API como sempre numérica ou `null`.
+ */
+export type LayoutTreeNodeKind = 'element' | 'attribute' | 'group';
+
+export interface LayoutTreeCardinality {
+  min: number | null;
+  max: number | null;
+}
+
+export interface LayoutTreeNode {
+  guid: string;
+  name: string;
+  kind: LayoutTreeNodeKind;
+  cardinality: LayoutTreeCardinality;
+  children: LayoutTreeNode[];
+}
+
+export interface LayoutTreeSide {
+  roots: LayoutTreeNode[];
+}
+
+/**
+ * Vínculo direto campo→campo por GUID. Regras derivadas de DSL (branches condicionais) não
+ * aparecem aqui hoje — ver `MappingExplanation.rules` + `opaqueRuleCount` para o total bruto e
+ * o cálculo de regras não representáveis na árvore (issue #267, fora de escopo cobrir DSL aqui).
+ */
+export interface LayoutTreeRuleLink {
+  ruleId: string;
+  sourceElementGuid: string;
+  targetElementGuid: string;
+}
+
+export interface LayoutTreeResponse {
+  source: LayoutTreeSide;
+  target: LayoutTreeSide;
+  rules: LayoutTreeRuleLink[];
+}

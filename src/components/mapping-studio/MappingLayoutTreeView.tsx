@@ -1,0 +1,451 @@
+import { useMemo, useRef, useState } from 'react';
+import type {
+  LayoutTreeNode,
+  LayoutTreeNodeKind,
+  LayoutTreeRuleLink,
+  LayoutTreeSide,
+  MappingRuleExplanation,
+} from '../../types/workspace';
+import './MappingLayoutTreeView.css';
+
+interface MappingLayoutTreeViewProps {
+  source: LayoutTreeSide;
+  target: LayoutTreeSide;
+  rules: LayoutTreeRuleLink[];
+  /** Regras canônicas da explicação (issue #267), usadas só para contabilizar o que não tem
+   * correspondência em `rules` (por `ruleId`) — regras derivadas de DSL, hoje fora do escopo
+   * de correlação visual. */
+  explanationRules: MappingRuleExplanation[];
+}
+
+type Side = 'source' | 'target';
+
+const kindIcons: Record<LayoutTreeNodeKind, string> = {
+  element: '▤',
+  attribute: '@',
+  group: '▦',
+};
+
+const kindLabels: Record<LayoutTreeNodeKind, string> = {
+  element: 'Elemento',
+  attribute: 'Atributo',
+  group: 'Grupo',
+};
+
+function formatCardinality(node: LayoutTreeNode): string {
+  const { min, max } = node.cardinality;
+  if (min === null && max === null) return 'opcional';
+  const minLabel = min === null ? '0' : String(min);
+  const maxLabel = max === null ? 'ilimitado' : String(max);
+  return `${minLabel}..${maxLabel}`;
+}
+
+function nodeKey(side: Side, guid: string): string {
+  return `${side}:${guid}`;
+}
+
+function collectAllKeys(side: Side, nodes: LayoutTreeNode[], into: Set<string>): void {
+  nodes.forEach(node => {
+    into.add(nodeKey(side, node.guid));
+    collectAllKeys(side, node.children, into);
+  });
+}
+
+function collectDefaultExpandedKeys(side: Side, nodes: LayoutTreeNode[], depth: number): string[] {
+  if (depth > 1) return [];
+  return nodes.flatMap(node => [
+    nodeKey(side, node.guid),
+    ...collectDefaultExpandedKeys(side, node.children, depth + 1),
+  ]);
+}
+
+function findNode(nodes: LayoutTreeNode[], guid: string): LayoutTreeNode | null {
+  for (const node of nodes) {
+    if (node.guid === guid) return node;
+    const found = findNode(node.children, guid);
+    if (found) return found;
+  }
+  return null;
+}
+
+function collectMatches(
+  nodes: LayoutTreeNode[],
+  term: string,
+  ancestry: LayoutTreeNode[],
+  visible: Set<string>,
+  side: Side
+): void {
+  nodes.forEach(node => {
+    const isMatch = node.name.toLowerCase().includes(term);
+    if (isMatch) {
+      visible.add(nodeKey(side, node.guid));
+      ancestry.forEach(ancestor => visible.add(nodeKey(side, ancestor.guid)));
+    }
+    collectMatches(node.children, term, [...ancestry, node], visible, side);
+    if (node.children.some(child => visible.has(nodeKey(side, child.guid)))) {
+      visible.add(nodeKey(side, node.guid));
+      ancestry.forEach(ancestor => visible.add(nodeKey(side, ancestor.guid)));
+    }
+  });
+}
+
+const MappingLayoutTreeView = ({
+  source,
+  target,
+  rules,
+  explanationRules,
+}: MappingLayoutTreeViewProps) => {
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    collectDefaultExpandedKeys('source', source.roots, 0).forEach(key => initial.add(key));
+    collectDefaultExpandedKeys('target', target.roots, 0).forEach(key => initial.add(key));
+    return initial;
+  });
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<{ side: Side; guid: string } | null>(null);
+  const [hovered, setHovered] = useState<{ side: Side; guid: string } | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const sourceRuleGuids = useMemo(
+    () => new Set(rules.map(rule => rule.sourceElementGuid)),
+    [rules]
+  );
+  const targetRuleGuids = useMemo(
+    () => new Set(rules.map(rule => rule.targetElementGuid)),
+    [rules]
+  );
+  const rulesBySourceGuid = useMemo(() => {
+    const map = new Map<string, LayoutTreeRuleLink[]>();
+    rules.forEach(rule => {
+      const list = map.get(rule.sourceElementGuid) ?? [];
+      list.push(rule);
+      map.set(rule.sourceElementGuid, list);
+    });
+    return map;
+  }, [rules]);
+  const rulesByTargetGuid = useMemo(() => {
+    const map = new Map<string, LayoutTreeRuleLink[]>();
+    rules.forEach(rule => {
+      const list = map.get(rule.targetElementGuid) ?? [];
+      list.push(rule);
+      map.set(rule.targetElementGuid, list);
+    });
+    return map;
+  }, [rules]);
+
+  const treeRuleIds = useMemo(() => new Set(rules.map(rule => rule.ruleId)), [rules]);
+  const unrepresentedRules = useMemo(
+    () => explanationRules.filter(rule => !treeRuleIds.has(rule.ruleId)),
+    [explanationRules, treeRuleIds]
+  );
+
+  const activeCorrelation = selected ?? hovered;
+  // GUIDs do lado oposto que devem ser destacados por causa do nó ativo (selecionado ou em
+  // hover), calculados a partir do vínculo direto campo→campo do próprio layout-tree.
+  const highlightedGuids = useMemo(() => {
+    if (!activeCorrelation) return new Set<string>();
+    const links =
+      activeCorrelation.side === 'source'
+        ? rulesBySourceGuid.get(activeCorrelation.guid)
+        : rulesByTargetGuid.get(activeCorrelation.guid);
+    if (!links) return new Set<string>();
+    const guids =
+      activeCorrelation.side === 'source'
+        ? links.map(link => link.targetElementGuid)
+        : links.map(link => link.sourceElementGuid);
+    return new Set(guids);
+  }, [activeCorrelation, rulesBySourceGuid, rulesByTargetGuid]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleKeys = useMemo(() => {
+    if (!normalizedSearch) return null;
+    const visible = new Set<string>();
+    collectMatches(source.roots, normalizedSearch, [], visible, 'source');
+    collectMatches(target.roots, normalizedSearch, [], visible, 'target');
+    return visible;
+  }, [normalizedSearch, source.roots, target.roots]);
+
+  const toggle = (key: string) => {
+    setExpanded(previous => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    const all = new Set<string>();
+    collectAllKeys('source', source.roots, all);
+    collectAllKeys('target', target.roots, all);
+    setExpanded(all);
+  };
+
+  const collapseAll = () => setExpanded(new Set());
+
+  const focusItem = (side: Side, guid: string) => {
+    requestAnimationFrame(() => itemRefs.current.get(nodeKey(side, guid))?.focus());
+  };
+
+  const moveVisibleFocus = (
+    currentItem: HTMLButtonElement,
+    destination: 'previous' | 'next' | 'first' | 'last'
+  ) => {
+    const tree = currentItem.closest('[role="tree"]');
+    if (!tree) return;
+    const items = Array.from(tree.querySelectorAll<HTMLButtonElement>('[role="treeitem"]'));
+    const currentIndex = items.indexOf(currentItem);
+    if (currentIndex < 0) return;
+    const destinationIndex =
+      destination === 'first'
+        ? 0
+        : destination === 'last'
+          ? items.length - 1
+          : destination === 'previous'
+            ? Math.max(0, currentIndex - 1)
+            : Math.min(items.length - 1, currentIndex + 1);
+    items[destinationIndex]?.focus();
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    side: Side,
+    node: LayoutTreeNode,
+    key: string,
+    isExpanded: boolean
+  ) => {
+    const hasChildren = node.children.length > 0;
+    if (event.key === 'ArrowRight' && hasChildren) {
+      event.preventDefault();
+      if (!isExpanded) toggle(key);
+      else focusItem(side, node.children[0].guid);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      if (hasChildren && isExpanded) toggle(key);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveVisibleFocus(event.currentTarget, 'next');
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveVisibleFocus(event.currentTarget, 'previous');
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      moveVisibleFocus(event.currentTarget, 'first');
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      moveVisibleFocus(event.currentTarget, 'last');
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setSelected({ side, guid: node.guid });
+    }
+  };
+
+  const renderNode = (side: Side, node: LayoutTreeNode, level: number): React.ReactNode => {
+    const key = nodeKey(side, node.guid);
+    if (visibleKeys && !visibleKeys.has(key)) return null;
+
+    const hasChildren = node.children.length > 0;
+    const isExpanded = hasChildren && (Boolean(visibleKeys) || expanded.has(key));
+    const isSelected = selected?.side === side && selected.guid === node.guid;
+    const hasRule =
+      side === 'source' ? sourceRuleGuids.has(node.guid) : targetRuleGuids.has(node.guid);
+    const isHighlighted = highlightedGuids.has(node.guid);
+    const ruleLinks =
+      side === 'source'
+        ? (rulesBySourceGuid.get(node.guid) ?? [])
+        : (rulesByTargetGuid.get(node.guid) ?? []);
+
+    return (
+      <li key={node.guid} className="mapping-layout-tree-node" role="none">
+        <button
+          ref={element => {
+            if (element) itemRefs.current.set(key, element);
+            else itemRefs.current.delete(key);
+          }}
+          type="button"
+          role="treeitem"
+          aria-expanded={hasChildren ? isExpanded : undefined}
+          aria-selected={isSelected}
+          aria-level={level}
+          tabIndex={isSelected ? 0 : -1}
+          className={[
+            'mapping-layout-tree-item',
+            isSelected ? 'mapping-layout-tree-item--selected' : '',
+            isHighlighted ? 'mapping-layout-tree-item--highlighted' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => setSelected({ side, guid: node.guid })}
+          onMouseEnter={() => setHovered({ side, guid: node.guid })}
+          onMouseLeave={() => setHovered(null)}
+          onFocus={() => setHovered({ side, guid: node.guid })}
+          onKeyDown={event => handleKeyDown(event, side, node, key, isExpanded)}
+        >
+          {hasChildren ? (
+            <span
+              className="mapping-layout-tree-toggle"
+              aria-hidden="true"
+              onClick={event => {
+                event.stopPropagation();
+                toggle(key);
+              }}
+            >
+              {isExpanded ? '−' : '+'}
+            </span>
+          ) : (
+            <span className="mapping-layout-tree-spacer" aria-hidden="true" />
+          )}
+          <span
+            className="mapping-layout-tree-icon"
+            aria-hidden="true"
+            title={kindLabels[node.kind]}
+          >
+            {kindIcons[node.kind]}
+          </span>
+          <span className="mapping-layout-tree-name">{node.name}</span>
+          <span className="mapping-layout-tree-cardinality">({formatCardinality(node)})</span>
+          {hasRule && (
+            <span className="mapping-layout-tree-rule-badges">
+              {ruleLinks.map(rule => (
+                <span key={rule.ruleId} className="mapping-layout-tree-rule-badge">
+                  Regra {rule.ruleId}
+                </span>
+              ))}
+            </span>
+          )}
+        </button>
+        {hasChildren && isExpanded && (
+          <ul className="mapping-layout-tree-children" role="group">
+            {node.children.map(child => renderNode(side, child, level + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  const selectedNode = selected
+    ? findNode(selected.side === 'source' ? source.roots : target.roots, selected.guid)
+    : null;
+  const selectedRuleLinks = selected
+    ? ((selected.side === 'source'
+        ? rulesBySourceGuid.get(selected.guid)
+        : rulesByTargetGuid.get(selected.guid)) ?? [])
+    : [];
+
+  return (
+    <div className="mapping-layout-tree-view">
+      <div className="mapping-layout-tree-toolbar">
+        <input
+          type="search"
+          className="mapping-layout-tree-search"
+          placeholder="Buscar nó em ambas as árvores…"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          aria-label="Buscar nó nas árvores de origem e destino"
+        />
+        <button type="button" className="mapping-layout-tree-control-btn" onClick={expandAll}>
+          Expandir tudo
+        </button>
+        <button type="button" className="mapping-layout-tree-control-btn" onClick={collapseAll}>
+          Recolher tudo
+        </button>
+      </div>
+
+      {unrepresentedRules.length > 0 && (
+        <p className="mapping-layout-tree-unrepresented" role="status">
+          {unrepresentedRules.length} regra(s) da explicação não{' '}
+          {unrepresentedRules.length === 1 ? 'representável' : 'representáveis'} na árvore ainda
+          (ex.: regras derivadas de DSL) — consulte a lista de regras abaixo para o detalhe.
+        </p>
+      )}
+
+      <div className="mapping-layout-tree-columns">
+        <section
+          className="mapping-layout-tree-column"
+          aria-labelledby="mapping-layout-tree-source-title"
+        >
+          <h3 id="mapping-layout-tree-source-title">Layout de origem</h3>
+          {source.roots.length === 0 ? (
+            <p className="mapping-layout-tree-empty">Nenhum nó de origem disponível.</p>
+          ) : (
+            <ul
+              className="mapping-layout-tree-root"
+              role="tree"
+              aria-label="Árvore do layout de origem"
+            >
+              {source.roots.map(node => renderNode('source', node, 1))}
+            </ul>
+          )}
+        </section>
+        <section
+          className="mapping-layout-tree-column"
+          aria-labelledby="mapping-layout-tree-target-title"
+        >
+          <h3 id="mapping-layout-tree-target-title">Layout de destino</h3>
+          {target.roots.length === 0 ? (
+            <p className="mapping-layout-tree-empty">Nenhum nó de destino disponível.</p>
+          ) : (
+            <ul
+              className="mapping-layout-tree-root"
+              role="tree"
+              aria-label="Árvore do layout de destino"
+            >
+              {target.roots.map(node => renderNode('target', node, 1))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      {selectedNode && (
+        <section
+          className="mapping-layout-tree-properties"
+          aria-labelledby="mapping-layout-tree-properties-title"
+        >
+          <h3 id="mapping-layout-tree-properties-title">Propriedades do nó selecionado</h3>
+          <dl>
+            <div>
+              <dt>Tipo</dt>
+              <dd>{kindLabels[selectedNode.kind]}</dd>
+            </div>
+            <div>
+              <dt>Identificador</dt>
+              <dd>
+                <code>{selectedNode.guid}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>Nome</dt>
+              <dd>{selectedNode.name}</dd>
+            </div>
+            <div>
+              <dt>Cardinalidade</dt>
+              <dd>{formatCardinality(selectedNode)}</dd>
+            </div>
+            <div>
+              <dt>Descrição</dt>
+              <dd>Não informada pelo contrato desta versão.</dd>
+            </div>
+            <div>
+              <dt>Pacote</dt>
+              <dd>Não informado pelo contrato desta versão.</dd>
+            </div>
+          </dl>
+          <div className="mapping-layout-tree-properties-rules">
+            <strong>Regras:</strong>
+            {selectedRuleLinks.length === 0 ? (
+              <p>Nenhuma regra vinculada a este nó.</p>
+            ) : (
+              <ul>
+                {selectedRuleLinks.map(rule => (
+                  <li key={rule.ruleId}>Regra {rule.ruleId}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+export default MappingLayoutTreeView;
