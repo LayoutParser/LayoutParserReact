@@ -208,6 +208,14 @@ function parseMappingExplanation(value: unknown): MappingExplanation {
 }
 
 function parseLayoutTreeCardinality(value: unknown): LayoutTreeCardinality {
+  // A API pode omitir totalmente a chave `cardinality` em nós folha (elementos simples sem
+  // repetição declarada), em vez de enviar `{ min: null, max: null }` explícito — confirmado por
+  // captura de rede real de produção (964 de 1034 nós sem a chave). Ausência de chave equivale
+  // semanticamente a "sem cardinalidade informada". Quando a chave VEM presente, o conteúdo
+  // continua validado normalmente — valores inválidos permanecem erro real.
+  if (value === undefined) {
+    return { min: null, max: null };
+  }
   if (!isRecord(value) || !isNullableInteger(value.min) || !isNullableInteger(value.max)) {
     throw invalidLayoutTree();
   }
