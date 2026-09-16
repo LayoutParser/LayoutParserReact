@@ -7,9 +7,16 @@ import { workspaceService } from '../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import MappingStudioPage from './MappingStudioPage';
 
-vi.mock('../../services/api/workspaceService', () => ({
-  workspaceService: { getMappingExplanation: vi.fn() },
-}));
+vi.mock('../../services/api/workspaceService', async importOriginal => {
+  const original = await importOriginal<typeof import('../../services/api/workspaceService')>();
+  return {
+    WorkspaceRequestError: original.WorkspaceRequestError,
+    workspaceService: {
+      getMappingExplanation: vi.fn(),
+      getMappingLayoutTree: vi.fn(),
+    },
+  };
+});
 
 vi.mock('../../services/api/mappingReleaseService', () => ({
   mappingReleaseService: { listReleases: vi.fn() },
@@ -126,6 +133,11 @@ describe('MappingStudioPage', () => {
       page: 1,
       pageSize: 20,
       totalCount: 0,
+    });
+    vi.mocked(workspaceService.getMappingLayoutTree).mockResolvedValue({
+      source: { roots: [] },
+      target: { roots: [] },
+      rules: [],
     });
     useWorkspaceStore.setState({
       status: 'ready',

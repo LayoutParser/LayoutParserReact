@@ -5,7 +5,7 @@ import {
   mappingDraftService,
 } from '../../services/api/mappingDraftService';
 import { mappingReleaseService } from '../../services/api/mappingReleaseService';
-import { workspaceService } from '../../services/api/workspaceService';
+import { WorkspaceRequestError, workspaceService } from '../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import type {
   MappingDraft,
@@ -14,8 +14,13 @@ import type {
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
 import type { MappingReleaseSummary } from '../../types/mappingRelease';
-import type { MappingExplanation, MappingRuleExplanation } from '../../types/workspace';
+import type {
+  LayoutTreeResponse,
+  MappingExplanation,
+  MappingRuleExplanation,
+} from '../../types/workspace';
 import MappingFiscalProfilePanel from './MappingFiscalProfilePanel';
+import MappingLayoutTreeView from './MappingLayoutTreeView';
 import MappingReleaseDiffPanel from './MappingReleaseDiffPanel';
 import MappingRuleReviewCard from './MappingRuleReviewCard';
 import MappingTestLabPanel from './MappingTestLabPanel';
@@ -259,6 +264,11 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
   const [loading, setLoading] = useState(true);
   const [busyRuleId, setBusyRuleId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [layoutTree, setLayoutTree] = useState<LayoutTreeResponse | null>(null);
+  const [layoutTreeStatus, setLayoutTreeStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading'
+  );
+  const [layoutTreeError, setLayoutTreeError] = useState<string | null>(null);
 
   const loadMapping = useCallback(async () => {
     if (!activeWorkspaceId) return;
@@ -305,6 +315,34 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
       disposed = true;
     };
   }, [activeWorkspaceId, mappingId, status, version]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !activeWorkspaceId) return;
+
+    let disposed = false;
+    void workspaceService
+      .getMappingLayoutTree(activeWorkspaceId, mappingId)
+      .then(response => {
+        if (disposed) return;
+        setLayoutTree(response);
+        setLayoutTreeError(null);
+        setLayoutTreeStatus('ready');
+      })
+      .catch(loadError => {
+        if (disposed) return;
+        setLayoutTree(null);
+        setLayoutTreeStatus('error');
+        setLayoutTreeError(
+          loadError instanceof WorkspaceRequestError || loadError instanceof Error
+            ? loadError.message
+            : 'Não foi possível carregar a árvore deste mapping.'
+        );
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [activeWorkspaceId, mappingId, status]);
 
   useEffect(() => {
     if (!job || !draft || !activeWorkspaceId || !activeJobStatuses.has(job.status)) return;
@@ -612,11 +650,47 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
         <MappingReleaseDiffPanel workspaceId={activeWorkspaceId} draftId={draft.draftId} />
       )}
 
+      <section className="mapping-studio-section" aria-labelledby="mapping-layout-tree-title">
+        <div className="mapping-section-heading">
+          <div>
+            <p className="mapping-kicker">Árvore dupla · estilo Connect-Us</p>
+            <h2 id="mapping-layout-tree-title">Mapeador</h2>
+            <p>
+              Hierarquia real do layout de origem e destino, com regras inline vinculadas por GUID
+              (LayoutParserApi#425).
+            </p>
+          </div>
+        </div>
+
+        {layoutTreeStatus === 'loading' && (
+          <div className="mapping-studio-section" aria-busy="true" aria-live="polite">
+            <span className="mapping-loader" aria-hidden="true" />
+            <p>Carregando árvore do mapping…</p>
+          </div>
+        )}
+
+        {layoutTreeStatus === 'error' && (
+          <div role="alert">
+            <p className="mapping-kicker">Árvore indisponível</p>
+            <p>{layoutTreeError}</p>
+          </div>
+        )}
+
+        {layoutTreeStatus === 'ready' && layoutTree && (
+          <MappingLayoutTreeView
+            source={layoutTree.source}
+            target={layoutTree.target}
+            rules={layoutTree.rules}
+            explanationRules={explanation.rules}
+          />
+        )}
+      </section>
+
       <section className="mapping-studio-section" aria-labelledby="mapping-explanation-title">
         <div className="mapping-section-heading">
           <div>
             <p className="mapping-kicker">Contrato canônico</p>
-            <h2 id="mapping-explanation-title">O que esta transformação faz</h2>
+            <h2 id="mapping-explanation-title">Lista de regras (detalhe)</h2>
             <p>
               {explanation.opaqueRuleCount} regra(s) opaca(s). O front preserva o nível de suporte
               informado pela API.

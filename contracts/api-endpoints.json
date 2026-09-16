@@ -201,6 +201,12 @@
       "path": "/api/workspaces/:param/mapping-drafts/:param/releases/diff",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mappings/:param/layout-tree",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#425/PR #427"
     }
   ]
 }
