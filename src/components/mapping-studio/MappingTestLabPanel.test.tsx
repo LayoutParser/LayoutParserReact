@@ -280,4 +280,45 @@ describe('MappingTestLabPanel', () => {
     expect(screen.getByText('Regra rule-1 · 1 divergência(s)')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Ver lista plana de divergências' })).toBeVisible();
   });
+
+  it('troca a release ativa para a derivada após edição manual e exige novo Test Lab (issue #229)', async () => {
+    const derivedRelease = {
+      ...release,
+      releaseId: 'release-2',
+      status: 'draft_compiled' as const,
+      artifactSource: 'manual_edit' as const,
+      derivedFromReleaseId: 'release-1',
+      manualEditReason: 'Ajuste fiscal solicitado pelo revisor.',
+    };
+    // O mock diferencia por releaseId para evitar que o efeito de "reabrir pela URL" (que também
+    // observa releaseIdFromUrl) sobrescreva a release derivada com a original de forma flakey.
+    vi.mocked(mappingReleaseService.getRelease).mockImplementation((_workspaceId, _draftId, id) =>
+      Promise.resolve(id === 'release-2' ? derivedRelease : release)
+    );
+    vi.mocked(mappingReleaseService.editArtifact).mockResolvedValue(derivedRelease);
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Compilada, aguardando testes' })
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar manualmente' }));
+    fireEvent.change(screen.getByLabelText('Conteúdo do artefato'), {
+      target: { value: '<xsl:stylesheet version="1.0">edit</xsl:stylesheet>' },
+    });
+    fireEvent.change(screen.getByLabelText('Justificativa (obrigatória)'), {
+      target: { value: 'Ajuste fiscal solicitado pelo revisor.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar edição manual' }));
+
+    await waitFor(() => expect(mappingReleaseService.editArtifact).toHaveBeenCalled());
+
+    // A release exibida deve virar a derivada — não a original — e a URL deve refletir isso,
+    // senão a tela continuaria mostrando a governança da release antiga.
+    expect(await screen.findByText('Release release-2')).toBeVisible();
+    expect(screen.getByText(/Artefato editado manualmente/)).toBeVisible();
+    expect(
+      screen.getByText(/Derivada da release release-1.*Rode o Fiscal Test Lab com sucesso/s)
+    ).toBeVisible();
+  });
 });
