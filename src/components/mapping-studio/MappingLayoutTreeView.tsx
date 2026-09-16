@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
+import Modal from '../shared/Modal';
 import type {
   LayoutTreeNode,
   LayoutTreeNodeKind,
   LayoutTreeRuleLink,
   LayoutTreeSide,
+  MappingRuleExplanation,
 } from '../../types/workspace';
 import './MappingLayoutTreeView.css';
 
@@ -16,6 +18,11 @@ interface MappingLayoutTreeViewProps {
    * compartilhado com `MappingExplanation.rules`, que nunca foi confirmado contra o contrato
    * real (issue #267). */
   limitations: string[];
+  /** Regras explicáveis do contrato canônico (`MappingExplanation.rules`), cruzadas por
+   * `ruleId` com `rules[]` (mesma correlação já usada nos badges/contadores existentes) para
+   * exibir o detalhe DSL/condicional do nó selecionado sob demanda. Opcional: telas que ainda
+   * não carregaram a explicação continuam funcionando com o botão de detalhe desabilitado. */
+  explanationRules?: MappingRuleExplanation[];
 }
 
 type Side = 'source' | 'target';
@@ -97,6 +104,7 @@ const MappingLayoutTreeView = ({
   target,
   rules,
   limitations,
+  explanationRules = [],
 }: MappingLayoutTreeViewProps) => {
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -107,7 +115,14 @@ const MappingLayoutTreeView = ({
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<{ side: Side; guid: string } | null>(null);
   const [hovered, setHovered] = useState<{ side: Side; guid: string } | null>(null);
+  const [ruleDetailOpen, setRuleDetailOpen] = useState(false);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  const explanationRuleById = useMemo(() => {
+    const map = new Map<string, MappingRuleExplanation>();
+    explanationRules.forEach(rule => map.set(rule.ruleId, rule));
+    return map;
+  }, [explanationRules]);
 
   const sourceRuleGuids = useMemo(
     () => new Set(rules.map(rule => rule.sourceElementGuid)),
@@ -328,6 +343,13 @@ const MappingLayoutTreeView = ({
         ? rulesBySourceGuid.get(selected.guid)
         : rulesByTargetGuid.get(selected.guid)) ?? [])
     : [];
+  // Regras explicáveis (contrato canônico) vinculadas ao nó selecionado, cruzadas por `ruleId`
+  // com `selectedRuleLinks`. Pode ficar vazio mesmo com `selectedRuleLinks` não vazio, se a
+  // explicação ainda não carregou ou não reconhece a regra — o botão trata esse caso.
+  const selectedExplanationRules = selectedRuleLinks
+    .map(link => explanationRuleById.get(link.ruleId))
+    .filter((rule): rule is MappingRuleExplanation => Boolean(rule));
+  const canShowRuleDetail = selectedExplanationRules.length > 0;
 
   return (
     <div className="mapping-layout-tree-view">
@@ -345,6 +367,15 @@ const MappingLayoutTreeView = ({
         </button>
         <button type="button" className="mapping-layout-tree-control-btn" onClick={collapseAll}>
           Recolher tudo
+        </button>
+        <button
+          type="button"
+          className="mapping-layout-tree-control-btn"
+          disabled={!canShowRuleDetail}
+          aria-disabled={!canShowRuleDetail}
+          onClick={() => setRuleDetailOpen(true)}
+        >
+          Ver regra
         </button>
       </div>
 
@@ -441,6 +472,27 @@ const MappingLayoutTreeView = ({
           </div>
         </section>
       )}
+
+      <Modal
+        isOpen={ruleDetailOpen && canShowRuleDetail}
+        onClose={() => setRuleDetailOpen(false)}
+        title={selectedNode ? `Detalhe da regra · ${selectedNode.name}` : 'Detalhe da regra'}
+        size="large"
+      >
+        <div className="mapping-layout-tree-rule-detail">
+          {selectedExplanationRules.map(rule => (
+            <article key={rule.ruleId} className="mapping-layout-tree-rule-detail-item">
+              <h4>Regra {rule.ruleId}</h4>
+              <p>{rule.humanDescription}</p>
+              {rule.technicalDetail && (
+                <pre className="mapping-layout-tree-rule-detail-code">
+                  <code>{rule.technicalDetail}</code>
+                </pre>
+              )}
+            </article>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

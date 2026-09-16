@@ -222,6 +222,32 @@
   padding-left: var(--spacing-lg);
 }
 
+.mapping-layout-tree-rule-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.mapping-layout-tree-rule-detail-item h4 {
+  margin: 0 0 var(--spacing-xs);
+  color: var(--color-text-strong);
+}
+
+.mapping-layout-tree-rule-detail-code {
+  margin: var(--spacing-xs) 0 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-code-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
 @media (max-width: 720px) {
   .mapping-layout-tree-columns {
     grid-template-columns: 1fr;

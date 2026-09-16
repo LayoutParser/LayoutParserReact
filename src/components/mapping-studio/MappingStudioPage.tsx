@@ -14,11 +14,7 @@ import type {
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
 import type { MappingReleaseSummary } from '../../types/mappingRelease';
-import type {
-  LayoutTreeResponse,
-  MappingExplanation,
-  MappingRuleExplanation,
-} from '../../types/workspace';
+import type { LayoutTreeResponse, MappingExplanation } from '../../types/workspace';
 import MappingFiscalProfilePanel from './MappingFiscalProfilePanel';
 import MappingLayoutTreeView from './MappingLayoutTreeView';
 import MappingReleaseDiffPanel from './MappingReleaseDiffPanel';
@@ -37,13 +33,6 @@ const capabilityLabels: Array<[keyof MappingExplanation['capabilities'], string]
   ['compile', 'Compilar'],
   ['publish', 'Publicar'],
 ];
-
-const supportLabels: Record<MappingRuleExplanation['supportLevel'], string> = {
-  authoritative: 'Autoritativa',
-  best_effort: 'Melhor esforço',
-  opaque: 'Opaca',
-  unsupported: 'Não suportada',
-};
 
 const releaseStatusLabels: Record<MappingReleaseSummary['status'], string> = {
   draft_compiled: 'Compilado',
@@ -195,55 +184,6 @@ const MappingStudioEntry = () => {
     </main>
   );
 };
-
-const ExplanationRuleCard = ({ rule }: { rule: MappingRuleExplanation }) => (
-  <article className="mapping-explanation-card">
-    <header>
-      <div>
-        <span className="mapping-rule-id">Regra {rule.ruleId}</span>
-        <h3>{rule.operations.join(' + ') || 'Operação não traduzida'}</h3>
-      </div>
-      <span className="mapping-support-badge" data-level={rule.supportLevel}>
-        {supportLabels[rule.supportLevel]}
-      </span>
-    </header>
-    <p>{rule.humanDescription}</p>
-    <dl className="mapping-rule-facts">
-      <div>
-        <dt>Origem</dt>
-        <dd>{rule.sourceRefs.join(', ') || 'Não identificada'}</dd>
-      </div>
-      <div>
-        <dt>Destino</dt>
-        <dd>{rule.targetRefs.join(', ') || 'Não identificado'}</dd>
-      </div>
-      <div>
-        <dt>Condição</dt>
-        <dd>{rule.condition || 'Sempre'}</dd>
-      </div>
-      <div>
-        <dt>Cardinalidade</dt>
-        <dd>{rule.cardinality}</dd>
-      </div>
-    </dl>
-    {rule.evidence.length > 0 && (
-      <ul className="mapping-explanation-evidence" aria-label="Evidências da explicação">
-        {rule.evidence.map((item, index) => (
-          <li key={`${item.kind}-${item.reference}-${index}`}>
-            <span>{item.kind}</span>
-            <code>{item.reference}</code>
-          </li>
-        ))}
-      </ul>
-    )}
-    {rule.technicalDetail && (
-      <details className="mapping-technical-details">
-        <summary>Detalhe técnico</summary>
-        <code>{rule.technicalDetail}</code>
-      </details>
-    )}
-  </article>
-);
 
 const fetchMappingData = async (workspaceId: string, mappingId: string, version: string) => {
   const explanation = await workspaceService.getMappingExplanation(workspaceId, mappingId, version);
@@ -657,7 +597,9 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
             <h2 id="mapping-layout-tree-title">Mapeador</h2>
             <p>
               Hierarquia real do layout de origem e destino, com regras inline vinculadas por GUID
-              (LayoutParserApi#425).
+              (LayoutParserApi#425). {explanation.opaqueRuleCount} regra(s) opaca(s) no contrato
+              canônico. Selecione um nó com badge de regra e use “Ver regra” para o detalhe
+              completo, incluindo lógica condicional/DSL.
             </p>
           </div>
         </div>
@@ -682,33 +624,8 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
             target={layoutTree.target}
             rules={layoutTree.rules}
             limitations={layoutTree.limitations}
+            explanationRules={explanation.rules}
           />
-        )}
-      </section>
-
-      <section className="mapping-studio-section" aria-labelledby="mapping-explanation-title">
-        <div className="mapping-section-heading">
-          <div>
-            <p className="mapping-kicker">Contrato canônico</p>
-            <h2 id="mapping-explanation-title">Lista de regras (detalhe)</h2>
-            <p>
-              {explanation.opaqueRuleCount} regra(s) opaca(s). O front preserva o nível de suporte
-              informado pela API.
-            </p>
-          </div>
-        </div>
-
-        {explanation.rules.length === 0 ? (
-          <div className="mapping-empty-state">
-            <h3>Nenhuma regra explicável nesta versão</h3>
-            <p>Consulte os limites acima; o front não tenta reconstruir regras ausentes.</p>
-          </div>
-        ) : (
-          <div className="mapping-explanation-list">
-            {explanation.rules.map(rule => (
-              <ExplanationRuleCard key={rule.ruleId} rule={rule} />
-            ))}
-          </div>
         )}
       </section>
     </main>
