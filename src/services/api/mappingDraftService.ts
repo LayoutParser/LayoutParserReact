@@ -1,16 +1,19 @@
 import axios from 'axios';
 import type {
+  AnswerMappingDraftRuleQuestionInput,
   CreateMappingDraftInput,
   MappingAuthoringEngine,
   MappingDraft,
   MappingDraftEvidence,
   MappingDraftRule,
+  MappingDraftRuleQuestionAnswer,
   MappingDraftRuleStatus,
   MappingSuggestionJob,
   MappingSuggestionJobStatus,
   SetFiscalProfileInput,
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
+import { MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH } from '../../types/mappingDraft';
 import type {
   FiscalDocumentType,
   FiscalProfile,
@@ -183,6 +186,40 @@ function parseResolvedXsd(value: unknown): ResolvedXsdReference {
     schemaVersion: value.schemaVersion,
     xsdPath: value.xsdPath,
   };
+}
+
+function parseQuestionAnswer(value: unknown): MappingDraftRuleQuestionAnswer {
+  if (
+    !isRecord(value) ||
+    typeof value.questionIndex !== 'number' ||
+    !Number.isSafeInteger(value.questionIndex) ||
+    value.questionIndex < 0 ||
+    !isNonEmptyString(value.questionSnapshot) ||
+    typeof value.answer !== 'string' ||
+    !isNonEmptyString(value.answeredBy) ||
+    !isValidDate(value.answeredAt) ||
+    typeof value.version !== 'number' ||
+    !Number.isSafeInteger(value.version) ||
+    value.version < 1
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    questionIndex: value.questionIndex,
+    questionSnapshot: value.questionSnapshot,
+    answer: value.answer,
+    answeredBy: value.answeredBy,
+    answeredAt: value.answeredAt,
+    version: value.version,
+  };
+}
+
+function parseQuestionAnswerList(value: unknown): MappingDraftRuleQuestionAnswer[] {
+  if (!Array.isArray(value)) {
+    throw invalidResponse();
+  }
+  return value.map(parseQuestionAnswer);
 }
 
 function parseNullableFiscalProfile(value: unknown): FiscalProfile | null {
@@ -422,6 +459,82 @@ export const mappingDraftService = {
         { headers: { 'If-Match': `\"${input.eTag.trim().replace(/^\"|\"$/g, '')}\"` } }
       );
       return parseRule(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Persiste a resposta a uma pergunta aberta (`MappingDraftRule.questions[questionIndex]`) via
+   * `PUT .../rules/{ruleId}/questions/{questionIndex}/answer` (LayoutParserApi#422). Idempotente
+   * para o mesmo texto; texto diferente cria versão nova no histórico append-only.
+   */
+  async answerRuleQuestion(
+    input: AnswerMappingDraftRuleQuestionInput
+  ): Promise<MappingDraftRuleQuestionAnswer> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const draft = resourceSegment(input.draftId, 'Draft');
+    const rule = resourceSegment(input.ruleId, 'Regra');
+    if (!Number.isSafeInteger(input.questionIndex) || input.questionIndex < 0) {
+      throw new MappingDraftRequestError('invalid_input', 'Índice de pergunta inválido.');
+    }
+    const answer = input.answer.trim();
+    if (!answer) {
+      throw new MappingDraftRequestError('invalid_input', 'A resposta não pode ficar em branco.');
+    }
+    if (answer.length > MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        `A resposta não pode ter mais de ${MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH} caracteres.`
+      );
+    }
+
+    try {
+      const response = await apiClient.put<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/rules/${rule}/questions/${input.questionIndex}/answer`,
+        { answer }
+      );
+      return parseQuestionAnswer(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /** Lista todas as respostas de perguntas abertas do draft. */
+  async listDraftQuestionAnswers(
+    workspaceId: string,
+    draftId: string,
+    options?: { includeHistory?: boolean }
+  ): Promise<MappingDraftRuleQuestionAnswer[]> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const draft = resourceSegment(draftId, 'Draft');
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/question-answers`,
+        options?.includeHistory ? { params: { includeHistory: true } } : undefined
+      );
+      return parseQuestionAnswerList(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /** Lista as respostas de perguntas abertas de uma regra específica. */
+  async listRuleQuestionAnswers(
+    workspaceId: string,
+    draftId: string,
+    ruleId: string,
+    options?: { includeHistory?: boolean }
+  ): Promise<MappingDraftRuleQuestionAnswer[]> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const draft = resourceSegment(draftId, 'Draft');
+    const rule = resourceSegment(ruleId, 'Regra');
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/rules/${rule}/question-answers`,
+        options?.includeHistory ? { params: { includeHistory: true } } : undefined
+      );
+      return parseQuestionAnswerList(response.data);
     } catch (error) {
       return mapRequestError(error);
     }

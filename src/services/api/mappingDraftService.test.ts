@@ -277,4 +277,88 @@ describe('mappingDraftService', () => {
       ).rejects.toMatchObject({ kind: 'not_found' });
     });
   });
+
+  describe('respostas a perguntas abertas (LayoutParserApi#422, gap a2)', () => {
+    const answer = {
+      questionIndex: 0,
+      questionSnapshot: 'O campo representa sempre o emitente?',
+      answer: 'Sim, sempre.',
+      answeredBy: 'user-1',
+      answeredAt: '2026-09-16T10:00:00Z',
+      version: 1,
+    };
+
+    it('envia PUT no endpoint dedicado com o texto normalizado', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: answer });
+
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: '  Sim, sempre.  ',
+        })
+      ).resolves.toEqual(answer);
+
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/rules/rule-1/questions/0/answer',
+        { answer: 'Sim, sempre.' }
+      );
+    });
+
+    it('recusa resposta vazia ou maior que 4000 caracteres sem chamar a API', async () => {
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: '   ',
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: 'a'.repeat(4001),
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+
+      expect(apiClient.put).not.toHaveBeenCalled();
+    });
+
+    it('lista o histórico de respostas do draft e da regra com includeHistory', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [answer] });
+
+      await expect(
+        mappingDraftService.listDraftQuestionAnswers('workspace-1', 'draft-1', {
+          includeHistory: true,
+        })
+      ).resolves.toEqual([answer]);
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/question-answers',
+        { params: { includeHistory: true } }
+      );
+
+      await expect(
+        mappingDraftService.listRuleQuestionAnswers('workspace-1', 'draft-1', 'rule-1')
+      ).resolves.toEqual([answer]);
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/rules/rule-1/question-answers',
+        undefined
+      );
+    });
+
+    it('recusa payload de resposta inválido devolvido pela API', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ ...answer, version: 0 }] });
+
+      await expect(
+        mappingDraftService.listRuleQuestionAnswers('workspace-1', 'draft-1', 'rule-1')
+      ).rejects.toMatchObject({ kind: 'invalid_response' });
+    });
+  });
 });

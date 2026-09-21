@@ -508,15 +508,7 @@ const MappingTestLabPanel = ({
             ))}
           </div>
 
-          {release.engine === 'tcl' && (
-            <aside className="mapping-limitations" role="note">
-              O Slice 5 compila TCL, mas a API ainda não possui runner determinístico para
-              executá-lo. A release pode ser inspecionada, porém o gate de Test Lab não pode ser
-              aprovado.
-            </aside>
-          )}
-
-          {release.engine === 'xslt' &&
+          {(release.engine === 'xslt' || release.engine === 'tcl') &&
             executeEnabled &&
             testableReleaseStatuses.has(release.status) && (
               <form
@@ -528,8 +520,10 @@ const MappingTestLabPanel = ({
               >
                 <h3>Executar fixture individual</h3>
                 <p>
-                  A API aplica o XSLT, valida o XSD quando reconhecido e compara o XML canônico com
-                  o gabarito.
+                  A API aplica o artefato {release.engine.toUpperCase()}, valida o XSD quando
+                  reconhecido e compara o XML canônico com o gabarito. TCL é um dialeto declarativo
+                  interno da API — não a linguagem Tcl — e roda no mesmo pipeline determinístico de
+                  diff/XSD/cobertura/proveniência usado pelo XSLT.
                 </p>
                 <label>
                   XML de entrada
