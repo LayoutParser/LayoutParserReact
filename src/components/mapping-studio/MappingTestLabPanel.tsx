@@ -13,6 +13,7 @@ import type { WorkspaceRole } from '../../types/workspace';
 import MappingArtifactDiffView from './MappingArtifactDiffView/MappingArtifactDiffView';
 import MappingArtifactManualEditor from './MappingArtifactManualEditor';
 import MappingGovernanceReadiness from './MappingGovernanceReadiness';
+import MappingTestSuitePanel from './MappingTestSuitePanel';
 
 interface MappingTestLabPanelProps {
   workspaceId: string;
@@ -649,6 +650,14 @@ const MappingTestLabPanel = ({
                 ))
               )}
             </div>
+          )}
+
+          {release.engine === 'xslt' && executeEnabled && (
+            <MappingTestSuitePanel
+              workspaceId={workspaceId}
+              draftId={draft.draftId}
+              releaseId={release.releaseId}
+            />
           )}
 
           <MappingGovernanceReadiness

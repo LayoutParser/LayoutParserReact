@@ -143,6 +143,48 @@
       "deliveredBy": "LayoutParserApi#243"
     },
     {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/run",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/runs",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
       "method": "GET",
       "path": "/api/workspaces/:param/mapping-releases",
       "owner": "LayoutParserApi",
