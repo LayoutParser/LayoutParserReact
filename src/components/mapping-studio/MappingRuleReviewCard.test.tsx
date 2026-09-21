@@ -40,10 +40,14 @@ describe('MappingRuleReviewCard — perguntas abertas (gap a2)', () => {
   it('carrega o histórico e envia uma nova resposta pelo PUT dedicado', async () => {
     vi.mocked(mappingDraftService.listRuleQuestionAnswers).mockResolvedValue([]);
     vi.mocked(mappingDraftService.answerRuleQuestion).mockResolvedValue({
+      answerId: 'answer-1',
+      draftId: 'draft-1',
+      ruleId: 'rule-1',
       questionIndex: 0,
-      questionSnapshot: 'O campo LINHA004/CNPJ representa sempre o emitente?',
+      question: 'O campo LINHA004/CNPJ representa sempre o emitente?',
       answer: 'Sim, sempre o emitente para NF-e modelo 55.',
-      answeredBy: 'user-1',
+      answeredByUserId: 'user-1',
+      answeredByName: 'user-1',
       answeredAt: '2026-09-16T10:00:00Z',
       version: 1,
     });
@@ -90,18 +94,26 @@ describe('MappingRuleReviewCard — perguntas abertas (gap a2)', () => {
   it('exibe o histórico de respostas anteriores quando a API já retorna versões', async () => {
     vi.mocked(mappingDraftService.listRuleQuestionAnswers).mockResolvedValue([
       {
+        answerId: 'answer-1',
+        draftId: 'draft-1',
+        ruleId: 'rule-1',
         questionIndex: 0,
-        questionSnapshot: 'O campo LINHA004/CNPJ representa sempre o emitente?',
+        question: 'O campo LINHA004/CNPJ representa sempre o emitente?',
         answer: 'Resposta antiga.',
-        answeredBy: 'user-1',
+        answeredByUserId: 'user-1',
+        answeredByName: 'user-1',
         answeredAt: '2026-09-10T10:00:00Z',
         version: 1,
       },
       {
+        answerId: 'answer-2',
+        draftId: 'draft-1',
+        ruleId: 'rule-1',
         questionIndex: 0,
-        questionSnapshot: 'O campo LINHA004/CNPJ representa sempre o emitente?',
+        question: 'O campo LINHA004/CNPJ representa sempre o emitente?',
         answer: 'Resposta corrigida.',
-        answeredBy: 'user-2',
+        answeredByUserId: 'user-2',
+        answeredByName: 'user-2',
         answeredAt: '2026-09-16T10:00:00Z',
         version: 2,
       },

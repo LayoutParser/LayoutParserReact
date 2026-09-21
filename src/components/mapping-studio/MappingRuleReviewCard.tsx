@@ -106,7 +106,7 @@ const QuestionAnswerGroup = ({
           <strong>Resposta atual (v{latest.version})</strong>
           <p>{latest.answer}</p>
           <small>
-            {latest.answeredBy} · {new Date(latest.answeredAt).toLocaleString('pt-BR')}
+            {latest.answeredByName} · {new Date(latest.answeredAt).toLocaleString('pt-BR')}
           </small>
         </div>
       )}
@@ -115,8 +115,8 @@ const QuestionAnswerGroup = ({
           <summary>Histórico de respostas ({history.length - 1} anterior(es))</summary>
           <ul>
             {history.slice(1).map(entry => (
-              <li key={entry.version}>
-                <strong>v{entry.version}</strong> · {entry.answeredBy} ·{' '}
+              <li key={entry.answerId}>
+                <strong>v{entry.version}</strong> · {entry.answeredByName} ·{' '}
                 {new Date(entry.answeredAt).toLocaleString('pt-BR')}
                 <p>{entry.answer}</p>
               </li>

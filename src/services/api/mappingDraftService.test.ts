@@ -280,10 +280,14 @@ describe('mappingDraftService', () => {
 
   describe('respostas a perguntas abertas (LayoutParserApi#422, gap a2)', () => {
     const answer = {
+      answerId: 'answer-1',
+      draftId: 'draft-1',
+      ruleId: 'rule-1',
       questionIndex: 0,
-      questionSnapshot: 'O campo representa sempre o emitente?',
+      question: 'O campo representa sempre o emitente?',
       answer: 'Sim, sempre.',
-      answeredBy: 'user-1',
+      answeredByUserId: 'user-1',
+      answeredByName: 'user-1',
       answeredAt: '2026-09-16T10:00:00Z',
       version: 1,
     };

@@ -87,10 +87,14 @@ export interface UpdateMappingDraftRuleInput {
  * append-only: reenviar o mesmo texto não cria versão nova (idempotente), texto diferente cria.
  */
 export interface MappingDraftRuleQuestionAnswer {
+  answerId: string;
+  draftId: string;
+  ruleId: string;
   questionIndex: number;
-  questionSnapshot: string;
+  question: string;
   answer: string;
-  answeredBy: string;
+  answeredByUserId: string;
+  answeredByName: string;
   answeredAt: string;
   version: number;
 }

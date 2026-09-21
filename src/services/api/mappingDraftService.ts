@@ -191,12 +191,16 @@ function parseResolvedXsd(value: unknown): ResolvedXsdReference {
 function parseQuestionAnswer(value: unknown): MappingDraftRuleQuestionAnswer {
   if (
     !isRecord(value) ||
+    !isNonEmptyString(value.answerId) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.ruleId) ||
     typeof value.questionIndex !== 'number' ||
     !Number.isSafeInteger(value.questionIndex) ||
     value.questionIndex < 0 ||
-    !isNonEmptyString(value.questionSnapshot) ||
+    !isNonEmptyString(value.question) ||
     typeof value.answer !== 'string' ||
-    !isNonEmptyString(value.answeredBy) ||
+    !isNonEmptyString(value.answeredByUserId) ||
+    !isNonEmptyString(value.answeredByName) ||
     !isValidDate(value.answeredAt) ||
     typeof value.version !== 'number' ||
     !Number.isSafeInteger(value.version) ||
@@ -206,10 +210,14 @@ function parseQuestionAnswer(value: unknown): MappingDraftRuleQuestionAnswer {
   }
 
   return {
+    answerId: value.answerId,
+    draftId: value.draftId,
+    ruleId: value.ruleId,
     questionIndex: value.questionIndex,
-    questionSnapshot: value.questionSnapshot,
+    question: value.question,
     answer: value.answer,
-    answeredBy: value.answeredBy,
+    answeredByUserId: value.answeredByUserId,
+    answeredByName: value.answeredByName,
     answeredAt: value.answeredAt,
     version: value.version,
   };
