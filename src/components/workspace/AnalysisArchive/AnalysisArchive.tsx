@@ -16,6 +16,25 @@ const sourceLabels: Record<AnalysisHistorySummary['source'], string> = {
   auto: 'Detecção automática',
 };
 
+// Rótulos conhecidos para `detectedType` (string livre da API — ver src/types/analysisHistory.ts).
+// Valores fora deste dicionário caem no fallback (o próprio valor cru), já que a API não expõe
+// um enum fechado para esse campo.
+const fiscalTypeLabels: Record<string, string> = {
+  nfe: 'NF-e',
+  cte: 'CT-e',
+  mdfe: 'MDF-e',
+  nfse: 'NFS-e',
+  nfcom: 'NFCom',
+};
+
+const fiscalTypeLabel = (detectedType: string | null): string => {
+  if (!detectedType) return 'Não identificado';
+  return fiscalTypeLabels[detectedType.toLowerCase()] ?? detectedType;
+};
+
+const ALL_TYPES_FILTER = '__all__';
+const UNIDENTIFIED_TYPE_FILTER = '__none__';
+
 const formatSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -45,6 +64,10 @@ const AnalysisArchiveList = ({ workspaceId }: { workspaceId: string }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  // Filtro por tipo fiscal (#197 gap 1): a API não expõe query param para isso hoje (ver
+  // contracts/api-endpoints.json), então filtramos client-side sobre os itens já carregados da
+  // página atual — não inventamos paginação server-side para o filtro.
+  const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES_FILTER);
 
   useEffect(() => {
     let disposed = false;
@@ -114,6 +137,18 @@ const AnalysisArchiveList = ({ workspaceId }: { workspaceId: string }) => {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  // Opções derivadas dos itens já carregados na página atual — só oferece filtrar por tipos que
+  // realmente aparecem aqui, em vez de assumir uma lista fixa que a API não confirma.
+  const availableTypes = Array.from(new Set(items.map(item => item.detectedType))).sort((a, b) =>
+    fiscalTypeLabel(a).localeCompare(fiscalTypeLabel(b), 'pt-BR')
+  );
+
+  const filteredItems = items.filter(item => {
+    if (typeFilter === ALL_TYPES_FILTER) return true;
+    if (typeFilter === UNIDENTIFIED_TYPE_FILTER) return item.detectedType === null;
+    return item.detectedType === typeFilter;
+  });
+
   return (
     <section className="analysis-archive-section" aria-labelledby="analysis-archive-title">
       <div className="analysis-archive-heading">
@@ -132,54 +167,84 @@ const AnalysisArchiveList = ({ workspaceId }: { workspaceId: string }) => {
         </p>
       )}
 
-      <ul className="analysis-archive-list">
-        {items.map(item => (
-          <li key={item.analysisId} className="analysis-archive-item">
-            <Link to={`/workspace/analysis-archive/${encodeURIComponent(item.analysisId)}`}>
-              <strong>{item.layoutName}</strong>
-              <span> — {sourceLabels[item.source]}</span>
-            </Link>
-            <div className="analysis-archive-item__meta">
-              <span>{formatDate(item.createdAt)}</span>
-              <span>
-                {item.fileCount} arquivo(s) · {formatSize(item.totalSizeBytes)}
-              </span>
-              <span className="analysis-archive-expiration">{expirationLabel(item.expiresAt)}</span>
-            </div>
-            <div className="analysis-archive-item__actions">
-              {confirmingId === item.analysisId ? (
-                <>
-                  <span>Excluir esta análise?</span>
-                  <button
-                    type="button"
-                    className="analysis-archive-button analysis-archive-button--danger"
-                    disabled={deletingId === item.analysisId}
-                    onClick={() => void handleDelete(item.analysisId)}
-                  >
-                    {deletingId === item.analysisId ? 'Excluindo…' : 'Confirmar exclusão'}
-                  </button>
+      {availableTypes.length > 1 && (
+        <div className="analysis-archive-filter">
+          <label htmlFor="analysis-archive-type-filter">Filtrar por tipo fiscal</label>
+          <select
+            id="analysis-archive-type-filter"
+            value={typeFilter}
+            onChange={event => setTypeFilter(event.target.value)}
+          >
+            <option value={ALL_TYPES_FILTER}>Todos os tipos ({items.length})</option>
+            {availableTypes.map(type => {
+              const value = type ?? UNIDENTIFIED_TYPE_FILTER;
+              const count = items.filter(item => item.detectedType === type).length;
+              return (
+                <option key={value} value={value}>
+                  {fiscalTypeLabel(type)} ({count})
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      )}
+
+      {filteredItems.length === 0 ? (
+        <p className="analysis-archive-empty-filter">
+          Nenhuma análise desta página corresponde ao tipo fiscal selecionado.
+        </p>
+      ) : (
+        <ul className="analysis-archive-list">
+          {filteredItems.map(item => (
+            <li key={item.analysisId} className="analysis-archive-item">
+              <Link to={`/workspace/analysis-archive/${encodeURIComponent(item.analysisId)}`}>
+                <strong>{item.layoutName}</strong>
+                <span> — {sourceLabels[item.source]}</span>
+              </Link>
+              <div className="analysis-archive-item__meta">
+                <span>{formatDate(item.createdAt)}</span>
+                <span>
+                  {item.fileCount} arquivo(s) · {formatSize(item.totalSizeBytes)}
+                </span>
+                <span className="analysis-archive-expiration">
+                  {expirationLabel(item.expiresAt)}
+                </span>
+              </div>
+              <div className="analysis-archive-item__actions">
+                {confirmingId === item.analysisId ? (
+                  <>
+                    <span>Excluir esta análise?</span>
+                    <button
+                      type="button"
+                      className="analysis-archive-button analysis-archive-button--danger"
+                      disabled={deletingId === item.analysisId}
+                      onClick={() => void handleDelete(item.analysisId)}
+                    >
+                      {deletingId === item.analysisId ? 'Excluindo…' : 'Confirmar exclusão'}
+                    </button>
+                    <button
+                      type="button"
+                      className="analysis-archive-button"
+                      disabled={deletingId === item.analysisId}
+                      onClick={() => setConfirmingId(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
                     className="analysis-archive-button"
-                    disabled={deletingId === item.analysisId}
-                    onClick={() => setConfirmingId(null)}
+                    onClick={() => setConfirmingId(item.analysisId)}
                   >
-                    Cancelar
+                    Excluir
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="analysis-archive-button"
-                  onClick={() => setConfirmingId(item.analysisId)}
-                >
-                  Excluir
-                </button>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {totalPages > 1 && (
         <div className="analysis-archive-pagination">
@@ -215,6 +280,7 @@ const AnalysisArchiveDetail = ({
   workspaceId: string;
   analysisId: string;
 }) => {
+  const navigate = useNavigate();
   const [detail, setDetail] = useState<AnalysisHistoryDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +309,13 @@ const AnalysisArchiveDetail = ({
       disposed = true;
     };
   }, [workspaceId, analysisId]);
+
+  // Reabertura (#197 gap 2): leva o usuário de volta ao fluxo de parse com o layout/versão já
+  // conhecidos, sem disparar parse automático — quem decide repetir a análise é o usuário.
+  const handleReopen = () => {
+    if (!detail) return;
+    navigate('/upload', { state: { reopenLayout: detail.layout } });
+  };
 
   const handleDownload = async (fileId: string, fileName: string) => {
     setDownloadingFileId(fileId);
@@ -301,6 +374,13 @@ const AnalysisArchiveDetail = ({
             Criada em {formatDate(detail.createdAt)} · {expirationLabel(detail.expiresAt)}
           </p>
         </div>
+        <button
+          type="button"
+          className="analysis-archive-button analysis-archive-button--primary"
+          onClick={handleReopen}
+        >
+          Reabrir análise
+        </button>
       </header>
 
       {error && (

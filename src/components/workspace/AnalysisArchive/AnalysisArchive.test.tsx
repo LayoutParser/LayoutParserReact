@@ -1,9 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { analysisHistoryService } from '../../../services/api/analysisHistoryService';
 import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
 import AnalysisArchivePage from './AnalysisArchive';
+
+// Substitui a tela real de upload (fora de escopo aqui) só para inspecionar o state de
+// navegação que a reabertura (#197 gap 2) deveria propagar.
+const UploadRouteProbe = () => {
+  const location = useLocation();
+  const state = location.state as { reopenLayout?: { layoutName: string } } | null;
+  return <div>Reabertura recebida: {state?.reopenLayout?.layoutName ?? 'nenhuma'}</div>;
+};
 
 vi.mock('../../../services/api/analysisHistoryService', () => ({
   AnalysisHistoryRequestError: class extends Error {
@@ -27,6 +35,7 @@ function renderRoute(path: string) {
       <Routes>
         <Route path="workspace/analysis-archive" element={<AnalysisArchivePage />} />
         <Route path="workspace/analysis-archive/:analysisId" element={<AnalysisArchivePage />} />
+        <Route path="upload" element={<UploadRouteProbe />} />
       </Routes>
     </MemoryRouter>
   );
@@ -154,5 +163,63 @@ describe('AnalysisArchivePage', () => {
 
     expect(await screen.findByText('documento.txt')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Baixar' })).toBeVisible();
+  });
+
+  it('filtra a listagem por tipo fiscal detectado', async () => {
+    const cteSummary = {
+      ...summary,
+      analysisId: 'analysis-2',
+      layoutName: 'LAY_TXT_MQSERIES_ENVCTE_3.00_CTe',
+      detectedType: 'cte',
+    };
+    const unidentifiedSummary = {
+      ...summary,
+      analysisId: 'analysis-3',
+      layoutName: 'LAY_TXT_DESCONHECIDO',
+      detectedType: null,
+    };
+    vi.mocked(analysisHistoryService.listAnalyses).mockResolvedValue({
+      page: 1,
+      pageSize: 20,
+      total: 3,
+      items: [summary, cteSummary, unidentifiedSummary],
+    });
+
+    renderRoute('/workspace/analysis-archive');
+
+    expect(await screen.findByText('LAY_TXT_MQSERIES_ENVNFE_4.00_NFe')).toBeVisible();
+    expect(screen.getByText('LAY_TXT_MQSERIES_ENVCTE_3.00_CTe')).toBeVisible();
+    expect(screen.getByText('LAY_TXT_DESCONHECIDO')).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Filtrar por tipo fiscal'), {
+      target: { value: 'cte' },
+    });
+
+    expect(screen.getByText('LAY_TXT_MQSERIES_ENVCTE_3.00_CTe')).toBeVisible();
+    expect(screen.queryByText('LAY_TXT_MQSERIES_ENVNFE_4.00_NFe')).not.toBeInTheDocument();
+    expect(screen.queryByText('LAY_TXT_DESCONHECIDO')).not.toBeInTheDocument();
+  });
+
+  it('reabre uma análise levando o layout para o fluxo de upload sem parsear automaticamente', async () => {
+    vi.mocked(analysisHistoryService.getAnalysis).mockResolvedValue({
+      analysisId: 'analysis-1',
+      createdAt: '2026-09-20T12:00:00Z',
+      expiresAt: summary.expiresAt,
+      layout: {
+        mode: 'upload',
+        layoutGuid: 'layout-guid-1',
+        layoutName: 'LAY_TXT_MQSERIES_ENVNFE_4.00_NFe',
+        fileId: 'file-layout',
+      },
+      files: [],
+    });
+
+    renderRoute('/workspace/analysis-archive/analysis-1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reabrir análise' }));
+
+    expect(
+      await screen.findByText('Reabertura recebida: LAY_TXT_MQSERIES_ENVNFE_4.00_NFe')
+    ).toBeVisible();
   });
 });

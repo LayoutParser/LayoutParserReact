@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { parseService, ParseRequestError } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
 import { logService } from '../../services/api/logService';
@@ -23,6 +24,7 @@ import Button from '../shared/Button';
 import Modal from '../shared/Modal';
 import type { AutoParseResponse, LayoutDetectionCandidate, ParseRequest } from '../../types/api';
 import type { Layout } from '../../types/layout';
+import type { AnalysisHistoryLayoutRef } from '../../types/analysisHistory';
 import { inspectDocumentSource } from '../../utils/documentEncoding';
 import { createParsedDocumentProvenance, fileMatchesProvenance } from '../../utils/provenance';
 import { ALLOWED_UPLOAD_EXTENSIONS, validateUploadFile } from '../../utils/uploadValidation';
@@ -30,7 +32,16 @@ import './LayoutParserPage.css';
 
 type PendingInputChange = { kind: 'layout'; layout: Layout | null } | { kind: 'file'; file: File };
 
+/** Estado de navegação usado pelo arquivo de análises (#197) para reabrir uma análise anterior
+ * sem reprocessar automaticamente — só pré-carrega o layout/versão que o usuário usaria de novo. */
+interface ReopenAnalysisNavigationState {
+  reopenLayout?: AnalysisHistoryLayoutRef;
+}
+
 const LayoutParserPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [reopenNotice, setReopenNotice] = useState<string | null>(null);
   const [txtFile, setTxtFile] = useState<File | null>(null);
   const txtFileInputRef = React.useRef<HTMLInputElement>(null);
   const uploadAbortRef = React.useRef<AbortController | null>(null);
@@ -244,6 +255,53 @@ const LayoutParserPage: React.FC = () => {
       return guidMatches || layout.name === identity.name;
     });
   };
+
+  // Reabertura vinda do arquivo de análises (#197): só pré-seleciona o layout já conhecido —
+  // nunca dispara parse sozinho. Se o layout não estiver no catálogo em cache, avisa o nome
+  // para o usuário buscar manualmente em vez de silenciosamente ignorar o pedido.
+  React.useEffect(() => {
+    const state = location.state as ReopenAnalysisNavigationState | null;
+    const reopenLayout = state?.reopenLayout;
+    if (!reopenLayout) return;
+
+    // Limpa o state da navegação para não reaplicar em re-renders/back-forward.
+    navigate(location.pathname, { replace: true, state: {} });
+
+    // Todo ajuste de estado abaixo roda num microtask (não sincronamente no corpo do efeito) —
+    // ver .claude/agent-memory/lp-front-dev/feedback_effect_setstate_lint.md.
+    void Promise.resolve().then(async () => {
+      if (reopenLayout.mode !== 'upload' || !reopenLayout.layoutGuid) {
+        setReopenNotice(
+          `Reabrindo análise anterior: "${reopenLayout.layoutName}" foi identificado automaticamente. Envie o documento novamente para repetir a detecção.`
+        );
+        return;
+      }
+
+      const identity = { layoutGuid: reopenLayout.layoutGuid, name: reopenLayout.layoutName };
+      const found = findLayoutInCatalog(allLayouts, identity);
+      if (found) {
+        handleLayoutSelect(found);
+        return;
+      }
+
+      try {
+        const catalog = await fetchLayoutCatalog();
+        const foundAfterFetch = findLayoutInCatalog(catalog, identity);
+        if (foundAfterFetch) {
+          handleLayoutSelect(foundAfterFetch);
+        } else {
+          setReopenNotice(
+            `Reabrindo análise anterior: não encontramos "${reopenLayout.layoutName}" no catálogo atual. Busque-o manualmente na lista de layouts.`
+          );
+        }
+      } catch {
+        setReopenNotice(
+          `Reabrindo análise anterior: não foi possível carregar o catálogo para localizar "${reopenLayout.layoutName}". Busque-o manualmente.`
+        );
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const resolveManualLayout = async (layout: Layout): Promise<Layout> => {
     if (layout.decryptedContent || layout.valueContent) return layout;
@@ -640,6 +698,11 @@ const LayoutParserPage: React.FC = () => {
                 </div>
               )}
               {searchError && <div className="error-message">❌ {searchError}</div>}
+              {reopenNotice && (
+                <div className="info-message" role="status">
+                  ℹ️ {reopenNotice}
+                </div>
+              )}
 
               <button
                 type="submit"
