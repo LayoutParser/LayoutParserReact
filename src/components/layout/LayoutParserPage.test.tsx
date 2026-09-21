@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ParseRequestError, parseService } from '../../services/api';
 import { layoutService } from '../../services/api/layoutService';
@@ -89,13 +90,21 @@ describe('LayoutParserPage', () => {
   });
 
   it('não renderiza "Atualizar Layout" para sessão sem função admin', () => {
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     expect(screen.queryByRole('button', { name: /Atualizar Layout/ })).not.toBeInTheDocument();
   });
 
   it('renderiza "Atualizar Layout" desabilitado para admin até haver busca bem-sucedida', async () => {
     useSessionStore.setState({ isAdmin: true });
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
 
     const refreshButton = screen.getByRole('button', { name: 'Atualizar Layout' });
     expect(refreshButton).toBeDisabled();
@@ -120,7 +129,11 @@ describe('LayoutParserPage', () => {
       ],
     });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     await selectLayoutAndFile();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
 
@@ -169,7 +182,11 @@ describe('LayoutParserPage', () => {
       },
     });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     attachDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
 
@@ -215,7 +232,11 @@ describe('LayoutParserPage', () => {
       },
     });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     attachDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
 
@@ -276,7 +297,11 @@ describe('LayoutParserPage', () => {
         },
       });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     attachDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
 
@@ -317,7 +342,11 @@ describe('LayoutParserPage', () => {
       fields: [],
     });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     await selectLayoutAndFile();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
     await screen.findByText('Resultado de análise carregado');
@@ -358,7 +387,11 @@ describe('LayoutParserPage', () => {
       fields: [],
     });
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     await selectLayoutAndFile();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
     await screen.findByText('Resultado de análise carregado');
@@ -429,7 +462,11 @@ describe('LayoutParserPage', () => {
       })
     );
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     await selectLayoutAndFile();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
 
@@ -451,7 +488,11 @@ describe('LayoutParserPage', () => {
         })
     );
 
-    render(<LayoutParserPage />);
+    render(
+      <MemoryRouter>
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
     await selectLayoutAndFile();
     fireEvent.click(screen.getByRole('button', { name: 'Processar Documento' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Cancelar processamento' }));
@@ -461,5 +502,63 @@ describe('LayoutParserPage', () => {
       parseResult: null,
       isUploading: false,
     });
+  });
+
+  it('pré-seleciona o layout de uma reabertura (#197) sem disparar parse automático', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              reopenLayout: {
+                mode: 'upload',
+                layoutGuid: 'layout-guid-1',
+                layoutName: 'Layout Faculdade',
+                fileId: null,
+              },
+            },
+          },
+        ]}
+      >
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar Layout' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Layout selecionado: Layout Faculdade' })
+      ).toBeInTheDocument()
+    );
+    expect(parseService.parseFiles).not.toHaveBeenCalled();
+    expect(parseService.parseAutomatically).not.toHaveBeenCalled();
+  });
+
+  it('avisa quando a reabertura (#197) veio de detecção automática, sem pré-selecionar layout', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              reopenLayout: {
+                mode: 'auto',
+                layoutGuid: null,
+                layoutName: 'Layout Detectado Automaticamente',
+                fileId: null,
+              },
+            },
+          },
+        ]}
+      >
+        <LayoutParserPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Layout Detectado Automaticamente/)).toBeInTheDocument();
+    expect(parseService.parseFiles).not.toHaveBeenCalled();
+    expect(parseService.parseAutomatically).not.toHaveBeenCalled();
   });
 });
