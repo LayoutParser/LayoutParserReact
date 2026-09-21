@@ -8,6 +8,7 @@ import { useSearchStore } from '../../store/useSearchStore';
 import { useSessionStore } from '../../store/useSessionStore';
 import { useTransformationStore } from '../../store/useTransformationStore';
 import { useTraceabilityStore } from '../../store/useTraceabilityStore';
+import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { loadLayoutsFromCache, saveLayoutsToCache } from '../../services/cache/layoutCache';
 import LayoutCombobox from '../upload/LayoutCombobox';
 import ParseErrorBanner from '../upload/ParseErrorBanner';
@@ -77,6 +78,11 @@ const LayoutParserPage: React.FC = () => {
   // /api/layoutdatabase/refresh-cache é rota admin no BFF (DEFAULT_ADMIN_PATHS); esconder o
   // botão para não-admin evita um controle visível que sempre resulta em 403.
   const { isAdmin } = useSessionStore();
+
+  // Opt-in do histórico de análises (LayoutParserApi#366): quando há workspace fiscal ativo,
+  // o parse fica associado a ele. Sem workspace ativo, o campo é omitido e o fluxo de upload
+  // legado continua funcionando exatamente como antes.
+  const { activeWorkspaceId } = useWorkspaceStore();
 
   const handleSearchLayouts = async () => {
     setIsSearching(true);
@@ -286,6 +292,7 @@ const LayoutParserPage: React.FC = () => {
             {
               documentFile: txtFile,
               ...(automaticOverride ? { layoutGuidOverride: automaticOverride } : {}),
+              ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
             },
             {
               signal: abortController.signal,
@@ -378,6 +385,7 @@ const LayoutParserPage: React.FC = () => {
         layoutFile,
         txtFile,
         layoutName: layoutToUse.name,
+        ...(activeWorkspaceId ? { workspaceId: activeWorkspaceId } : {}),
       };
       const [result, documentSource] = await Promise.all([
         parseService.parseFiles(request, {
