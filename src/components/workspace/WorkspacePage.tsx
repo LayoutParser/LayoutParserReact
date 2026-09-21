@@ -108,6 +108,16 @@ const WorkspacePage = () => {
 
           <article className="workspace-action-card workspace-action-card--available">
             <span className="workspace-action-card__status">Disponível</span>
+            <h3>Arquivo de análises</h3>
+            <p>
+              Reveja os arquivos que você anexou junto com o layout ao processar um documento.
+              Retenção de 90 dias; diferente do histórico de análises fiscais acima.
+            </p>
+            <Link to="/workspace/analysis-archive">Abrir arquivo</Link>
+          </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
             <h3>Mapping Studio</h3>
             <p>
               Revise propostas TCL/XSLT e explique Sysmiddle somente leitura, sem risco de autoria.

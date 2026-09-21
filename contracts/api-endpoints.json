@@ -207,6 +207,34 @@
       "path": "/api/workspaces/:param/mappings/:param/layout-tree",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#425/PR #427"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses/:param/files/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspaces/:param/analyses/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
     }
   ]
 }

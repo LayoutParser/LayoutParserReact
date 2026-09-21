@@ -239,6 +239,10 @@ export const parseService = {
       formData.append('layoutConfig', JSON.stringify(request.layoutConfig));
     }
 
+    if (request.workspaceId) {
+      formData.append('workspaceId', request.workspaceId);
+    }
+
     try {
       const response = await apiClient.post<ParseResponse>(API_CONFIG.endpoints.parse, formData, {
         signal: options.signal,
@@ -270,6 +274,9 @@ export const parseService = {
     formData.append('documentFile', request.documentFile);
     if (request.layoutGuidOverride) {
       formData.append('layoutGuidOverride', request.layoutGuidOverride);
+    }
+    if (request.workspaceId) {
+      formData.append('workspaceId', request.workspaceId);
     }
 
     try {
