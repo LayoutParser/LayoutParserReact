@@ -61,6 +61,31 @@ export interface MappingSuggestionJob {
   error?: string | null;
 }
 
+/**
+ * Item do catálogo de drafts do workspace (issue #198, parte 1) —
+ * GET /api/workspaces/{workspaceId}/mapping-drafts. Confirmado por @lp-contract-qa contra
+ * origin/develop em 2026-09-22 (LayoutParserApi#416/PR#420) — sem drift.
+ * Não tem `layoutGuid`/`layoutName`/`updatedAt`/`status`: o draft não carrega status próprio
+ * no domínio (status vive na release, não no draft).
+ */
+export interface MappingDraftSummary {
+  draftId: string;
+  workspaceId: string;
+  packageId: string;
+  revisionId: string;
+  engine: MappingAuthoringEngine;
+  createdAt: string;
+  rulesCount: number;
+  fiscalProfile: FiscalProfile | null;
+}
+
+export interface MappingDraftListResponse {
+  items: MappingDraftSummary[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
 export interface CreateMappingDraftInput {
   workspaceId: string;
   packageId: string;

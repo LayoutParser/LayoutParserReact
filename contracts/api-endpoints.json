@@ -84,6 +84,12 @@
     },
     {
       "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#416"
+    },
+    {
+      "method": "GET",
       "path": "/api/workspaces/:param/mapping-drafts/:param",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#238"

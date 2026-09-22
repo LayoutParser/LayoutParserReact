@@ -277,4 +277,79 @@ describe('mappingDraftService', () => {
       ).rejects.toMatchObject({ kind: 'not_found' });
     });
   });
+
+  describe('listDrafts', () => {
+    it('lista drafts do workspace com paginação e filtro de engine', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: {
+          items: [
+            {
+              draftId: 'draft-1',
+              workspaceId: 'workspace-1',
+              packageId: 'package-1',
+              revisionId: 'revision-1',
+              engine: 'tcl',
+              createdAt: '2026-09-01T10:00:00Z',
+              rulesCount: 5,
+              fiscalProfile: null,
+            },
+          ],
+          page: 1,
+          pageSize: 20,
+          totalCount: 1,
+        },
+      });
+
+      await expect(mappingDraftService.listDrafts('workspace-1', 1, 20, 'tcl')).resolves.toEqual({
+        items: [
+          {
+            draftId: 'draft-1',
+            workspaceId: 'workspace-1',
+            packageId: 'package-1',
+            revisionId: 'revision-1',
+            engine: 'tcl',
+            createdAt: '2026-09-01T10:00:00Z',
+            rulesCount: 5,
+            fiscalProfile: null,
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+      });
+      expect(apiClient.get).toHaveBeenCalledWith('/api/workspaces/workspace-1/mapping-drafts', {
+        params: { page: 1, pageSize: 20, engine: 'tcl' },
+      });
+    });
+
+    it('recusa page < 1', async () => {
+      await expect(mappingDraftService.listDrafts('workspace-1', 0)).rejects.toMatchObject({
+        kind: 'invalid_input',
+      });
+    });
+
+    it('recusa pageSize fora de 1..100', async () => {
+      await expect(mappingDraftService.listDrafts('workspace-1', 1, 101)).rejects.toMatchObject({
+        kind: 'invalid_input',
+      });
+    });
+
+    it('recusa engine fora de tcl/xslt', async () => {
+      await expect(
+        mappingDraftService.listDrafts('workspace-1', 1, 20, 'sysmiddle' as unknown as 'tcl')
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+    });
+
+    it('mapeia 404 (workspace sem identidade) para not_found', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(mappingDraftService.listDrafts('workspace-1')).rejects.toMatchObject({
+        kind: 'not_found',
+      });
+    });
+  });
 });
