@@ -105,3 +105,31 @@ export interface UpdateMappingDraftRuleInput {
   operation?: string;
   answer?: string;
 }
+
+/**
+ * Resposta persistida para uma pergunta aberta (`MappingDraftRule.questions`) via
+ * `PUT .../rules/{ruleId}/questions/{questionIndex}/answer` (LayoutParserApi#422). O histórico é
+ * append-only: reenviar o mesmo texto não cria versão nova (idempotente), texto diferente cria.
+ */
+export interface MappingDraftRuleQuestionAnswer {
+  answerId: string;
+  draftId: string;
+  ruleId: string;
+  questionIndex: number;
+  question: string;
+  answer: string;
+  answeredByUserId: string;
+  answeredByName: string;
+  answeredAt: string;
+  version: number;
+}
+
+export const MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH = 4000;
+
+export interface AnswerMappingDraftRuleQuestionInput {
+  workspaceId: string;
+  draftId: string;
+  ruleId: string;
+  questionIndex: number;
+  answer: string;
+}

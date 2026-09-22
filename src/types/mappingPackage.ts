@@ -3,6 +3,24 @@ export type MappingPackageArtifactKind =
 
 export type ArtifactInspectionStatus = 'pending' | 'clean' | 'rejected';
 
+export type ArtifactQualityStatus = 'complete' | 'failed';
+
+/**
+ * Sinais de qualidade semântica de um artefato (Gap 3 — issue #201, LayoutParserApi#424).
+ * `checksRun` é a lista de checks efetivamente executados: um array vazio em outro campo só
+ * significa "sem achado" quando o nome do check correspondente consta em `checksRun` — caso
+ * contrário é "não verificado ainda". Ver `.claude/agent-memory/lp-product-manager/
+ * project_fiscal_201_quality_signals_checksrun_2026_09_21.md`.
+ */
+export interface FiscalArtifactQualitySignals {
+  missingRequiredColumns: string[];
+  conflicts: { field: string; reason: string }[];
+  absentReferences: string[];
+  skippedSheets: string[];
+  emptySheets: string[];
+  checksRun: string[];
+}
+
 export interface MappingPackageArtifactSummary {
   artifactId: string;
   kind: MappingPackageArtifactKind;
@@ -11,6 +29,9 @@ export interface MappingPackageArtifactSummary {
   originalFileName: string;
   inspectionStatus: ArtifactInspectionStatus;
   uploadedAt: string;
+  qualityStatus?: ArtifactQualityStatus | null;
+  qualityError?: string | null;
+  qualitySignals?: FiscalArtifactQualitySignals | null;
 }
 
 export interface MappingPackageRevisionSummary {

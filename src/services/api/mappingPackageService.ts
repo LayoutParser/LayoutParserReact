@@ -1,10 +1,12 @@
 import axios from 'axios';
 import type {
   ArtifactInspectionStatus,
+  ArtifactQualityStatus,
   CreateMappingPackageInput,
   CreateMappingPackageRevisionInput,
   ExcelInventoryResult,
   ExcelSheetInventory,
+  FiscalArtifactQualitySignals,
   FiscalMappingPackageDetail,
   FiscalProjectSummary,
   MappingPackageArtifactKind,
@@ -25,6 +27,7 @@ const artifactKinds = new Set<MappingPackageArtifactKind>([
   'fiscalContext',
 ]);
 const inspectionStatuses = new Set<ArtifactInspectionStatus>(['pending', 'clean', 'rejected']);
+const qualityStatuses = new Set<ArtifactQualityStatus>(['complete', 'failed']);
 const expectedExtension: Record<MappingPackageArtifactKind, string> = {
   sample: '.txt',
   layout: '.xml',
@@ -72,6 +75,42 @@ function isInspectionStatus(value: unknown): value is ArtifactInspectionStatus {
   return isNonEmptyString(value) && inspectionStatuses.has(value as ArtifactInspectionStatus);
 }
 
+function isQualityStatus(value: unknown): value is ArtifactQualityStatus {
+  return isNonEmptyString(value) && qualityStatuses.has(value as ArtifactQualityStatus);
+}
+
+function isConflictList(value: unknown): value is { field: string; reason: string }[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      item => isRecord(item) && isNonEmptyString(item.field) && isNonEmptyString(item.reason)
+    )
+  );
+}
+
+function parseQualitySignals(value: unknown): FiscalArtifactQualitySignals {
+  if (
+    !isRecord(value) ||
+    !isStringArray(value.missingRequiredColumns) ||
+    !isConflictList(value.conflicts) ||
+    !isStringArray(value.absentReferences) ||
+    !isStringArray(value.skippedSheets) ||
+    !isStringArray(value.emptySheets) ||
+    !isStringArray(value.checksRun)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    missingRequiredColumns: value.missingRequiredColumns,
+    conflicts: value.conflicts,
+    absentReferences: value.absentReferences,
+    skippedSheets: value.skippedSheets,
+    emptySheets: value.emptySheets,
+    checksRun: value.checksRun,
+  };
+}
+
 function parseArtifact(value: unknown): MappingPackageArtifactSummary {
   if (!isRecord(value)) {
     throw invalidResponse();
@@ -91,7 +130,37 @@ function parseArtifact(value: unknown): MappingPackageArtifactSummary {
     throw invalidResponse();
   }
 
-  return value as unknown as MappingPackageArtifactSummary;
+  if (value.qualityStatus !== undefined && value.qualityStatus !== null) {
+    if (!isQualityStatus(value.qualityStatus)) {
+      throw invalidResponse();
+    }
+  }
+  if (
+    value.qualityError !== undefined &&
+    value.qualityError !== null &&
+    !isNonEmptyString(value.qualityError)
+  ) {
+    throw invalidResponse();
+  }
+  const qualitySignals =
+    value.qualitySignals === undefined || value.qualitySignals === null
+      ? null
+      : parseQualitySignals(value.qualitySignals);
+
+  const artifact: MappingPackageArtifactSummary = {
+    artifactId: value.artifactId,
+    kind: value.kind,
+    sha256: value.sha256,
+    sizeBytes: value.sizeBytes,
+    originalFileName: value.originalFileName,
+    inspectionStatus: value.inspectionStatus,
+    uploadedAt: value.uploadedAt,
+    qualityStatus: (value.qualityStatus as ArtifactQualityStatus | null | undefined) ?? null,
+    qualityError: (value.qualityError as string | null | undefined) ?? null,
+    qualitySignals,
+  };
+
+  return artifact;
 }
 
 function parseRevision(value: unknown): MappingPackageRevisionSummary {

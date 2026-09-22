@@ -368,4 +368,96 @@ describe('FiscalPackageWizard', () => {
     });
     expect(await screen.findByText('Revisão 2')).toBeInTheDocument();
   });
+
+  it('exibe os sinais de qualidade do artefato com os 3 estados possíveis (Gap 3 — LayoutParserApi#424)', async () => {
+    createPackageMock.mockResolvedValue({
+      ...packageResult,
+      revisions: [
+        {
+          ...packageResult.revisions[0],
+          artifacts: [
+            packageResult.revisions[0].artifacts[0],
+            {
+              ...packageResult.revisions[0].artifacts[1],
+              qualityStatus: 'complete',
+              qualityError: null,
+              qualitySignals: {
+                missingRequiredColumns: ['cfop'],
+                conflicts: [],
+                absentReferences: [],
+                skippedSheets: [],
+                emptySheets: [],
+                // 'missingRequiredColumns' rodou e achou problema; 'skippedSheets' rodou e
+                // não achou nada; 'conflicts' não consta em checksRun (não verificado).
+                checksRun: ['missingRequiredColumns', 'skippedSheets'],
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    const problemBadge = screen.getByText('Problema encontrado');
+    expect(problemBadge).toBeInTheDocument();
+    expect(screen.getByText(/Colunas obrigatórias ausentes/)).toBeInTheDocument();
+    expect(screen.getByText(/cfop/)).toBeInTheDocument();
+
+    expect(screen.getAllByText('Sem achados').length).toBeGreaterThan(0);
+
+    const unverifiedBadges = screen.getAllByText('Não verificado ainda');
+    expect(unverifiedBadges.length).toBeGreaterThan(0);
+  });
+
+  it('mostra a mensagem de erro quando o cálculo de qualidade falha', async () => {
+    createPackageMock.mockResolvedValue({
+      ...packageResult,
+      revisions: [
+        {
+          ...packageResult.revisions[0],
+          artifacts: [
+            packageResult.revisions[0].artifacts[0],
+            {
+              ...packageResult.revisions[0].artifacts[1],
+              qualityStatus: 'failed',
+              qualityError: 'Não foi possível abrir a planilha.',
+              qualitySignals: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <FiscalPackageWizard />
+      </MemoryRouter>
+    );
+
+    fillRequiredFields();
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: /Enviar pacote fiscal/ })
+        .closest('form') as HTMLFormElement
+    );
+    await screen.findByText(/Revisão criada/);
+
+    expect(
+      await screen.findByText(/Não foi possível calcular os sinais de qualidade/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Não foi possível abrir a planilha\./)).toBeInTheDocument();
+  });
 });

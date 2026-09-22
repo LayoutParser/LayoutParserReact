@@ -43,7 +43,8 @@
       "method": "GET",
       "path": "/api/workspaces/:param/mapping-packages/:param",
       "owner": "LayoutParserApi",
-      "deliveredBy": "LayoutParserApi#236"
+      "deliveredBy": "LayoutParserApi#236",
+      "note": "Campos aditivos qualityStatus/qualityError/qualitySignals por artefato desde LayoutParserApi#424 (PR#468)."
     },
     {
       "method": "GET",
@@ -119,6 +120,24 @@
       "deliveredBy": "LayoutParserApi#238"
     },
     {
+      "method": "PUT",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/questions/:param/answer",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
       "method": "POST",
       "path": "/api/workspaces/:param/mapping-drafts/:param/compile",
       "owner": "LayoutParserApi",
@@ -147,6 +166,48 @@
       "path": "/api/workspaces/:param/mapping-drafts/:param/test-runs/:param",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#243"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/run",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/runs",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
     },
     {
       "method": "GET",

@@ -1,9 +1,20 @@
-import { useState } from 'react';
-import type { MappingDraftRule, UpdateMappingDraftRuleInput } from '../../types/mappingDraft';
+import { useEffect, useState } from 'react';
+import {
+  MappingDraftRequestError,
+  mappingDraftService,
+} from '../../services/api/mappingDraftService';
+import type {
+  MappingDraftRule,
+  MappingDraftRuleQuestionAnswer,
+  UpdateMappingDraftRuleInput,
+} from '../../types/mappingDraft';
+import { MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH } from '../../types/mappingDraft';
 
 type RuleUpdate = Omit<UpdateMappingDraftRuleInput, 'workspaceId' | 'draftId' | 'ruleId' | 'eTag'>;
 
 interface MappingRuleReviewCardProps {
+  workspaceId: string;
+  draftId: string;
   rule: MappingDraftRule;
   busy: boolean;
   onUpdate: (rule: MappingDraftRule, update: RuleUpdate) => Promise<void>;
@@ -27,13 +38,163 @@ const splitReferences = (value: string): string[] =>
     .map(item => item.trim())
     .filter(Boolean);
 
-const MappingRuleReviewCard = ({ rule, busy, onUpdate }: MappingRuleReviewCardProps) => {
+/** Uma pergunta aberta e o histórico (mais recente primeiro) de respostas já gravadas. */
+interface QuestionAnswerGroupProps {
+  workspaceId: string;
+  draftId: string;
+  ruleId: string;
+  questionIndex: number;
+  question: string;
+  history: MappingDraftRuleQuestionAnswer[];
+  onAnswered: (answer: MappingDraftRuleQuestionAnswer) => void;
+}
+
+const QuestionAnswerGroup = ({
+  workspaceId,
+  draftId,
+  ruleId,
+  questionIndex,
+  question,
+  history,
+  onAnswered,
+}: QuestionAnswerGroupProps) => {
+  const latest = history[0] ?? null;
+  const [draftAnswer, setDraftAnswer] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    const trimmed = draftAnswer.trim();
+    if (!trimmed) {
+      setError('Informe uma resposta antes de enviar.');
+      return;
+    }
+    if (trimmed.length > MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH) {
+      setError(
+        `A resposta não pode ter mais de ${MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH} caracteres.`
+      );
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const saved = await mappingDraftService.answerRuleQuestion({
+        workspaceId,
+        draftId,
+        ruleId,
+        questionIndex,
+        answer: trimmed,
+      });
+      onAnswered(saved);
+      setDraftAnswer('');
+    } catch (answerError) {
+      setError(
+        answerError instanceof MappingDraftRequestError
+          ? answerError.message
+          : 'Não foi possível salvar a resposta.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <li className="mapping-open-question">
+      <p>{question}</p>
+      {latest && (
+        <div className="mapping-question-answer" data-version={latest.version}>
+          <strong>Resposta atual (v{latest.version})</strong>
+          <p>{latest.answer}</p>
+          <small>
+            {latest.answeredByName} · {new Date(latest.answeredAt).toLocaleString('pt-BR')}
+          </small>
+        </div>
+      )}
+      {history.length > 1 && (
+        <details className="mapping-technical-details">
+          <summary>Histórico de respostas ({history.length - 1} anterior(es))</summary>
+          <ul>
+            {history.slice(1).map(entry => (
+              <li key={entry.answerId}>
+                <strong>v{entry.version}</strong> · {entry.answeredByName} ·{' '}
+                {new Date(entry.answeredAt).toLocaleString('pt-BR')}
+                <p>{entry.answer}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <form
+        className="mapping-rule-form"
+        onSubmit={event => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <label>
+          {latest ? 'Responder novamente' : 'Responder'}
+          <textarea
+            value={draftAnswer}
+            onChange={event => setDraftAnswer(event.target.value)}
+            rows={2}
+            maxLength={MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH}
+          />
+        </label>
+        {error && (
+          <p className="mapping-inline-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="mapping-button" disabled={submitting}>
+          {submitting ? 'Enviando…' : 'Enviar resposta'}
+        </button>
+      </form>
+    </li>
+  );
+};
+
+const MappingRuleReviewCard = ({
+  workspaceId,
+  draftId,
+  rule,
+  busy,
+  onUpdate,
+}: MappingRuleReviewCardProps) => {
   const [mode, setMode] = useState<EditMode>('none');
   const [sourceRefs, setSourceRefs] = useState(rule.sourceRefs.join('\n'));
   const [targetRefs, setTargetRefs] = useState(rule.targetRefs.join('\n'));
   const [operation, setOperation] = useState(rule.operation);
   const [justification, setJustification] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [answersByQuestion, setAnswersByQuestion] = useState<
+    Record<number, MappingDraftRuleQuestionAnswer[]>
+  >({});
+
+  useEffect(() => {
+    if (rule.questions.length === 0) return;
+    let disposed = false;
+    void mappingDraftService
+      .listRuleQuestionAnswers(workspaceId, draftId, rule.ruleId, { includeHistory: true })
+      .then(answers => {
+        if (disposed) return;
+        const grouped: Record<number, MappingDraftRuleQuestionAnswer[]> = {};
+        for (const answer of answers) {
+          const list = grouped[answer.questionIndex] ?? [];
+          list.push(answer);
+          grouped[answer.questionIndex] = list;
+        }
+        for (const list of Object.values(grouped)) {
+          list.sort((a, b) => b.version - a.version);
+        }
+        setAnswersByQuestion(grouped);
+      })
+      .catch(() => {
+        // Sem histórico prévio ou API indisponível: a pergunta continua exibida sem resposta.
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [draftId, rule.questions.length, rule.ruleId, workspaceId]);
 
   const canReview = !['rejected', 'validated', 'superseded'].includes(rule.status);
   const canAccept = rule.status === 'proposed';
@@ -124,14 +285,31 @@ const MappingRuleReviewCard = ({ rule, busy, onUpdate }: MappingRuleReviewCardPr
         <aside className="mapping-open-questions" role="note">
           <strong>A IA precisa de confirmação</strong>
           <ul>
-            {rule.questions.map(question => (
-              <li key={question}>{question}</li>
+            {rule.questions.map((question, questionIndex) => (
+              <QuestionAnswerGroup
+                key={`${questionIndex}-${question}`}
+                workspaceId={workspaceId}
+                draftId={draftId}
+                ruleId={rule.ruleId}
+                questionIndex={questionIndex}
+                question={question}
+                history={answersByQuestion[questionIndex] ?? []}
+                onAnswered={saved =>
+                  setAnswersByQuestion(current => {
+                    const existing = (current[saved.questionIndex] ?? []).filter(
+                      entry => entry.version !== saved.version
+                    );
+                    return {
+                      ...current,
+                      [saved.questionIndex]: [saved, ...existing].sort(
+                        (a, b) => b.version - a.version
+                      ),
+                    };
+                  })
+                }
+              />
             ))}
           </ul>
-          <p>
-            A API atual ainda não persiste o texto de uma resposta livre. Corrija a regra de forma
-            estruturada ou aguarde o ajuste do contrato antes de responder apenas em texto.
-          </p>
         </aside>
       )}
 
