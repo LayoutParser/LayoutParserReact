@@ -595,14 +595,17 @@ const MappingStudioDetail = ({ mappingId, version }: { mappingId: string; versio
             </div>
           ) : (
             <div className="mapping-review-list">
-              {draft.rules.map(rule => (
-                <MappingRuleReviewCard
-                  key={rule.ruleId}
-                  rule={rule}
-                  busy={busyRuleId === rule.ruleId}
-                  onUpdate={handleRuleUpdate}
-                />
-              ))}
+              {activeWorkspaceId &&
+                draft.rules.map(rule => (
+                  <MappingRuleReviewCard
+                    key={rule.ruleId}
+                    workspaceId={activeWorkspaceId}
+                    draftId={draft.draftId}
+                    rule={rule}
+                    busy={busyRuleId === rule.ruleId}
+                    onUpdate={handleRuleUpdate}
+                  />
+                ))}
             </div>
           )}
         </section>
