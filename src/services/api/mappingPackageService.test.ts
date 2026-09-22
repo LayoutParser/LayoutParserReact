@@ -33,6 +33,19 @@ const packageResponse = {
   ],
 };
 
+const expectedPackageResponse = {
+  ...packageResponse,
+  revisions: packageResponse.revisions.map(revision => ({
+    ...revision,
+    artifacts: revision.artifacts.map(artifact => ({
+      ...artifact,
+      qualityStatus: null,
+      qualityError: null,
+      qualitySignals: null,
+    })),
+  })),
+};
+
 describe('mappingPackageService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +63,7 @@ describe('mappingPackageService', () => {
         idempotencyKey: 'attempt-1',
         artifacts: [{ kind: 'sample', file: sample }],
       })
-    ).resolves.toEqual(packageResponse);
+    ).resolves.toEqual(expectedPackageResponse);
 
     const [path, body, config] = vi.mocked(apiClient.post).mock.calls[0];
     expect(path).toBe('/api/workspaces/workspace-1/projects/project-1/mapping-packages');
@@ -64,7 +77,7 @@ describe('mappingPackageService', () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: packageResponse });
 
     await expect(mappingPackageService.getPackage('workspace-1', 'package-1')).resolves.toEqual(
-      packageResponse
+      expectedPackageResponse
     );
     expect(apiClient.get).toHaveBeenCalledWith(
       '/api/workspaces/workspace-1/mapping-packages/package-1'
@@ -125,6 +138,129 @@ describe('mappingPackageService', () => {
       mappingPackageService.getPackage('workspace-1', 'package-1')
     ).rejects.toMatchObject({
       kind: 'invalid_response',
+    });
+  });
+
+  describe('qualitySignals do artefato (Gap 3 — LayoutParserApi#424)', () => {
+    const buildArtifact = (overrides: Record<string, unknown>) => ({
+      ...packageResponse.revisions[0].artifacts[0],
+      ...overrides,
+    });
+
+    const buildResponse = (artifactOverrides: Record<string, unknown>) => ({
+      ...packageResponse,
+      revisions: [
+        {
+          ...packageResponse.revisions[0],
+          artifacts: [buildArtifact(artifactOverrides)],
+        },
+      ],
+    });
+
+    it('mantém qualityStatus/qualitySignals nulos quando ausentes na resposta', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: packageResponse });
+
+      const result = await mappingPackageService.getPackage('workspace-1', 'package-1');
+
+      const artifact = result.revisions[0].artifacts[0];
+      expect(artifact.qualityStatus ?? null).toBeNull();
+      expect(artifact.qualityError ?? null).toBeNull();
+      expect(artifact.qualitySignals ?? null).toBeNull();
+    });
+
+    it('marca check como "ok" quando o check está em checksRun e o array correspondente está vazio', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: buildResponse({
+          qualityStatus: 'complete',
+          qualitySignals: {
+            missingRequiredColumns: [],
+            conflicts: [],
+            absentReferences: [],
+            skippedSheets: [],
+            emptySheets: [],
+            checksRun: ['missingRequiredColumns'],
+          },
+        }),
+      });
+
+      const result = await mappingPackageService.getPackage('workspace-1', 'package-1');
+      const signals = result.revisions[0].artifacts[0].qualitySignals;
+
+      expect(signals?.checksRun).toContain('missingRequiredColumns');
+      expect(signals?.missingRequiredColumns).toEqual([]);
+    });
+
+    it('marca check como "problem" quando o array correspondente tem itens', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: buildResponse({
+          qualityStatus: 'complete',
+          qualitySignals: {
+            missingRequiredColumns: ['cfop'],
+            conflicts: [{ field: 'ncm', reason: 'divergência entre abas' }],
+            absentReferences: [],
+            skippedSheets: [],
+            emptySheets: [],
+            checksRun: ['missingRequiredColumns', 'conflicts'],
+          },
+        }),
+      });
+
+      const result = await mappingPackageService.getPackage('workspace-1', 'package-1');
+      const signals = result.revisions[0].artifacts[0].qualitySignals;
+
+      expect(signals?.missingRequiredColumns).toEqual(['cfop']);
+      expect(signals?.conflicts).toEqual([{ field: 'ncm', reason: 'divergência entre abas' }]);
+    });
+
+    it('mantém missingRequiredColumns como "não verificado" (fora de checksRun) mesmo com array vazio', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: buildResponse({
+          qualityStatus: 'complete',
+          qualitySignals: {
+            missingRequiredColumns: [],
+            conflicts: [],
+            absentReferences: [],
+            skippedSheets: [],
+            emptySheets: [],
+            checksRun: [],
+          },
+        }),
+      });
+
+      const result = await mappingPackageService.getPackage('workspace-1', 'package-1');
+      const signals = result.revisions[0].artifacts[0].qualitySignals;
+
+      expect(signals?.checksRun).not.toContain('missingRequiredColumns');
+      expect(signals?.missingRequiredColumns).toEqual([]);
+    });
+
+    it('propaga qualityStatus "failed" com qualityError sanitizado', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: buildResponse({
+          qualityStatus: 'failed',
+          qualityError: 'Não foi possível abrir a planilha.',
+        }),
+      });
+
+      const result = await mappingPackageService.getPackage('workspace-1', 'package-1');
+      const artifact = result.revisions[0].artifacts[0];
+
+      expect(artifact.qualityStatus).toBe('failed');
+      expect(artifact.qualityError).toBe('Não foi possível abrir a planilha.');
+      expect(artifact.qualitySignals).toBeNull();
+    });
+
+    it('recusa qualitySignals malformado', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: buildResponse({
+          qualityStatus: 'complete',
+          qualitySignals: { missingRequiredColumns: 'não é array' },
+        }),
+      });
+
+      await expect(
+        mappingPackageService.getPackage('workspace-1', 'package-1')
+      ).rejects.toMatchObject({ kind: 'invalid_response' });
     });
   });
 });
