@@ -225,6 +225,28 @@ describe('MappingTestLabPanel', () => {
     expect(screen.queryByLabelText('XML de entrada')).not.toBeInTheDocument();
   });
 
+  it('permite executar o Test Lab para releases TCL, sem aviso de indeterminismo (gap a1)', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      engine: 'tcl',
+      artifacts: [
+        {
+          kind: 'tcl',
+          content: '<tcl-rules/>',
+          hash: 'artifact-hash',
+          generatedAt: '2026-08-31T22:00:00Z',
+        },
+      ],
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Compilada, aguardando testes' })
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Executar Test Lab' })).toBeEnabled();
+    expect(screen.queryByText(/runner determinístico/i)).not.toBeInTheDocument();
+  });
+
   it('mostra a cobertura fiscal obrigatória quando requiredCoverage está presente', async () => {
     vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
       ...release,

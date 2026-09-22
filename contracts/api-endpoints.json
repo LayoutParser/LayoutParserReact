@@ -113,6 +113,24 @@
       "deliveredBy": "LayoutParserApi#238"
     },
     {
+      "method": "PUT",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/questions/:param/answer",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
       "method": "POST",
       "path": "/api/workspaces/:param/mapping-drafts/:param/compile",
       "owner": "LayoutParserApi",
