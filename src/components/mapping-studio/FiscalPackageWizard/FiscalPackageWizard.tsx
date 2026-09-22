@@ -8,9 +8,11 @@ import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
 import type { FiscalDocumentType, FiscalProfile } from '../../../types/workspace';
 import type {
   ExcelInventoryResult,
+  FiscalArtifactQualitySignals,
   FiscalMappingPackageDetail,
   FiscalProjectSummary,
   MappingPackageArtifactKind,
+  MappingPackageArtifactSummary,
   MappingPackageArtifactUpload,
 } from '../../../types/mappingPackage';
 import './FiscalPackageWizard.css';
@@ -52,6 +54,52 @@ const uploadableKinds: UploadableArtifactKind[] = [
   'spec',
   'xsd',
   'expectedXml',
+];
+
+/**
+ * Checks de qualidade semântica do artefato (Gap 3 — LayoutParserApi#424). Cada check só pode
+ * ser lido como "sem achado" se constar em `checksRun` — caso contrário é "não verificado
+ * ainda", nunca "ok" (ver memória do produto sobre `checksRun`).
+ */
+type QualityCheckKey =
+  'missingRequiredColumns' | 'skippedSheets' | 'emptySheets' | 'conflicts' | 'absentReferences';
+
+const qualityCheckLabels: Record<QualityCheckKey, string> = {
+  missingRequiredColumns: 'Colunas obrigatórias ausentes',
+  skippedSheets: 'Abas ignoradas',
+  emptySheets: 'Abas vazias',
+  conflicts: 'Conflitos entre abas',
+  absentReferences: 'Referências ausentes',
+};
+
+type QualityCheckState = 'ok' | 'problem' | 'unverified';
+
+const qualityCheckStateLabels: Record<QualityCheckState, string> = {
+  ok: 'Sem achados',
+  problem: 'Problema encontrado',
+  unverified: 'Não verificado ainda',
+};
+
+const describeConflict = (conflict: { field: string; reason: string }): string =>
+  `${conflict.field}: ${conflict.reason}`;
+
+const resolveQualityCheckState = (
+  signals: FiscalArtifactQualitySignals,
+  check: QualityCheckKey
+): { state: QualityCheckState; items: string[] } => {
+  const items = check === 'conflicts' ? signals.conflicts.map(describeConflict) : signals[check];
+  if (!signals.checksRun.includes(check)) {
+    return { state: 'unverified', items };
+  }
+  return { state: items.length > 0 ? 'problem' : 'ok', items };
+};
+
+const qualityCheckKeys: QualityCheckKey[] = [
+  'missingRequiredColumns',
+  'skippedSheets',
+  'emptySheets',
+  'conflicts',
+  'absentReferences',
 ];
 
 const buildFiscalContextFile = (profile: FiscalProfile): File => {
@@ -96,6 +144,48 @@ const buildInitialConfirmation = (data: ExcelInventoryResult): SheetConfirmation
  * artefato `spec` (`GET .../artifacts/{artifactId}/excel-inventory`) e criação de revisão
  * incremental (`POST .../mapping-packages/{packageId}/revisions`).
  */
+/**
+ * Sinais de qualidade semântica do artefato (Gap 3 — LayoutParserApi#424). Exibe cada check
+ * como "sem achados", "problema encontrado" ou "não verificado ainda" — nunca trata array vazio
+ * como garantia de "ok" quando o check não constar em `checksRun`.
+ */
+const FiscalArtifactQualityPanel = ({ artifact }: { artifact: MappingPackageArtifactSummary }) => {
+  if (artifact.qualityStatus === 'failed') {
+    return (
+      <p className="mapping-page-error" role="alert">
+        Não foi possível calcular os sinais de qualidade deste artefato
+        {artifact.qualityError ? `: ${artifact.qualityError}` : '.'}
+      </p>
+    );
+  }
+
+  if (!artifact.qualitySignals) {
+    return null;
+  }
+
+  const signals = artifact.qualitySignals;
+
+  return (
+    <div className="fiscal-package-quality-signals">
+      <p>Sinais de qualidade</p>
+      <ul>
+        {qualityCheckKeys.map(check => {
+          const { state, items } = resolveQualityCheckState(signals, check);
+          return (
+            <li key={check}>
+              <span className="mapping-status-badge" data-status={state}>
+                {qualityCheckStateLabels[state]}
+              </span>
+              <strong>{qualityCheckLabels[check]}</strong>
+              {state === 'problem' && items.length > 0 && <span>: {items.join(', ')}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};
+
 const FiscalPackageWizard = () => {
   const { activeWorkspaceId, status } = useWorkspaceStore();
   const [projects, setProjects] = useState<FiscalProjectSummary[]>([]);
@@ -538,6 +628,8 @@ const FiscalPackageWizard = () => {
                           </div>
                         </dl>
 
+                        <FiscalArtifactQualityPanel artifact={artifact} />
+
                         {artifact.kind === 'spec' && (
                           <div className="fiscal-package-inventory">
                             {!inventory && (
@@ -693,8 +785,9 @@ const FiscalPackageWizard = () => {
             <strong>O que esta tela não mostra ainda</strong>
             <ul>
               <li>
-                Qualidade/conflito/ausência semântica dos artefatos — a API só devolve hash, tamanho
-                e status de inspeção de antivírus por artefato.
+                Conflitos entre abas (<code>conflicts</code>) e referências ausentes (
+                <code>absentReferences</code>) — o contrato já existe, mas nenhum check da API os
+                popula ainda; por isso sempre aparecem como "não verificado ainda".
               </li>
             </ul>
           </aside>
