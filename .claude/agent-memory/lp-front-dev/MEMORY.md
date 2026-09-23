@@ -46,6 +46,14 @@
 - [Catálogo de mapping releases conectado](project_mapping_release_catalog_wired_2026_09_07.md) —
   #198 desbloqueado por LayoutParserApi#307; `listReleases` + `MappingReleaseCatalog` na
   entrada do Mapping Studio.
+- [Drift fiscal de 2026-09-15](project_fiscal_contract_drift_2026_09_15.md) — perfil fiscal,
+  edição manual de artefato, diff por ruleId e diff A×B: só types+services, sem UI, shapes
+  de resolvedXsd/diff A×B não confirmados via MCP.
+- [UI do Mapping Studio fiscal](project_fiscal_mapping_studio_ui_2026_09_15.md) — #198/#226/#228
+  implementados em feat/fiscal-mapping-studio-ui; sem testes novos e sem validação visual ainda.
+- [Governança pós-edição manual (#229)](project_manual_edit_derived_release_governance_2026_09_15.md) —
+  URL não seguia a release derivada (bug real, corrigido); check de `engine==='sysmiddle'` no
+  editor manual é código morto (tipo `MappingAuthoringEngine` exclui sysmiddle, UI já bloqueia).
 
 - [Dependabot e peers desalinhados](feedback_dependabot_peer_bump_gaps.md) — bump de um pacote
   sem o peer correspondente quebra `npm ci` só no próximo install limpo; checar em cadeia.
@@ -56,6 +64,17 @@
   estado só local (`useFieldCorrectionStore`); meu `FieldCorrectionReport` tem schema
   DIFERENTE do de `fieldCorrectionCuration.ts` (#244) — reconciliar quando a API expuser
   POST de criação real.
+
+- [Execução de suíte de testes versionada (#204/#423)](project_test_suite_execution_story204_2026_09_21.md) —
+  Test Lab por suíte SÍNCRONO na API; shape de `fixtureResults` não confirmado, tratado como
+  `raw: unknown`.
+- [TCL determinístico e resposta a perguntas abertas](project_mapping_studio_tcl_deterministic_and_open_question_answers_2026_09_21.md) —
+  #199 gaps a1/a2: aviso de TCL não-determinístico removido, novo PUT .../questions/{i}/answer.
+- [Worktree Windows/WSL](feedback_windows_node_worktree_path_constraint.md) — nunca crie
+  `git worktree` em `/tmp`; npm/tsc só rodam sob `/mnt/c/...` neste ambiente.
+- [Painel de regra sob demanda na árvore Connect-Us](project_mapping_studio_rule_detail_panel_2026_09_16.md) —
+  #267 UX: "Lista de regras (detalhe)" sempre-visível virou botão "Ver regra" na toolbar +
+  Modal, cruzando ruleId entre layout-tree.rules[] e explanation.rules[].
 
 Regras duráveis: HTTP só em `services/`; tipos em `src/types`; sem `any` novo; preserve
 `X-Correlation-ID`; payload TXT/XML não vai para logs/cache; produção nunca usa API absoluta.

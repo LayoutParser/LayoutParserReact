@@ -8,8 +8,10 @@ import { mappingReleaseService } from '../../services/api/mappingReleaseService'
 import { WorkspaceRequestError, workspaceService } from '../../services/api/workspaceService';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import type {
+  MappingAuthoringEngine,
   MappingDraft,
   MappingDraftRule,
+  MappingDraftSummary,
   MappingSuggestionJob,
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
@@ -156,6 +158,143 @@ const MappingReleaseCatalog = ({ workspaceId }: { workspaceId: string }) => {
   );
 };
 
+const draftPageSize = 20;
+
+/**
+ * Catálogo de drafts TCL/XSLT do workspace (issue #198, parte 1). Fica como seção própria na
+ * entrada do Mapping Studio, ao lado do catálogo de releases — draft e release são conceitos
+ * distintos (draft não tem status de governança). Clicar num item navega para a mesma rota de
+ * revisão de draft já usada pelo catálogo de releases (`/workspace/mapping-studio/:draftId/draft`).
+ */
+const MappingDraftCatalog = ({ workspaceId }: { workspaceId: string }) => {
+  const [drafts, setDrafts] = useState<MappingDraftSummary[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [engineFilter, setEngineFilter] = useState<MappingAuthoringEngine | ''>('');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState<string | null>(null);
+  const requestKey = `${workspaceId}:${page}:${engineFilter}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  if (requestKey !== loadedKey && status !== 'loading') {
+    setStatus('loading');
+  }
+
+  useEffect(() => {
+    let disposed = false;
+    void mappingDraftService
+      .listDrafts(workspaceId, page, draftPageSize, engineFilter || undefined)
+      .then(response => {
+        if (disposed) return;
+        setDrafts(response.items);
+        setTotalCount(response.totalCount);
+        setStatus('ready');
+        setLoadedKey(requestKey);
+      })
+      .catch(loadError => {
+        if (disposed) return;
+        setDrafts([]);
+        setStatus('error');
+        setLoadedKey(requestKey);
+        setError(
+          loadError instanceof Error ? loadError.message : 'Não foi possível listar os drafts.'
+        );
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [workspaceId, page, engineFilter, requestKey]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / draftPageSize));
+
+  return (
+    <section className="mapping-studio-section" aria-labelledby="mapping-draft-catalog-title">
+      <div className="mapping-section-heading">
+        <div>
+          <p className="mapping-kicker">Catálogo do workspace</p>
+          <h2 id="mapping-draft-catalog-title">Drafts em revisão</h2>
+        </div>
+        <label>
+          Motor
+          <select
+            value={engineFilter}
+            onChange={event => {
+              setPage(1);
+              setEngineFilter(event.target.value as MappingAuthoringEngine | '');
+            }}
+          >
+            <option value="">Todos</option>
+            <option value="tcl">TCL</option>
+            <option value="xslt">XSLT</option>
+          </select>
+        </label>
+      </div>
+
+      {status === 'loading' && (
+        <div aria-busy="true" aria-live="polite">
+          <span className="mapping-loader" aria-hidden="true" />
+          <p>Carregando drafts do workspace…</p>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div role="alert">
+          <p className="mapping-kicker">Catálogo indisponível</p>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {status === 'ready' && drafts.length === 0 && (
+        <div className="mapping-empty-state">
+          <h3>Nenhum draft ainda</h3>
+          <p>Crie um draft a partir de um pacote de mapeamento para que ele apareça aqui.</p>
+        </div>
+      )}
+
+      {status === 'ready' && drafts.length > 0 && (
+        <>
+          <ul className="mapping-review-list">
+            {drafts.map(draft => (
+              <li key={draft.draftId}>
+                <Link to={`/workspace/mapping-studio/${encodeURIComponent(draft.draftId)}/draft`}>
+                  <strong>{draft.engine.toUpperCase()}</strong> · {draft.draftId}
+                  <span> — {draft.rulesCount} regra(s)</span>
+                  {draft.fiscalProfile && (
+                    <span> · {draft.fiscalProfile.documentType.toUpperCase()}</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {totalPages > 1 && (
+            <div className="mapping-rule-actions">
+              <button
+                type="button"
+                className="mapping-button"
+                disabled={page <= 1}
+                onClick={() => setPage(current => Math.max(1, current - 1))}
+              >
+                Anterior
+              </button>
+              <span>
+                Página {page} de {totalPages}
+              </span>
+              <button
+                type="button"
+                className="mapping-button"
+                disabled={page >= totalPages}
+                onClick={() => setPage(current => Math.min(totalPages, current + 1))}
+              >
+                Próxima
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+};
+
 const MappingStudioEntry = () => {
   const navigate = useNavigate();
   const { activeWorkspaceId } = useWorkspaceStore();
@@ -211,7 +350,13 @@ const MappingStudioEntry = () => {
         <Link to="/workspace">Voltar ao workspace</Link>
       </section>
       {activeWorkspaceId && (
-        <MappingReleaseCatalog key={activeWorkspaceId} workspaceId={activeWorkspaceId} />
+        <MappingReleaseCatalog
+          key={`releases:${activeWorkspaceId}`}
+          workspaceId={activeWorkspaceId}
+        />
+      )}
+      {activeWorkspaceId && (
+        <MappingDraftCatalog key={`drafts:${activeWorkspaceId}`} workspaceId={activeWorkspaceId} />
       )}
     </main>
   );

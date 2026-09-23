@@ -5,9 +5,11 @@ import type {
   MappingAuthoringEngine,
   MappingDraft,
   MappingDraftEvidence,
+  MappingDraftListResponse,
   MappingDraftRule,
   MappingDraftRuleQuestionAnswer,
   MappingDraftRuleStatus,
+  MappingDraftSummary,
   MappingSuggestionJob,
   MappingSuggestionJobStatus,
   SetFiscalProfileInput,
@@ -86,6 +88,10 @@ function isStringArray(value: unknown): value is string[] {
 
 function isValidDate(value: unknown): value is string {
   return isNonEmptyString(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 function resourceSegment(value: string, label: string): string {
@@ -271,6 +277,57 @@ function parseDraft(value: unknown): MappingDraft {
   };
 }
 
+/**
+ * Item do catálogo de drafts (issue #198, parte 1) — GET .../mapping-drafts. Confirmado por
+ * @lp-contract-qa em 2026-09-22 (LayoutParserApi#416/PR#420): sem `layoutGuid`/`status`/
+ * `updatedAt` no item.
+ */
+function parseDraftSummary(value: unknown): MappingDraftSummary {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.workspaceId) ||
+    !isNonEmptyString(value.packageId) ||
+    !isNonEmptyString(value.revisionId) ||
+    !isNonEmptyString(value.engine) ||
+    !authoringEngines.has(value.engine as MappingAuthoringEngine) ||
+    !isValidDate(value.createdAt) ||
+    !isNonNegativeInteger(value.rulesCount)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    draftId: value.draftId,
+    workspaceId: value.workspaceId,
+    packageId: value.packageId,
+    revisionId: value.revisionId,
+    engine: value.engine as MappingAuthoringEngine,
+    createdAt: value.createdAt,
+    rulesCount: value.rulesCount,
+    fiscalProfile: parseNullableFiscalProfile(value.fiscalProfile),
+  };
+}
+
+function parseDraftListResponse(value: unknown): MappingDraftListResponse {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !isNonNegativeInteger(value.page) ||
+    !isNonNegativeInteger(value.pageSize) ||
+    !isNonNegativeInteger(value.totalCount)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    items: value.items.map(parseDraftSummary),
+    page: value.page,
+    pageSize: value.pageSize,
+    totalCount: value.totalCount,
+  };
+}
+
 function parseJob(value: unknown): MappingSuggestionJob {
   if (
     !isRecord(value) ||
@@ -361,6 +418,41 @@ function mapRequestError(error: unknown): never {
 }
 
 export const mappingDraftService = {
+  /**
+   * Lista drafts TCL/XSLT do workspace (issue #198, parte 1) —
+   * GET /api/workspaces/{workspaceId}/mapping-drafts. Contrato confirmado por @lp-contract-qa
+   * em 2026-09-22 (LayoutParserApi#416/PR#420), sem drift contra origin/develop.
+   */
+  async listDrafts(
+    workspaceId: string,
+    page = 1,
+    pageSize = 20,
+    engine?: MappingAuthoringEngine
+  ): Promise<MappingDraftListResponse> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    if (!Number.isInteger(page) || page < 1) {
+      throw new MappingDraftRequestError('invalid_input', '"page" deve ser >= 1.');
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      throw new MappingDraftRequestError('invalid_input', '"pageSize" deve estar entre 1 e 100.');
+    }
+    if (engine !== undefined && !authoringEngines.has(engine)) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        'O filtro de engine só aceita TCL ou XSLT.'
+      );
+    }
+
+    try {
+      const response = await apiClient.get<unknown>(`/api/workspaces/${workspace}/mapping-drafts`, {
+        params: { page, pageSize, ...(engine ? { engine } : {}) },
+      });
+      return parseDraftListResponse(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
   async createDraft(input: CreateMappingDraftInput): Promise<MappingDraft> {
     const workspace = resourceSegment(input.workspaceId, 'Workspace');
     const packageId = resourceSegment(input.packageId, 'Pacote');
