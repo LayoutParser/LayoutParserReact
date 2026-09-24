@@ -6,10 +6,14 @@ import type {
   MappingCompileJob,
   MappingRelease,
   MappingReleaseArtifact,
+  MappingTestRunDivergence,
   MappingTestRunJob,
 } from '../../types/mappingRelease';
 import type { WorkspaceRole } from '../../types/workspace';
+import MappingArtifactDiffView from './MappingArtifactDiffView/MappingArtifactDiffView';
+import MappingArtifactManualEditor from './MappingArtifactManualEditor';
 import MappingGovernanceReadiness from './MappingGovernanceReadiness';
+import MappingTestSuitePanel from './MappingTestSuitePanel';
 
 interface MappingTestLabPanelProps {
   workspaceId: string;
@@ -20,6 +24,10 @@ interface MappingTestLabPanelProps {
 }
 
 const activeStatuses = new Set(['queued', 'running']);
+// Severidades bloqueantes retornadas pela API em `compileDiagnostics`. Não há endpoint de
+// validação sintática/estática dedicado (confirmado com a API): a Task #227 reordena o uso do
+// diagnóstico já existente para atuar como validação PRÉVIA à execução, em vez de só pós-compilação.
+const blockingDiagnosticSeverities = new Set(['error', 'fatal']);
 const testableReleaseStatuses = new Set<MappingRelease['status']>([
   'draft_compiled',
   'test_passed',
@@ -36,6 +44,33 @@ const releaseStatusLabels: Record<MappingRelease['status'], string> = {
   deprecated: 'Descontinuada',
   archived: 'Arquivada',
 };
+
+const isBlockingDiagnostic = (severity: string) =>
+  blockingDiagnosticSeverities.has(severity.toLowerCase());
+
+const DivergenceItem = ({ divergence }: { divergence: MappingTestRunDivergence }) => (
+  <article>
+    <strong>
+      {divergence.kind} em {divergence.xpath}
+    </strong>
+    <p>
+      Esperado: <code>{divergence.expected ?? 'ausente'}</code>
+    </p>
+    <p>
+      Atual: <code>{divergence.actual ?? 'ausente'}</code>
+    </p>
+    <p>
+      Regra: {divergence.ruleId ?? 'não resolvida'} · Origem:{' '}
+      {divergence.sourceRefs?.join(', ') || 'não resolvida'}
+    </p>
+  </article>
+);
+
+// Otimista: a API hoje só checa membership no workspace, sem gate de papel dedicado à edição
+// manual de artefato (issue #226). Não é uma garantia de segurança — ver
+// MappingArtifactManualEditor.
+const canEditArtifactManually = (role: WorkspaceRole) =>
+  (['mapper', 'fiscal_admin', 'owner'] as WorkspaceRole[]).includes(role);
 
 const downloadArtifact = (artifact: MappingReleaseArtifact, releaseId: string) => {
   const extension = artifact.kind.toLowerCase() === 'tcl' ? 'tcl' : 'xslt';
@@ -69,6 +104,14 @@ const MappingTestLabPanel = ({
   const [expectedXml, setExpectedXml] = useState('');
   const [xsdVersion, setXsdVersion] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [groupDivergencesByRule, setGroupDivergencesByRule] = useState(false);
+  const [diffState, setDiffState] = useState<{
+    kind: string;
+    baseline: MappingReleaseArtifact | null;
+    baselineSourceRuleIds: string[] | null;
+    loading: boolean;
+    error: string | null;
+  } | null>(null);
   const release = releaseResult?.releaseId === releaseIdFromUrl ? releaseResult.value : null;
 
   const acceptedRules = draft.rules.filter(rule =>
@@ -187,6 +230,14 @@ const MappingTestLabPanel = ({
 
   const startTestRun = async () => {
     if (!release) return;
+    // Validação estática pré-execução (Task #227): bloqueia o disparo do Test Lab antes de
+    // chamar o pipeline, reaproveitando `compileDiagnostics` em vez de só validar pós-compilação.
+    if (release.compileDiagnostics.some(diagnostic => isBlockingDiagnostic(diagnostic.severity))) {
+      setError(
+        'Execução bloqueada: a release tem diagnóstico de erro na compilação. Corrija o mapeamento e recompile antes de rodar o Test Lab.'
+      );
+      return;
+    }
     setError(null);
     try {
       const nextJob = await mappingReleaseService.createTestRun({
@@ -209,8 +260,63 @@ const MappingTestLabPanel = ({
     }
   };
 
+  const toggleDiff = (artifact: MappingReleaseArtifact) => {
+    if (diffState?.kind === artifact.kind) {
+      setDiffState(null);
+      return;
+    }
+
+    const previousReleaseId = release?.previousPublishedReleaseId ?? null;
+    if (!previousReleaseId) {
+      setDiffState({
+        kind: artifact.kind,
+        baseline: null,
+        baselineSourceRuleIds: null,
+        loading: false,
+        error: null,
+      });
+      return;
+    }
+
+    setDiffState({
+      kind: artifact.kind,
+      baseline: null,
+      baselineSourceRuleIds: null,
+      loading: true,
+      error: null,
+    });
+    void mappingReleaseService
+      .getRelease(workspaceId, draft.draftId, previousReleaseId)
+      .then(previousRelease => {
+        const baseline =
+          previousRelease.artifacts.find(item => item.kind === artifact.kind) ?? null;
+        setDiffState({
+          kind: artifact.kind,
+          baseline,
+          baselineSourceRuleIds: previousRelease.sourceRuleIds,
+          loading: false,
+          error: null,
+        });
+      })
+      .catch(diffError => {
+        setDiffState({
+          kind: artifact.kind,
+          baseline: null,
+          baselineSourceRuleIds: null,
+          loading: false,
+          error:
+            diffError instanceof Error
+              ? diffError.message
+              : 'Não foi possível carregar a release anterior para comparação.',
+        });
+      });
+  };
+
   const compileActive = Boolean(compileJob && activeStatuses.has(compileJob.status));
   const testActive = Boolean(testJob && activeStatuses.has(testJob.status));
+  const hasBlockingDiagnostics = Boolean(
+    release?.compileDiagnostics.some(diagnostic => isBlockingDiagnostic(diagnostic.severity))
+  );
 
   return (
     <section className="mapping-studio-section" aria-labelledby="mapping-test-lab-title">
@@ -295,9 +401,30 @@ const MappingTestLabPanel = ({
             </div>
           </dl>
 
+          {release.requiredCoverage && (
+            <p className="mapping-job-status" role="status">
+              Cobertura fiscal obrigatória: {release.requiredCoverage.percent.toFixed(1)}%
+              {release.requiredCoverage.uncovered.length > 0
+                ? ` · não cobertos: ${release.requiredCoverage.uncovered.join(', ')}`
+                : ' · todos os campos obrigatórios cobertos'}
+            </p>
+          )}
+          {!release.requiredCoverage && release.fiscalProfile === null && (
+            <p className="mapping-limitations">
+              Esta release não tem perfil fiscal — sem base para calcular cobertura obrigatória.
+            </p>
+          )}
+
           {release.compileDiagnostics.length > 0 && (
-            <aside className="mapping-limitations">
-              <strong>Diagnósticos de compilação</strong>
+            <aside
+              className="mapping-limitations"
+              role={hasBlockingDiagnostics ? 'alert' : undefined}
+            >
+              <strong>
+                {hasBlockingDiagnostics
+                  ? 'Diagnósticos de compilação — execução bloqueada'
+                  : 'Diagnósticos de compilação'}
+              </strong>
               <ul>
                 {release.compileDiagnostics.map(diagnostic => (
                   <li key={`${diagnostic.ruleId}-${diagnostic.message}`}>
@@ -316,33 +443,73 @@ const MappingTestLabPanel = ({
                     <strong>{artifact.kind.toUpperCase()}</strong>
                     <small>Hash {artifact.hash}</small>
                   </div>
-                  <button
-                    type="button"
-                    className="mapping-button"
-                    onClick={() => downloadArtifact(artifact, release.releaseId)}
-                  >
-                    Baixar artefato {artifact.kind.toUpperCase()}
-                  </button>
+                  <div className="mapping-artifact-actions">
+                    <button
+                      type="button"
+                      className="mapping-button"
+                      onClick={() => toggleDiff(artifact)}
+                    >
+                      {diffState?.kind === artifact.kind ? 'Ocultar diff' : 'Ver diff'}
+                    </button>
+                    <button
+                      type="button"
+                      className="mapping-button"
+                      onClick={() => downloadArtifact(artifact, release.releaseId)}
+                    >
+                      Baixar artefato {artifact.kind.toUpperCase()}
+                    </button>
+                    <MappingArtifactManualEditor
+                      workspaceId={workspaceId}
+                      draftId={draft.draftId}
+                      engine={release.engine}
+                      artifact={artifact}
+                      canEdit={canEditArtifactManually(workspaceRole)}
+                      onReleaseCreated={nextRelease => {
+                        // A edição manual cria uma release NOVA e derivada (issue #226/#229) — sem
+                        // atualizar o releaseId na URL, a tela continuaria observando o job/estado
+                        // da release antiga e esconderia que uma nova regressão é exigida.
+                        setReleaseResult({ releaseId: nextRelease.releaseId, value: nextRelease });
+                        setCompileJob(null);
+                        setTestJob(null);
+                        const nextSearch = new URLSearchParams(searchParams);
+                        nextSearch.set('releaseId', nextRelease.releaseId);
+                        setSearchParams(nextSearch, { replace: true });
+                      }}
+                    />
+                  </div>
                 </header>
+                {release.artifactSource === 'manual_edit' && (
+                  <p className="mapping-limitations" role="note">
+                    Artefato editado manualmente
+                    {release.derivedFromReleaseId
+                      ? ` a partir da release ${release.derivedFromReleaseId}`
+                      : ''}
+                    . Justificativa: {release.manualEditReason ?? 'não informada'}.
+                  </p>
+                )}
                 <details>
                   <summary>Visualizar código gerado</summary>
                   <pre>
                     <code>{artifact.content}</code>
                   </pre>
                 </details>
+                {diffState?.kind === artifact.kind && (
+                  <MappingArtifactDiffView
+                    baseline={diffState.baseline}
+                    current={artifact}
+                    baselineLabel="Última release publicada"
+                    currentLabel={`Release ${release.releaseId}`}
+                    loading={diffState.loading}
+                    error={diffState.error}
+                    baselineSourceRuleIds={diffState.baselineSourceRuleIds}
+                    currentSourceRuleIds={release.sourceRuleIds}
+                  />
+                )}
               </article>
             ))}
           </div>
 
-          {release.engine === 'tcl' && (
-            <aside className="mapping-limitations" role="note">
-              O Slice 5 compila TCL, mas a API ainda não possui runner determinístico para
-              executá-lo. A release pode ser inspecionada, porém o gate de Test Lab não pode ser
-              aprovado.
-            </aside>
-          )}
-
-          {release.engine === 'xslt' &&
+          {(release.engine === 'xslt' || release.engine === 'tcl') &&
             executeEnabled &&
             testableReleaseStatuses.has(release.status) && (
               <form
@@ -354,8 +521,10 @@ const MappingTestLabPanel = ({
               >
                 <h3>Executar fixture individual</h3>
                 <p>
-                  A API aplica o XSLT, valida o XSD quando reconhecido e compara o XML canônico com
-                  o gabarito.
+                  A API aplica o artefato {release.engine.toUpperCase()}, valida o XSD quando
+                  reconhecido e compara o XML canônico com o gabarito. TCL é um dialeto declarativo
+                  interno da API — não a linguagem Tcl — e roda no mesmo pipeline determinístico de
+                  diff/XSD/cobertura/proveniência usado pelo XSLT.
                 </p>
                 <label>
                   XML de entrada
@@ -382,7 +551,7 @@ const MappingTestLabPanel = ({
                 <button
                   type="submit"
                   className="mapping-button mapping-button--primary"
-                  disabled={testActive}
+                  disabled={testActive || hasBlockingDiagnostics}
                 >
                   {testActive ? 'Executando gates…' : 'Executar Test Lab'}
                 </button>
@@ -427,24 +596,62 @@ const MappingTestLabPanel = ({
                   ))}
                 </ul>
               )}
-              {release.testRunSummary.divergences.map((divergence, index) => (
-                <article key={`${divergence.xpath}-${divergence.kind}-${index}`}>
-                  <strong>
-                    {divergence.kind} em {divergence.xpath}
-                  </strong>
-                  <p>
-                    Esperado: <code>{divergence.expected ?? 'ausente'}</code>
-                  </p>
-                  <p>
-                    Atual: <code>{divergence.actual ?? 'ausente'}</code>
-                  </p>
-                  <p>
-                    Regra: {divergence.ruleId ?? 'não resolvida'} · Origem:{' '}
-                    {divergence.sourceRefs?.join(', ') || 'não resolvida'}
-                  </p>
-                </article>
-              ))}
+
+              {release.testRunSummary.divergencesByRuleId ? (
+                <div>
+                  <button
+                    type="button"
+                    className="mapping-button"
+                    onClick={() => setGroupDivergencesByRule(current => !current)}
+                  >
+                    {groupDivergencesByRule
+                      ? 'Ver lista plana de divergências'
+                      : 'Agrupar divergências por regra'}
+                  </button>
+                  {groupDivergencesByRule ? (
+                    <div className="mapping-review-list">
+                      {Object.entries(release.testRunSummary.divergencesByRuleId).map(
+                        ([ruleId, ruleDivergences]) => (
+                          <details key={ruleId} className="mapping-technical-details">
+                            <summary>
+                              Regra {ruleId} · {ruleDivergences.length} divergência(s)
+                            </summary>
+                            {ruleDivergences.map((divergence, index) => (
+                              <DivergenceItem
+                                key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                                divergence={divergence}
+                              />
+                            ))}
+                          </details>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    release.testRunSummary.divergences.map((divergence, index) => (
+                      <DivergenceItem
+                        key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                        divergence={divergence}
+                      />
+                    ))
+                  )}
+                </div>
+              ) : (
+                release.testRunSummary.divergences.map((divergence, index) => (
+                  <DivergenceItem
+                    key={`${divergence.xpath}-${divergence.kind}-${index}`}
+                    divergence={divergence}
+                  />
+                ))
+              )}
             </div>
+          )}
+
+          {release.engine === 'xslt' && executeEnabled && (
+            <MappingTestSuitePanel
+              workspaceId={workspaceId}
+              draftId={draft.draftId}
+              releaseId={release.releaseId}
+            />
           )}
 
           <MappingGovernanceReadiness

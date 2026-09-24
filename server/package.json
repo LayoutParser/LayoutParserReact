@@ -26,16 +26,16 @@
     "@fastify/rate-limit": "11.2.0",
     "@fastify/secure-session": "8.3.0",
     "dotenv": "17.4.2",
-    "fastify": "5.11.3",
+    "fastify": "5.12.1",
     "openid-client": "6.8.5",
     "undici": "7.29.0"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "4.1.11",
     "tsx": "4.23.12",
     "typescript": "7.0.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "allowScripts": {
     "esbuild@0.28.2": true

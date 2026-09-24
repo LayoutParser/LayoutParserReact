@@ -461,6 +461,18 @@
   line-height: var(--line-height-base);
 }
 
+.layout-parser-page .info-message {
+  padding: var(--spacing-sm) var(--spacing-md);
+  overflow-wrap: anywhere;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
 .l-bottom-right {
   grid-row: 2;
   grid-column: 2;

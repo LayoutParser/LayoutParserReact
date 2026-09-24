@@ -1,0 +1,121 @@
+.field-divergence-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.field-divergence-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-md);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.field-divergence-readonly-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-divergence-readonly-row dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+.field-divergence-readonly-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text-strong);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+
+.field-divergence-candidate-id {
+  color: var(--color-text-muted);
+}
+
+.field-divergence-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.field-divergence-field label {
+  color: var(--color-text-strong);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.field-divergence-field textarea {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  resize: vertical;
+}
+
+.field-divergence-field textarea:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.field-divergence-field textarea[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.field-divergence-error {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--font-size-xs);
+}
+
+.field-divergence-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.field-divergence-cancel-btn,
+.field-divergence-submit-btn {
+  min-height: var(--control-height);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.field-divergence-cancel-btn {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.field-divergence-cancel-btn:hover {
+  background: var(--color-canvas);
+}
+
+.field-divergence-submit-btn {
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+}
+
+.field-divergence-submit-btn:hover {
+  filter: brightness(0.95);
+}
+
+.field-divergence-cancel-btn:focus-visible,
+.field-divergence-submit-btn:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}

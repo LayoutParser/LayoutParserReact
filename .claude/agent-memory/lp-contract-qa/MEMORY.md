@@ -16,6 +16,9 @@ Memoria duravel do portao de contratos do LayoutParser React.
   entregue, normalização tolerante no front e drift de serialização ainda aberto na API.
 - [Detecção automática de layout](project_auto_layout_detection_2026_08_29.md) — distinção entre
   família e layout, colisões MQSeries/IDoc e contrato `unique|ambiguous|not_found` implementado.
+- [Drift curadoria de correção de campo](project_field_correction_curation_drift_2026_09_10.md) —
+  Story #244: nodePath/originalValue/correctedValue/comment/reportedBy/reportedAt divergem do
+  DTO real (issue #346); review() também tipado errado.
 
 ## Fonte local atual
 

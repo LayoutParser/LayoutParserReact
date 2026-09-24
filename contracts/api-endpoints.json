@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "sourceOfTruth": "LayoutParserApi",
   "endpoints": [
     { "method": "GET", "path": "/api/session", "owner": "LayoutParserNodeGateway" },
@@ -43,7 +43,26 @@
       "method": "GET",
       "path": "/api/workspaces/:param/mapping-packages/:param",
       "owner": "LayoutParserApi",
-      "deliveredBy": "LayoutParserApi#236"
+      "deliveredBy": "LayoutParserApi#236",
+      "note": "Campos aditivos qualityStatus/qualityError/qualitySignals por artefato desde LayoutParserApi#424 (PR#468)."
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/projects",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-packages/:param/revisions",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-packages/:param/artifacts/:param/excel-inventory",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#309"
     },
     {
       "method": "GET",
@@ -63,6 +82,12 @@
       "path": "/api/workspaces/:param/mapping-packages/:param/drafts",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#416"
     },
     {
       "method": "GET",
@@ -93,6 +118,24 @@
       "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#238"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/questions/:param/answer",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/rules/:param/question-answers",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#422"
     },
     {
       "method": "POST",
@@ -126,6 +169,54 @@
     },
     {
       "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/fixtures",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/run",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/test-suites/:param/runs",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#423"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-releases",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#307"
+    },
+    {
+      "method": "POST",
       "path": "/api/workspaces/:param/mapping-releases/:param/approve",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#248"
@@ -141,6 +232,76 @@
       "path": "/api/workspaces/:param/mapping-releases/:param/rollback",
       "owner": "LayoutParserApi",
       "deliveredBy": "LayoutParserApi#248"
+    },
+    {
+      "method": "POST",
+      "path": "/api/layouts/:param/generate-sample",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#355/#356"
+    },
+    {
+      "method": "GET",
+      "path": "/api/transformation/field-correction/pending",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#345"
+    },
+    {
+      "method": "POST",
+      "path": "/api/transformation/field-correction/:param/review",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#345"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/fiscal-profile",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/artifacts/:param",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mapping-drafts/:param/releases/diff",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi (2026-09-15, shape não confirmado via MCP)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/mappings/:param/layout-tree",
+      "owner": "LayoutParserApi",
+      "deliveredBy": "LayoutParserApi#425/PR #427"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/:param/analyses/:param/files/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspaces/:param/analyses/:param",
+      "owner": "LayoutParserApi",
+      "availability": "proposed",
+      "trackingIssue": "LayoutParserApi#366"
     }
   ]
 }

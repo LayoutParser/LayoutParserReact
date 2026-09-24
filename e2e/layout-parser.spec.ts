@@ -118,6 +118,59 @@ const mockMappingStudioApis = async (page: Page) => {
     })
   );
 
+  await page.route('**/api/workspaces/*/mappings/*/layout-tree', route =>
+    route.fulfill({
+      json: {
+        source: {
+          roots: [
+            {
+              elementGuid: 'src-linha004',
+              name: 'LINHA004',
+              kind: 'element',
+              cardinality: { min: 1, max: 1 },
+              children: [
+                {
+                  elementGuid: 'src-cnpj',
+                  name: 'CNPJ',
+                  kind: 'attribute',
+                  cardinality: { min: 1, max: 1 },
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        target: {
+          roots: [
+            {
+              elementGuid: 'tgt-emit',
+              name: 'emit',
+              kind: 'group',
+              cardinality: { min: 1, max: 1 },
+              children: [
+                {
+                  elementGuid: 'tgt-cnpj',
+                  name: 'CNPJ',
+                  kind: 'element',
+                  cardinality: { min: 1, max: 1 },
+                  children: [],
+                },
+              ],
+            },
+          ],
+        },
+        rules: [
+          {
+            ruleId: mappingRuleId,
+            sourceElementGuid: 'src-cnpj',
+            targetElementGuid: 'tgt-cnpj',
+          },
+        ],
+        limitations: [],
+      },
+    })
+  );
+
   await page.route('**/api/workspaces/*/mapping-drafts/*', async route => {
     const requestUrl = new URL(route.request().url());
     if (requestUrl.pathname.includes('/compile/') || requestUrl.pathname.includes('/releases/')) {
@@ -530,7 +583,14 @@ test('compila o snapshot revisado e executa uma fixture no Fiscal Test Lab', asy
   await page.goto(`/workspace/mapping-studio/${mappingDraftId}/draft`);
 
   await expect(page.getByRole('heading', { name: 'Mapping fiscal de homologação.' })).toBeVisible();
-  await expect(page.getByText('Copia o CNPJ do emitente para a NF-e.')).toBeVisible();
+
+  const sourceTree = page.getByRole('tree', { name: 'Árvore do layout de origem' });
+  await sourceTree.getByRole('treeitem', { name: 'CNPJ' }).click();
+  await page.getByRole('button', { name: 'Ver regra' }).click();
+  const ruleDetailDialog = page.getByRole('dialog', { name: /Detalhe da regra/ });
+  await expect(ruleDetailDialog.getByText('Copia o CNPJ do emitente para a NF-e.')).toBeVisible();
+  await ruleDetailDialog.getByRole('button', { name: 'Fechar janela' }).click();
+
   await page.getByRole('button', { name: 'Compilar snapshot' }).click();
 
   await expect(page.getByRole('heading', { name: 'Compilada, aguardando testes' })).toBeVisible();

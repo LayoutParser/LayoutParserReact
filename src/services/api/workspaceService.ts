@@ -5,6 +5,12 @@ import type {
   CursorPage,
   DocumentAnalysisSummary,
   FiscalWorkspaceSummary,
+  LayoutTreeCardinality,
+  LayoutTreeNode,
+  LayoutTreeNodeKind,
+  LayoutTreeResponse,
+  LayoutTreeRuleLink,
+  LayoutTreeSide,
   MappingEngine,
   MappingEngineCapabilities,
   MappingEvidenceReference,
@@ -38,6 +44,7 @@ const workspaceRoles = new Set([
   'viewer',
 ]);
 const mappingEngines = new Set<MappingEngine>(['tcl', 'xslt', 'sysmiddle']);
+const layoutTreeNodeKinds = new Set<LayoutTreeNodeKind>(['element', 'attribute', 'group']);
 const mappingSupportLevels = new Set<MappingSupportLevel>([
   'authoritative',
   'best_effort',
@@ -61,10 +68,21 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
 }
 
+function isNullableInteger(value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isSafeInteger(value));
+}
+
 function invalidExplanation(): WorkspaceRequestError {
   return new WorkspaceRequestError(
     'invalid_response',
     'A API devolveu uma explicação de mapping inválida.'
+  );
+}
+
+function invalidLayoutTree(): WorkspaceRequestError {
+  return new WorkspaceRequestError(
+    'invalid_response',
+    'A API devolveu uma árvore de layout inválida.'
   );
 }
 
@@ -105,17 +123,26 @@ function parseEvidence(value: unknown): MappingEvidenceReference {
 }
 
 function parseExplainedRule(value: unknown): MappingRuleExplanation {
+  if (!isRecord(value)) {
+    throw invalidExplanation();
+  }
+
+  // A API pode omitir totalmente a chave `condition`/`technicalDetail` quando não há valor
+  // (em vez de enviar `null` explícito). Tratamos ausência de chave como equivalente a `null`
+  // apenas para esses dois campos — os demais continuam exigindo o formato original.
+  const condition = value.condition ?? null;
+  const technicalDetail = value.technicalDetail ?? null;
+
   if (
-    !isRecord(value) ||
     !isNonEmptyString(value.ruleId) ||
     !isStringArray(value.sourceRefs) ||
     !isStringArray(value.targetRefs) ||
-    !isNullableString(value.condition) ||
+    !isNullableString(condition) ||
     !isStringArray(value.operations) ||
     !isNonEmptyString(value.cardinality) ||
     !Array.isArray(value.evidence) ||
     !isNonEmptyString(value.humanDescription) ||
-    !isNullableString(value.technicalDetail) ||
+    !isNullableString(technicalDetail) ||
     !isNonEmptyString(value.supportLevel) ||
     !mappingSupportLevels.has(value.supportLevel as MappingSupportLevel)
   ) {
@@ -126,12 +153,12 @@ function parseExplainedRule(value: unknown): MappingRuleExplanation {
     ruleId: value.ruleId,
     sourceRefs: value.sourceRefs,
     targetRefs: value.targetRefs,
-    condition: value.condition,
+    condition,
     operations: value.operations,
     cardinality: value.cardinality,
     evidence: value.evidence.map(parseEvidence),
     humanDescription: value.humanDescription,
-    technicalDetail: value.technicalDetail,
+    technicalDetail,
     supportLevel: value.supportLevel as MappingSupportLevel,
   };
 }
@@ -177,6 +204,80 @@ function parseMappingExplanation(value: unknown): MappingExplanation {
     description: value.description,
     limitations: value.limitations,
     opaqueRuleCount: value.opaqueRuleCount,
+  };
+}
+
+function parseLayoutTreeCardinality(value: unknown): LayoutTreeCardinality {
+  // A API pode omitir totalmente a chave `cardinality` em nós folha (elementos simples sem
+  // repetição declarada), em vez de enviar `{ min: null, max: null }` explícito — confirmado por
+  // captura de rede real de produção (964 de 1034 nós sem a chave). Ausência de chave equivale
+  // semanticamente a "sem cardinalidade informada". Quando a chave VEM presente, o conteúdo
+  // continua validado normalmente — valores inválidos permanecem erro real.
+  if (value === undefined) {
+    return { min: null, max: null };
+  }
+  if (!isRecord(value) || !isNullableInteger(value.min) || !isNullableInteger(value.max)) {
+    throw invalidLayoutTree();
+  }
+  return { min: value.min, max: value.max };
+}
+
+function parseLayoutTreeNode(value: unknown): LayoutTreeNode {
+  // A API devolve o identificador do nó como `elementGuid` (confirmado por captura de rede
+  // real de produção), não `guid`. Mantemos `guid` como nome da propriedade no tipo/domínio do
+  // front (ver comentário em `LayoutTreeNode`), mas a leitura do payload é `elementGuid`.
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.elementGuid) ||
+    !isNonEmptyString(value.name) ||
+    !isNonEmptyString(value.kind) ||
+    !layoutTreeNodeKinds.has(value.kind as LayoutTreeNodeKind) ||
+    !Array.isArray(value.children)
+  ) {
+    throw invalidLayoutTree();
+  }
+
+  return {
+    guid: value.elementGuid,
+    name: value.name,
+    kind: value.kind as LayoutTreeNodeKind,
+    cardinality: parseLayoutTreeCardinality(value.cardinality),
+    children: value.children.map(parseLayoutTreeNode),
+  };
+}
+
+function parseLayoutTreeSide(value: unknown): LayoutTreeSide {
+  if (!isRecord(value) || !Array.isArray(value.roots)) {
+    throw invalidLayoutTree();
+  }
+  return { roots: value.roots.map(parseLayoutTreeNode) };
+}
+
+function parseLayoutTreeRuleLink(value: unknown): LayoutTreeRuleLink {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.ruleId) ||
+    !isNonEmptyString(value.sourceElementGuid) ||
+    !isNonEmptyString(value.targetElementGuid)
+  ) {
+    throw invalidLayoutTree();
+  }
+  return {
+    ruleId: value.ruleId,
+    sourceElementGuid: value.sourceElementGuid,
+    targetElementGuid: value.targetElementGuid,
+  };
+}
+
+function parseLayoutTreeResponse(value: unknown): LayoutTreeResponse {
+  if (!isRecord(value) || !Array.isArray(value.rules) || !isStringArray(value.limitations)) {
+    throw invalidLayoutTree();
+  }
+  return {
+    source: parseLayoutTreeSide(value.source),
+    target: parseLayoutTreeSide(value.target),
+    rules: value.rules.map(parseLayoutTreeRuleLink),
+    limitations: value.limitations,
   };
 }
 
@@ -279,11 +380,34 @@ export const workspaceService = {
   ): Promise<CursorPage<DocumentAnalysisSummary>> {
     const workspace = resourceSegment(workspaceId, 'Workspace');
     const project = resourceSegment(projectId, 'Projeto');
-    const response = await apiClient.get<CursorPage<DocumentAnalysisSummary>>(
-      `/api/workspaces/${workspace}/projects/${project}/analyses`,
-      { params: filters }
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get<CursorPage<DocumentAnalysisSummary>>(
+        `/api/workspaces/${workspace}/projects/${project}/analyses`,
+        { params: filters }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          throw new WorkspaceRequestError(
+            'unauthorized',
+            'Sua sessão não permite acessar as análises deste projeto.'
+          );
+        }
+        if (!error.response || status === 503 || (status !== undefined && status >= 500)) {
+          throw new WorkspaceRequestError(
+            'unavailable',
+            'O histórico de análises está temporariamente indisponível.'
+          );
+        }
+      }
+
+      throw new WorkspaceRequestError(
+        'request_failed',
+        'Não foi possível carregar o histórico de análises deste projeto.'
+      );
+    }
   },
 
   async getMappingExplanation(
@@ -298,5 +422,46 @@ export const workspaceService = {
       `/api/workspaces/${workspace}/mappings/${mapping}/versions/${mappingVersion}/explanation`
     );
     return parseMappingExplanation(response.data);
+  },
+
+  /**
+   * Árvore dupla origem/destino com GUID estável por nó (issue #267,
+   * LayoutParserApi#425/PR #427). `rules[]` cobre hoje apenas o vínculo direto campo→campo —
+   * regras derivadas de DSL não aparecem aqui, o consumidor precisa contabilizá-las à parte.
+   */
+  async getMappingLayoutTree(workspaceId: string, mappingId: string): Promise<LayoutTreeResponse> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const mapping = resourceSegment(mappingId, 'Mapping');
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mappings/${mapping}/layout-tree`
+      );
+      return parseLayoutTreeResponse(response.data);
+    } catch (error) {
+      if (error instanceof WorkspaceRequestError) {
+        throw error;
+      }
+
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          throw new WorkspaceRequestError(
+            'unauthorized',
+            'Sua sessão não permite acessar a árvore deste mapping.'
+          );
+        }
+        if (!error.response || status === 503 || (status !== undefined && status >= 500)) {
+          throw new WorkspaceRequestError(
+            'unavailable',
+            'A árvore de layout está temporariamente indisponível.'
+          );
+        }
+      }
+
+      throw new WorkspaceRequestError(
+        'request_failed',
+        'Não foi possível carregar a árvore deste mapping.'
+      );
+    }
   },
 };

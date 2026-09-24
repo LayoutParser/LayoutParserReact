@@ -7,6 +7,7 @@ import type {
   MappingReleaseStatus,
 } from '../../types/mappingRelease';
 import type { WorkspaceRole } from '../../types/workspace';
+import { isMappingGovernanceActionAllowed } from '../../utils/mappingGovernanceGuards';
 
 interface MappingGovernanceReadinessProps {
   workspaceId: string;
@@ -106,6 +107,15 @@ const MappingGovernanceReadiness = ({
   const publicationAllowed = canPublish(workspaceRole);
 
   const runAction = async (action: GovernanceAction) => {
+    if (!isMappingGovernanceActionAllowed(release.status, action)) {
+      setSuccess(null);
+      setError(
+        release.status === 'published'
+          ? 'Esta release está publicada e é imutável; a única transição permitida é o rollback.'
+          : 'Esta ação não é válida para o status atual da release.'
+      );
+      return;
+    }
     setBusyAction(action);
     setError(null);
     setSuccess(null);
@@ -177,6 +187,20 @@ const MappingGovernanceReadiness = ({
           );
         })}
       </ol>
+
+      {release.artifactSource === 'manual_edit' &&
+        (release.status === 'draft_compiled' || release.status === 'test_failed') && (
+          <aside className="mapping-governance__notice" data-readiness="pending" role="note">
+            <strong>Esta release veio de uma edição manual do artefato.</strong>
+            <span>
+              {release.derivedFromReleaseId
+                ? `Derivada da release ${release.derivedFromReleaseId}; `
+                : ''}
+              ela não herda aprovação nem execução de gates. Rode o Fiscal Test Lab com sucesso
+              (status "{statusLabels.test_passed}") antes de poder aprovar ou publicar.
+            </span>
+          </aside>
+        )}
 
       <aside className="mapping-governance__notice" data-readiness={readiness} role="note">
         {release.status === 'test_failed' ? (

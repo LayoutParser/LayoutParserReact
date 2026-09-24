@@ -99,10 +99,21 @@ const WorkspacePage = () => {
             <Link to="/upload">Abrir processamento</Link>
           </article>
 
-          <article className="workspace-action-card">
-            <span className="workspace-action-card__status">Próximo slice</span>
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
             <h3>Histórico de análises</h3>
-            <p>As análises persistidas aparecerão aqui após o contrato de projetos e retenção.</p>
+            <p>Consulte as análises fiscais persistidas de um projeto, com paginação por cursor.</p>
+            <Link to="/workspace/analyses">Abrir histórico</Link>
+          </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
+            <h3>Arquivo de análises</h3>
+            <p>
+              Reveja os arquivos que você anexou junto com o layout ao processar um documento.
+              Retenção de 90 dias; diferente do histórico de análises fiscais acima.
+            </p>
+            <Link to="/workspace/analysis-archive">Abrir arquivo</Link>
           </article>
 
           <article className="workspace-action-card workspace-action-card--available">
@@ -112,6 +123,26 @@ const WorkspacePage = () => {
               Revise propostas TCL/XSLT e explique Sysmiddle somente leitura, sem risco de autoria.
             </p>
             <Link to="/workspace/mapping-studio">Abrir Mapping Studio</Link>
+          </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
+            <h3>Pacote de especificação fiscal</h3>
+            <p>
+              Monte a primeira revisão com amostra, layout, planilha e XSD. Projeto é informado
+              manualmente até a API oferecer catálogo de projetos.
+            </p>
+            <Link to="/workspace/fiscal-package">Enviar pacote</Link>
+          </article>
+
+          <article className="workspace-action-card workspace-action-card--available">
+            <span className="workspace-action-card__status">Disponível</span>
+            <h3>Curadoria de correções de campo</h3>
+            <p>
+              Revise divergências de campo reportadas pelo analista fiscal e decida aceitar ou
+              rejeitar antes do dataset de treino de IA.
+            </p>
+            <Link to="/workspace/field-correction-curation">Abrir curadoria</Link>
           </article>
         </div>
       </section>

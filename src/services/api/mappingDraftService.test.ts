@@ -8,6 +8,7 @@ vi.mock('../api', () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
 }));
@@ -37,6 +38,8 @@ const draft = {
   engine: 'tcl',
   createdAt: '2026-08-31T19:00:00Z',
   rules: [rule],
+  fiscalProfile: null,
+  resolvedXsd: null,
 };
 
 describe('mappingDraftService', () => {
@@ -189,4 +192,252 @@ describe('mappingDraftService', () => {
       });
     }
   );
+
+  describe('setFiscalProfile (issue #198)', () => {
+    const profile = {
+      documentType: 'nfe' as const,
+      schemaVersion: '4.00',
+      operation: 'saida',
+      jurisdiction: 'SP',
+    };
+
+    it('grava o perfil fiscal e devolve o draft com fiscalProfile/resolvedXsd', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({
+        data: {
+          ...draft,
+          fiscalProfile: profile,
+          resolvedXsd: { documentType: 'nfe', schemaVersion: '4.00', xsdPath: '/xsd/nfe/4.00.xsd' },
+        },
+      });
+
+      const result = await mappingDraftService.setFiscalProfile({
+        workspaceId: 'workspace-1',
+        draftId: 'draft-1',
+        profile,
+      });
+
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/fiscal-profile',
+        profile
+      );
+      expect(result.fiscalProfile).toEqual(profile);
+      expect(result.resolvedXsd).toEqual({
+        documentType: 'nfe',
+        schemaVersion: '4.00',
+        xsdPath: '/xsd/nfe/4.00.xsd',
+      });
+    });
+
+    it('recusa perfil incompleto antes de chamar a API', async () => {
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile: { ...profile, schemaVersion: '' },
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+      expect(apiClient.put).not.toHaveBeenCalled();
+    });
+
+    it('mapeia 422 (documentType sem XSD configurado / schemaVersion não instalada) para rejected', async () => {
+      vi.mocked(apiClient.put).mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          status: 422,
+          data: { error: 'schemaVersion 4.00 não está instalada para nfe.' },
+        },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile,
+        })
+      ).rejects.toMatchObject({
+        kind: 'rejected',
+        message: 'schemaVersion 4.00 não está instalada para nfe.',
+      });
+    });
+
+    it('mapeia 404 (sem identidade/membership) para not_found', async () => {
+      vi.mocked(apiClient.put).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(
+        mappingDraftService.setFiscalProfile({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          profile,
+        })
+      ).rejects.toMatchObject({ kind: 'not_found' });
+    });
+  });
+
+  describe('listDrafts', () => {
+    it('lista drafts do workspace com paginação e filtro de engine', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: {
+          items: [
+            {
+              draftId: 'draft-1',
+              workspaceId: 'workspace-1',
+              packageId: 'package-1',
+              revisionId: 'revision-1',
+              engine: 'tcl',
+              createdAt: '2026-09-01T10:00:00Z',
+              rulesCount: 5,
+              fiscalProfile: null,
+            },
+          ],
+          page: 1,
+          pageSize: 20,
+          totalCount: 1,
+        },
+      });
+
+      await expect(mappingDraftService.listDrafts('workspace-1', 1, 20, 'tcl')).resolves.toEqual({
+        items: [
+          {
+            draftId: 'draft-1',
+            workspaceId: 'workspace-1',
+            packageId: 'package-1',
+            revisionId: 'revision-1',
+            engine: 'tcl',
+            createdAt: '2026-09-01T10:00:00Z',
+            rulesCount: 5,
+            fiscalProfile: null,
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+      });
+      expect(apiClient.get).toHaveBeenCalledWith('/api/workspaces/workspace-1/mapping-drafts', {
+        params: { page: 1, pageSize: 20, engine: 'tcl' },
+      });
+    });
+
+    it('recusa page < 1', async () => {
+      await expect(mappingDraftService.listDrafts('workspace-1', 0)).rejects.toMatchObject({
+        kind: 'invalid_input',
+      });
+    });
+
+    it('recusa pageSize fora de 1..100', async () => {
+      await expect(mappingDraftService.listDrafts('workspace-1', 1, 101)).rejects.toMatchObject({
+        kind: 'invalid_input',
+      });
+    });
+
+    it('recusa engine fora de tcl/xslt', async () => {
+      await expect(
+        mappingDraftService.listDrafts('workspace-1', 1, 20, 'sysmiddle' as unknown as 'tcl')
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+    });
+
+    it('mapeia 404 (workspace sem identidade) para not_found', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue({
+        isAxiosError: true,
+        response: { status: 404, data: {} },
+      });
+      vi.spyOn(axios, 'isAxiosError').mockReturnValue(true);
+
+      await expect(mappingDraftService.listDrafts('workspace-1')).rejects.toMatchObject({
+        kind: 'not_found',
+      });
+    });
+  });
+
+  describe('respostas a perguntas abertas (LayoutParserApi#422, gap a2)', () => {
+    const answer = {
+      answerId: 'answer-1',
+      draftId: 'draft-1',
+      ruleId: 'rule-1',
+      questionIndex: 0,
+      question: 'O campo representa sempre o emitente?',
+      answer: 'Sim, sempre.',
+      answeredByUserId: 'user-1',
+      answeredByName: 'user-1',
+      answeredAt: '2026-09-16T10:00:00Z',
+      version: 1,
+    };
+
+    it('envia PUT no endpoint dedicado com o texto normalizado', async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: answer });
+
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: '  Sim, sempre.  ',
+        })
+      ).resolves.toEqual(answer);
+
+      expect(apiClient.put).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/rules/rule-1/questions/0/answer',
+        { answer: 'Sim, sempre.' }
+      );
+    });
+
+    it('recusa resposta vazia ou maior que 4000 caracteres sem chamar a API', async () => {
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: '   ',
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+
+      await expect(
+        mappingDraftService.answerRuleQuestion({
+          workspaceId: 'workspace-1',
+          draftId: 'draft-1',
+          ruleId: 'rule-1',
+          questionIndex: 0,
+          answer: 'a'.repeat(4001),
+        })
+      ).rejects.toMatchObject({ kind: 'invalid_input' });
+
+      expect(apiClient.put).not.toHaveBeenCalled();
+    });
+
+    it('lista o histórico de respostas do draft e da regra com includeHistory', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [answer] });
+
+      await expect(
+        mappingDraftService.listDraftQuestionAnswers('workspace-1', 'draft-1', {
+          includeHistory: true,
+        })
+      ).resolves.toEqual([answer]);
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/question-answers',
+        { params: { includeHistory: true } }
+      );
+
+      await expect(
+        mappingDraftService.listRuleQuestionAnswers('workspace-1', 'draft-1', 'rule-1')
+      ).resolves.toEqual([answer]);
+      expect(apiClient.get).toHaveBeenCalledWith(
+        '/api/workspaces/workspace-1/mapping-drafts/draft-1/rules/rule-1/question-answers',
+        undefined
+      );
+    });
+
+    it('recusa payload de resposta inválido devolvido pela API', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ ...answer, version: 0 }] });
+
+      await expect(
+        mappingDraftService.listRuleQuestionAnswers('workspace-1', 'draft-1', 'rule-1')
+      ).rejects.toMatchObject({ kind: 'invalid_response' });
+    });
+  });
 });

@@ -311,9 +311,6 @@ class GoogleOidcClient implements OidcClient {
   #discovery: Promise<openidClient.Configuration> | null = null;
   // Contador só de diagnóstico (não influencia nenhuma decisão de negócio): permite ver, nos
   // logs, quantas vezes a descoberta OIDC do Google foi *tentada* desde o boot do processo.
-  // Se esse número não bater com "1 tentativa bem-sucedida", é sinal de que a promise cacheada
-  // em `#discovery` rejeitou e ficou presa (bug conhecido, ver comentário abaixo) — cada login
-  // subsequente reusaria a mesma rejeição sem nunca tentar de novo sozinho.
   #discoveryAttempts = 0;
 
   public constructor(configuration: GoogleConfig, logger?: FastifyBaseLogger) {
@@ -322,12 +319,10 @@ class GoogleOidcClient implements OidcClient {
   }
 
   #getConfiguration(): Promise<openidClient.Configuration> {
-    // NOTA (achado nesta investigação, não corrigido aqui — decisão de `@lp-front-dev`): esta
-    // memoização com `??=` cacheia a *promise*, inclusive se ela rejeitar. Uma falha de rede na
-    // primeira tentativa (ex.: saída fria para accounts.google.com logo após restart do host/
-    // túnel) deixa todo login Google subsequente falhando até o processo do BFF reiniciar, já
-    // que `??=` nunca reatribui depois da primeira chamada. Os logs abaixo servem para confirmar
-    // isso na próxima ocorrência real (thisWasCached=true + mesma falha repetida = confirma).
+    // A promise de descoberta só fica cacheada em caso de sucesso. Uma falha de rede na primeira
+    // tentativa (ex.: saída fria para accounts.google.com logo após restart do host/túnel) não
+    // deve grudar: `#discovery` é limpo no `.catch`, então a próxima tentativa de login refaz a
+    // descoberta em vez de reusar para sempre a mesma rejeição até o processo do BFF reiniciar.
     const wasAlreadyCached = this.#discovery !== null;
     if (!wasAlreadyCached) {
       this.#discoveryAttempts += 1;
@@ -347,6 +342,7 @@ class GoogleOidcClient implements OidcClient {
           return configuration;
         })
         .catch((error: unknown) => {
+          this.#discovery = null;
           this.#logger?.error(
             {
               event: 'auth.google.discovery_failed',
@@ -358,8 +354,7 @@ class GoogleOidcClient implements OidcClient {
               // trafegam nesta etapa (metadata OIDC do Google), sem dado de usuário na mensagem.
               errorMessage: error instanceof Error ? error.message.slice(0, 500) : undefined,
             },
-            'Descoberta OIDC do Google falhou; esta promise fica cacheada e todo login Google ' +
-              'seguinte reusará esta mesma falha até o processo do BFF reiniciar.'
+            'Descoberta OIDC do Google falhou; próxima tentativa de login refará a descoberta.'
           );
           throw error;
         });

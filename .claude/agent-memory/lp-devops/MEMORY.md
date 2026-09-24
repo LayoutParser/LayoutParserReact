@@ -1,6 +1,7 @@
 # Memória — @lp-devops (Gage)
 
 - Push, PR, CI, deploy, secrets e MCP são autoridade exclusiva de `@lp-devops`.
+- [Promoção develop→main pausada (SHA 5ba3c1e, 504 em execute-candidates)](project_develop_main_promotion_blocked_504_2026_09_10.md) — aguardando API confirmar correção antes de reabrir PR.
 - [MCP da API validado para detecção automática](project_api_mcp_validation_2026_08_29.md) —
   servidor saudável, endpoint `/api/parse/auto` entregue em branch e tool tipada rastreada em
   #184/#216.
@@ -22,6 +23,10 @@
 - [Bug de extração de URL do tunnel](project_cloudflare_tunnel_url_extraction_regex_bug.md) — regex pegava `api.trycloudflare.com` (endpoint interno) por log append-only + `-First 1`; corrigido para ancorar no último marcador de boot + excluir host da API.
 - [Patch manual BFF_PUBLIC_ORIGIN (2026-08-23)](project_bff_public_origin_manual_patch_2026_08_23.md) — Start-Bff.ps1 do release editado à mão p/ apontar pro Quick Tunnel; some no próximo deploy.
 - [Patch manual BFF_DNS_SERVERS (2026-08-23)](project_bff_dns_servers_manual_patch_2026_08_23.md) — PR #153 agora persiste BFF_DNS_SERVERS opcional no pipeline; patch manual do release ativo montado, pendente de execução pelo usuário.
+
+- [Loop de login em produção — Set-Cookie ausente (2026-09-15)](project_login_loop_setcookie_investigation_2026_09_15.md) — revisão de código/config sem achar bug; causa raiz não confirmada por falta de acesso ao host de produção.
+- [Fronteira de credencial do agente](feedback_agent_credential_boundary_crossing.md) — não contornar falta de SSH/RDP/WinRM via interop Windows sem confirmar com o usuário.
+- [MQSeries e2e 504 recorrente (2026-09-21)](project_mqseries_e2e_504_recurrence_watch_2026_09_21.md) — mqseries-user-flow.spec.ts:148 já falhou 2x por 504 em ~3h (PRs #284 e #287); rerun resolveu ambas; na 3ª ocorrência, investigar timeout/capacidade real em vez de assumir flake.
 
 Arquitetura vigente: front same-origin; IIS HTTPS anônimo encaminha `/auth` e `/api` → BFF Node
 em loopback com Entra OIDC/sessão criptografada → API .NET. `Deploy-Iis.ps1` desabilita Windows

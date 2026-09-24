@@ -37,6 +37,36 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'workspace/analyses',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/WorkspaceAnalysisHistory/WorkspaceAnalysisHistory')
+          ).default,
+        }),
+      },
+      {
+        path: 'workspace/analyses/:projectId',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/WorkspaceAnalysisHistory/WorkspaceAnalysisHistory')
+          ).default,
+        }),
+      },
+      {
+        path: 'workspace/analysis-archive',
+        lazy: async () => ({
+          Component: (await import('./components/workspace/AnalysisArchive/AnalysisArchive'))
+            .default,
+        }),
+      },
+      {
+        path: 'workspace/analysis-archive/:analysisId',
+        lazy: async () => ({
+          Component: (await import('./components/workspace/AnalysisArchive/AnalysisArchive'))
+            .default,
+        }),
+      },
+      {
         path: 'workspace/mapping-studio',
         lazy: async () => ({
           Component: (await import('./components/mapping-studio/MappingStudioPage')).default,
@@ -46,6 +76,22 @@ export const router = createBrowserRouter([
         path: 'workspace/mapping-studio/:mappingId/:version',
         lazy: async () => ({
           Component: (await import('./components/mapping-studio/MappingStudioPage')).default,
+        }),
+      },
+      {
+        path: 'workspace/fiscal-package',
+        lazy: async () => ({
+          Component: (
+            await import('./components/mapping-studio/FiscalPackageWizard/FiscalPackageWizard')
+          ).default,
+        }),
+      },
+      {
+        path: 'workspace/field-correction-curation',
+        lazy: async () => ({
+          Component: (
+            await import('./components/workspace/FieldCorrectionCuration/FieldCorrectionCuration')
+          ).default,
         }),
       },
       {

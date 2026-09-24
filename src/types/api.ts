@@ -46,11 +46,18 @@ export interface ParseRequest {
   layoutName?: string;
   layoutType?: string;
   layoutConfig?: LayoutConfig;
+  /**
+   * Opt-in do histórico de análises (LayoutParserApi#366). Sem isso, nada é guardado — o parse
+   * funciona exatamente como antes. Requer que o usuário seja membro do workspace informado.
+   */
+  workspaceId?: string;
 }
 
 export interface AutoParseRequest {
   documentFile: File;
   layoutGuidOverride?: string;
+  /** Ver `ParseRequest.workspaceId` — mesmo opt-in do histórico de análises. */
+  workspaceId?: string;
 }
 
 export type LayoutDetectionStatus = 'unique' | 'ambiguous' | 'not_found';
@@ -225,6 +232,13 @@ export interface ParseResponse {
   // Fase 3 do back-end (spec §1.6) — versões antigas podem omiti-lo e a UI cai no texto genérico.
   transformationsReason?:
     'type_not_positional' | 'no_mapper' | 'empty_input' | 'timeout_sync' | 'structural_error';
+  /**
+   * Registro no histórico de análises (LayoutParserApi#366), só presente quando `workspaceId`
+   * foi enviado na requisição. Se o registro falhar ou passar de 5s, a análise segue normalmente
+   * com `historyRegistered: false` e `analysisId` OMITIDO (não `null`) — não é erro.
+   */
+  analysisId?: string;
+  historyRegistered?: boolean;
 }
 
 /**

@@ -1,16 +1,29 @@
 import axios from 'axios';
 import type {
+  AnswerMappingDraftRuleQuestionInput,
   CreateMappingDraftInput,
   MappingAuthoringEngine,
   MappingDraft,
   MappingDraftEvidence,
+  MappingDraftListResponse,
   MappingDraftRule,
+  MappingDraftRuleQuestionAnswer,
   MappingDraftRuleStatus,
+  MappingDraftSummary,
   MappingSuggestionJob,
   MappingSuggestionJobStatus,
+  SetFiscalProfileInput,
   UpdateMappingDraftRuleInput,
 } from '../../types/mappingDraft';
+import { MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH } from '../../types/mappingDraft';
+import type {
+  FiscalDocumentType,
+  FiscalProfile,
+  ResolvedXsdReference,
+} from '../../types/workspace';
 import apiClient from '../api';
+
+const fiscalDocumentTypes = new Set<FiscalDocumentType>(['nfe', 'cte', 'mdfe', 'nfse', 'nfcom']);
 
 const authoringEngines = new Set<MappingAuthoringEngine>(['tcl', 'xslt']);
 const ruleStatuses = new Set<MappingDraftRuleStatus>([
@@ -77,6 +90,10 @@ function isValidDate(value: unknown): value is string {
   return isNonEmptyString(value) && !Number.isNaN(Date.parse(value));
 }
 
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 function resourceSegment(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) {
@@ -139,6 +156,94 @@ function parseRule(value: unknown): MappingDraftRule {
   };
 }
 
+function parseFiscalProfile(value: unknown): FiscalProfile {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.operation) ||
+    (value.jurisdiction !== undefined && !isNullableString(value.jurisdiction))
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    operation: value.operation,
+    ...(value.jurisdiction === undefined
+      ? {}
+      : { jurisdiction: value.jurisdiction as string | null }),
+  };
+}
+
+function parseResolvedXsd(value: unknown): ResolvedXsdReference {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.documentType) ||
+    !fiscalDocumentTypes.has(value.documentType as FiscalDocumentType) ||
+    !isNonEmptyString(value.schemaVersion) ||
+    !isNonEmptyString(value.xsdPath)
+  ) {
+    throw invalidResponse();
+  }
+  return {
+    documentType: value.documentType as FiscalDocumentType,
+    schemaVersion: value.schemaVersion,
+    xsdPath: value.xsdPath,
+  };
+}
+
+function parseQuestionAnswer(value: unknown): MappingDraftRuleQuestionAnswer {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.answerId) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.ruleId) ||
+    typeof value.questionIndex !== 'number' ||
+    !Number.isSafeInteger(value.questionIndex) ||
+    value.questionIndex < 0 ||
+    !isNonEmptyString(value.question) ||
+    typeof value.answer !== 'string' ||
+    !isNonEmptyString(value.answeredByUserId) ||
+    !isNonEmptyString(value.answeredByName) ||
+    !isValidDate(value.answeredAt) ||
+    typeof value.version !== 'number' ||
+    !Number.isSafeInteger(value.version) ||
+    value.version < 1
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    answerId: value.answerId,
+    draftId: value.draftId,
+    ruleId: value.ruleId,
+    questionIndex: value.questionIndex,
+    question: value.question,
+    answer: value.answer,
+    answeredByUserId: value.answeredByUserId,
+    answeredByName: value.answeredByName,
+    answeredAt: value.answeredAt,
+    version: value.version,
+  };
+}
+
+function parseQuestionAnswerList(value: unknown): MappingDraftRuleQuestionAnswer[] {
+  if (!Array.isArray(value)) {
+    throw invalidResponse();
+  }
+  return value.map(parseQuestionAnswer);
+}
+
+function parseNullableFiscalProfile(value: unknown): FiscalProfile | null {
+  return value === undefined || value === null ? null : parseFiscalProfile(value);
+}
+
+function parseNullableResolvedXsd(value: unknown): ResolvedXsdReference | null {
+  return value === undefined || value === null ? null : parseResolvedXsd(value);
+}
+
 function parseDraft(value: unknown): MappingDraft {
   if (
     !isRecord(value) ||
@@ -167,6 +272,59 @@ function parseDraft(value: unknown): MappingDraft {
     engine: value.engine as MappingAuthoringEngine,
     createdAt: value.createdAt,
     rules,
+    fiscalProfile: parseNullableFiscalProfile(value.fiscalProfile),
+    resolvedXsd: parseNullableResolvedXsd(value.resolvedXsd),
+  };
+}
+
+/**
+ * Item do catálogo de drafts (issue #198, parte 1) — GET .../mapping-drafts. Confirmado por
+ * @lp-contract-qa em 2026-09-22 (LayoutParserApi#416/PR#420): sem `layoutGuid`/`status`/
+ * `updatedAt` no item.
+ */
+function parseDraftSummary(value: unknown): MappingDraftSummary {
+  if (
+    !isRecord(value) ||
+    !isNonEmptyString(value.draftId) ||
+    !isNonEmptyString(value.workspaceId) ||
+    !isNonEmptyString(value.packageId) ||
+    !isNonEmptyString(value.revisionId) ||
+    !isNonEmptyString(value.engine) ||
+    !authoringEngines.has(value.engine as MappingAuthoringEngine) ||
+    !isValidDate(value.createdAt) ||
+    !isNonNegativeInteger(value.rulesCount)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    draftId: value.draftId,
+    workspaceId: value.workspaceId,
+    packageId: value.packageId,
+    revisionId: value.revisionId,
+    engine: value.engine as MappingAuthoringEngine,
+    createdAt: value.createdAt,
+    rulesCount: value.rulesCount,
+    fiscalProfile: parseNullableFiscalProfile(value.fiscalProfile),
+  };
+}
+
+function parseDraftListResponse(value: unknown): MappingDraftListResponse {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    !isNonNegativeInteger(value.page) ||
+    !isNonNegativeInteger(value.pageSize) ||
+    !isNonNegativeInteger(value.totalCount)
+  ) {
+    throw invalidResponse();
+  }
+
+  return {
+    items: value.items.map(parseDraftSummary),
+    page: value.page,
+    pageSize: value.pageSize,
+    totalCount: value.totalCount,
   };
 }
 
@@ -260,6 +418,41 @@ function mapRequestError(error: unknown): never {
 }
 
 export const mappingDraftService = {
+  /**
+   * Lista drafts TCL/XSLT do workspace (issue #198, parte 1) —
+   * GET /api/workspaces/{workspaceId}/mapping-drafts. Contrato confirmado por @lp-contract-qa
+   * em 2026-09-22 (LayoutParserApi#416/PR#420), sem drift contra origin/develop.
+   */
+  async listDrafts(
+    workspaceId: string,
+    page = 1,
+    pageSize = 20,
+    engine?: MappingAuthoringEngine
+  ): Promise<MappingDraftListResponse> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    if (!Number.isInteger(page) || page < 1) {
+      throw new MappingDraftRequestError('invalid_input', '"page" deve ser >= 1.');
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+      throw new MappingDraftRequestError('invalid_input', '"pageSize" deve estar entre 1 e 100.');
+    }
+    if (engine !== undefined && !authoringEngines.has(engine)) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        'O filtro de engine só aceita TCL ou XSLT.'
+      );
+    }
+
+    try {
+      const response = await apiClient.get<unknown>(`/api/workspaces/${workspace}/mapping-drafts`, {
+        params: { page, pageSize, ...(engine ? { engine } : {}) },
+      });
+      return parseDraftListResponse(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
   async createDraft(input: CreateMappingDraftInput): Promise<MappingDraft> {
     const workspace = resourceSegment(input.workspaceId, 'Workspace');
     const packageId = resourceSegment(input.packageId, 'Pacote');
@@ -366,6 +559,120 @@ export const mappingDraftService = {
         { headers: { 'If-Match': `\"${input.eTag.trim().replace(/^\"|\"$/g, '')}\"` } }
       );
       return parseRule(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Persiste a resposta a uma pergunta aberta (`MappingDraftRule.questions[questionIndex]`) via
+   * `PUT .../rules/{ruleId}/questions/{questionIndex}/answer` (LayoutParserApi#422). Idempotente
+   * para o mesmo texto; texto diferente cria versão nova no histórico append-only.
+   */
+  async answerRuleQuestion(
+    input: AnswerMappingDraftRuleQuestionInput
+  ): Promise<MappingDraftRuleQuestionAnswer> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const draft = resourceSegment(input.draftId, 'Draft');
+    const rule = resourceSegment(input.ruleId, 'Regra');
+    if (!Number.isSafeInteger(input.questionIndex) || input.questionIndex < 0) {
+      throw new MappingDraftRequestError('invalid_input', 'Índice de pergunta inválido.');
+    }
+    const answer = input.answer.trim();
+    if (!answer) {
+      throw new MappingDraftRequestError('invalid_input', 'A resposta não pode ficar em branco.');
+    }
+    if (answer.length > MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        `A resposta não pode ter mais de ${MAPPING_DRAFT_RULE_ANSWER_MAX_LENGTH} caracteres.`
+      );
+    }
+
+    try {
+      const response = await apiClient.put<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/rules/${rule}/questions/${input.questionIndex}/answer`,
+        { answer }
+      );
+      return parseQuestionAnswer(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /** Lista todas as respostas de perguntas abertas do draft. */
+  async listDraftQuestionAnswers(
+    workspaceId: string,
+    draftId: string,
+    options?: { includeHistory?: boolean }
+  ): Promise<MappingDraftRuleQuestionAnswer[]> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const draft = resourceSegment(draftId, 'Draft');
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/question-answers`,
+        options?.includeHistory ? { params: { includeHistory: true } } : undefined
+      );
+      return parseQuestionAnswerList(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /** Lista as respostas de perguntas abertas de uma regra específica. */
+  async listRuleQuestionAnswers(
+    workspaceId: string,
+    draftId: string,
+    ruleId: string,
+    options?: { includeHistory?: boolean }
+  ): Promise<MappingDraftRuleQuestionAnswer[]> {
+    const workspace = resourceSegment(workspaceId, 'Workspace');
+    const draft = resourceSegment(draftId, 'Draft');
+    const rule = resourceSegment(ruleId, 'Regra');
+    try {
+      const response = await apiClient.get<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/rules/${rule}/question-answers`,
+        options?.includeHistory ? { params: { includeHistory: true } } : undefined
+      );
+      return parseQuestionAnswerList(response.data);
+    } catch (error) {
+      return mapRequestError(error);
+    }
+  },
+
+  /**
+   * Grava o perfil fiscal do draft (issue #198). PUT idempotente — não retroage releases já
+   * emitidas. A API pode recusar com 422 (ex.: documentType sem XSD configurado, schemaVersion
+   * não instalada); isso mapeia para `MappingDraftRequestError('rejected', ...)`.
+   */
+  async setFiscalProfile(input: SetFiscalProfileInput): Promise<MappingDraft> {
+    const workspace = resourceSegment(input.workspaceId, 'Workspace');
+    const draft = resourceSegment(input.draftId, 'Draft');
+    if (
+      !isNonEmptyString(input.profile.documentType) ||
+      !fiscalDocumentTypes.has(input.profile.documentType) ||
+      !isNonEmptyString(input.profile.schemaVersion) ||
+      !isNonEmptyString(input.profile.operation)
+    ) {
+      throw new MappingDraftRequestError(
+        'invalid_input',
+        'Tipo de documento, versão de schema e operação são obrigatórios para o perfil fiscal.'
+      );
+    }
+
+    try {
+      const response = await apiClient.put<unknown>(
+        `/api/workspaces/${workspace}/mapping-drafts/${draft}/fiscal-profile`,
+        {
+          documentType: input.profile.documentType,
+          schemaVersion: input.profile.schemaVersion,
+          operation: input.profile.operation,
+          ...(input.profile.jurisdiction !== undefined
+            ? { jurisdiction: input.profile.jurisdiction }
+            : {}),
+        }
+      );
+      return parseDraft(response.data);
     } catch (error) {
       return mapRequestError(error);
     }

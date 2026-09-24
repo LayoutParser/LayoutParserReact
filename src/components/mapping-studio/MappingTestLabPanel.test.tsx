@@ -5,15 +5,22 @@ import { mappingReleaseService } from '../../services/api/mappingReleaseService'
 import type { MappingDraft } from '../../types/mappingDraft';
 import MappingTestLabPanel from './MappingTestLabPanel';
 
-vi.mock('../../services/api/mappingReleaseService', () => ({
-  mappingReleaseService: {
-    compileDraft: vi.fn(),
-    getCompileJob: vi.fn(),
-    getRelease: vi.fn(),
-    createTestRun: vi.fn(),
-    getTestRunJob: vi.fn(),
-  },
-}));
+vi.mock('../../services/api/mappingReleaseService', async () => {
+  const actual = await vi.importActual<typeof import('../../services/api/mappingReleaseService')>(
+    '../../services/api/mappingReleaseService'
+  );
+  return {
+    MappingReleaseRequestError: actual.MappingReleaseRequestError,
+    mappingReleaseService: {
+      compileDraft: vi.fn(),
+      getCompileJob: vi.fn(),
+      getRelease: vi.fn(),
+      createTestRun: vi.fn(),
+      getTestRunJob: vi.fn(),
+      editArtifact: vi.fn(),
+    },
+  };
+});
 
 const draft: MappingDraft = {
   draftId: 'draft-1',
@@ -40,6 +47,8 @@ const draft: MappingDraft = {
       eTag: 'AAAAAAAAAAE=',
     },
   ],
+  fiscalProfile: null,
+  resolvedXsd: null,
 };
 
 const release = {
@@ -70,6 +79,13 @@ const release = {
   publishedByUserId: null,
   publishedAt: null,
   previousPublishedReleaseId: null,
+  fiscalProfile: null,
+  resolvedXsd: null,
+  requiredCoverage: null,
+  artifactSource: 'generated' as const,
+  derivedFromReleaseId: null,
+  manualEditReason: null,
+  manuallyEditedArtifactKinds: [],
 };
 
 function renderPanel(path = '/workspace/mapping-studio/draft-1/draft') {
@@ -163,6 +179,23 @@ describe('MappingTestLabPanel', () => {
     expect(window.localStorage).toHaveLength(0);
   });
 
+  it('bloqueia a execução do Test Lab quando há diagnóstico de erro na compilação (Task #227)', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      compileDiagnostics: [
+        { ruleId: 'rule-1', severity: 'error', message: 'XPath inválido em sourceRefs.' },
+      ],
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByText('Diagnósticos de compilação — execução bloqueada')
+    ).toBeVisible();
+    const runButton = screen.getByRole('button', { name: 'Executar Test Lab' });
+    expect(runButton).toBeDisabled();
+    expect(mappingReleaseService.createTestRun).not.toHaveBeenCalled();
+  });
+
   it('não permite executar nova fixture sobre release publicada e imutável', async () => {
     vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
       ...release,
@@ -175,6 +208,7 @@ describe('MappingTestLabPanel', () => {
         xsdValid: true,
         xsdErrors: [],
         divergences: [],
+        divergencesByRuleId: null,
       },
       environment: 'production',
       approvedByUserId: 'reviewer-1',
@@ -189,5 +223,124 @@ describe('MappingTestLabPanel', () => {
     expect(await screen.findByRole('heading', { name: 'Publicada' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Executar Test Lab' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('XML de entrada')).not.toBeInTheDocument();
+  });
+
+  it('permite executar o Test Lab para releases TCL, sem aviso de indeterminismo (gap a1)', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      engine: 'tcl',
+      artifacts: [
+        {
+          kind: 'tcl',
+          content: '<tcl-rules/>',
+          hash: 'artifact-hash',
+          generatedAt: '2026-08-31T22:00:00Z',
+        },
+      ],
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Compilada, aguardando testes' })
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Executar Test Lab' })).toBeEnabled();
+    expect(screen.queryByText(/runner determinístico/i)).not.toBeInTheDocument();
+  });
+
+  it('mostra a cobertura fiscal obrigatória quando requiredCoverage está presente', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      requiredCoverage: { percent: 82.5, uncovered: ['emit/CNPJ', 'dest/CNPJ'] },
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(await screen.findByText(/Cobertura fiscal obrigatória: 82.5%/)).toBeVisible();
+    expect(screen.getByText(/emit\/CNPJ, dest\/CNPJ/)).toBeVisible();
+  });
+
+  it('agrupa divergências por ruleId quando divergencesByRuleId está populado', async () => {
+    vi.mocked(mappingReleaseService.getRelease).mockResolvedValue({
+      ...release,
+      testRunSummary: {
+        passed: 1,
+        failed: 1,
+        coveragePercent: 50,
+        requiredGatesPassed: false,
+        xsdValid: true,
+        xsdErrors: [],
+        divergences: [
+          {
+            kind: 'value_mismatch',
+            xpath: '/nfe/emit/CNPJ',
+            expected: '123',
+            actual: '456',
+            ruleId: 'rule-1',
+            sourceRefs: ['layout://CNPJ'],
+            evidence: null,
+          },
+        ],
+        divergencesByRuleId: {
+          'rule-1': [
+            {
+              kind: 'value_mismatch',
+              xpath: '/nfe/emit/CNPJ',
+              expected: '123',
+              actual: '456',
+              ruleId: 'rule-1',
+              sourceRefs: ['layout://CNPJ'],
+              evidence: null,
+            },
+          ],
+        },
+      },
+    });
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    const toggle = await screen.findByRole('button', { name: 'Agrupar divergências por regra' });
+    fireEvent.click(toggle);
+
+    expect(screen.getByText('Regra rule-1 · 1 divergência(s)')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ver lista plana de divergências' })).toBeVisible();
+  });
+
+  it('troca a release ativa para a derivada após edição manual e exige novo Test Lab (issue #229)', async () => {
+    const derivedRelease = {
+      ...release,
+      releaseId: 'release-2',
+      status: 'draft_compiled' as const,
+      artifactSource: 'manual_edit' as const,
+      derivedFromReleaseId: 'release-1',
+      manualEditReason: 'Ajuste fiscal solicitado pelo revisor.',
+    };
+    // O mock diferencia por releaseId para evitar que o efeito de "reabrir pela URL" (que também
+    // observa releaseIdFromUrl) sobrescreva a release derivada com a original de forma flakey.
+    vi.mocked(mappingReleaseService.getRelease).mockImplementation((_workspaceId, _draftId, id) =>
+      Promise.resolve(id === 'release-2' ? derivedRelease : release)
+    );
+    vi.mocked(mappingReleaseService.editArtifact).mockResolvedValue(derivedRelease);
+    renderPanel('/workspace/mapping-studio/draft-1/draft?releaseId=release-1');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Compilada, aguardando testes' })
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Editar manualmente' }));
+    fireEvent.change(screen.getByLabelText('Conteúdo do artefato'), {
+      target: { value: '<xsl:stylesheet version="1.0">edit</xsl:stylesheet>' },
+    });
+    fireEvent.change(screen.getByLabelText('Justificativa (obrigatória)'), {
+      target: { value: 'Ajuste fiscal solicitado pelo revisor.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar edição manual' }));
+
+    await waitFor(() => expect(mappingReleaseService.editArtifact).toHaveBeenCalled());
+
+    // A release exibida deve virar a derivada — não a original — e a URL deve refletir isso,
+    // senão a tela continuaria mostrando a governança da release antiga.
+    expect(await screen.findByText('Release release-2')).toBeVisible();
+    expect(screen.getByText(/Artefato editado manualmente/)).toBeVisible();
+    expect(
+      screen.getByText(/Derivada da release release-1.*Rode o Fiscal Test Lab com sucesso/s)
+    ).toBeVisible();
   });
 });

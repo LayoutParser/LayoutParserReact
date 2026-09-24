@@ -37,6 +37,44 @@ const FieldDisplay: React.FC = () => {
       ? getFieldPhysicalId(actualFields[0])
       : null;
 
+  // ✅ Tamanho REAL de cada linha, vindo do contrato (`lineValidations[].totalLength`).
+  // Antes o arquivo inteiro assumia 600 chars fixos (convenção MQSeries) — quebrava em
+  // layouts de linha variável (ex.: IDOC/SAP), onde cada segmento tem tamanho próprio.
+  // A API já devolve esse dado por linha; não precisamos adivinhar.
+  const lineLengthByName = useMemo(() => {
+    const map = new Map<string, number>();
+    parseResult?.lineValidations?.forEach(lv => {
+      if (typeof lv.totalLength === 'number' && lv.totalLength > 0) {
+        map.set(lv.lineName, lv.totalLength);
+      }
+    });
+    return map;
+  }, [parseResult?.lineValidations]);
+
+  // "Grade" de 600 chars só existe em layouts de linha FIXA (convenção MQSeries), onde
+  // toda linha conhecida mede exatamente 600. Só nesse caso faz sentido "arredondar" uma
+  // posição encontrada por indexOf para o múltiplo de 600 mais próximo. Em layouts de
+  // linha variável (IDOC/SAP) não há essa grade — cada linha tem seu próprio totalLength.
+  const isFixedLength600Layout = useMemo(() => {
+    const lengths = Array.from(lineLengthByName.values());
+    return lengths.length > 0 && lengths.every(len => len === 600);
+  }, [lineLengthByName]);
+
+  // Fallback só quando a API não informou totalLength para a linha (layout mal
+  // configurado no back-end) — não é suposição de layout, é o último recurso, sinalizado
+  // em DEV, já usado antes desta função existir.
+  const FALLBACK_LINE_LENGTH = 600;
+  const getLineLength = (lineName: string): number => {
+    const known = lineLengthByName.get(lineName);
+    if (typeof known === 'number' && known > 0) return known;
+    if (import.meta.env.DEV) {
+      console.warn(
+        `⚠️ Linha "${lineName}" sem totalLength em lineValidations; usando fallback de ${FALLBACK_LINE_LENGTH} caracteres.`
+      );
+    }
+    return FALLBACK_LINE_LENGTH;
+  };
+
   // Função comentada - não utilizada (número da linha agora é sequencial)
   // const getLineInitialValue = (lineName: string): string | null => {
   //   if (!parseResult?.layout?.elements) return null;
@@ -195,9 +233,12 @@ const FieldDisplay: React.FC = () => {
       return '000000';
     }
 
-    // Para outras linhas, o sequencial está nas primeiras 6 posições de cada linha de 600 caracteres
-    // Calcular o início da linha (cada linha tem 600 caracteres)
-    const lineStart = Math.floor(position / 600) * 600;
+    // Para outras linhas, o sequencial está nas primeiras 6 posições do início físico da linha.
+    // Em layout de linha FIXA (600, MQSeries) a posição encontrada por indexOf é arredondada
+    // para o múltiplo de 600 mais próximo (defesa contra match acidental da sequência no meio
+    // do conteúdo). Em layout de linha VARIÁVEL (IDOC/SAP) não existe essa grade — confiamos
+    // diretamente na posição encontrada.
+    const lineStart = isFixedLength600Layout ? Math.floor(position / 600) * 600 : position;
 
     // O sequencial está nas posições 0-5 de cada linha
     const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
@@ -320,12 +361,18 @@ const FieldDisplay: React.FC = () => {
   const firstDesyncLineIndex = findFirstDesyncLineIndex(validationErrors);
   const isTruncated = firstDesyncLineIndex >= 0;
 
-  // ✅ Índice físico da linha no TXT (0-based, considerando blocos de 600 chars)
-  // Preferimos calcular via `position` (mais confiável) para não depender do índice do array.
+  // ✅ Índice físico da linha no TXT (0-based).
+  // Em layout de linha FIXA (600, MQSeries), blocos de 600 chars permitem derivar o índice
+  // a partir da posição em bytes (mais confiável que o índice do array). Em layout de linha
+  // VARIÁVEL (IDOC/SAP) essa divisão não tem significado nenhum — cada linha tem tamanho
+  // próprio — então usamos a ordem sequencial já estabelecida em `displayGroups` (mesma
+  // ordem que `validationErrors[].lineIndex` referencia).
   const getPhysicalLineIndex = (group: DisplayGroup, fallbackIndex: number): number => {
-    const pos = group?.position;
-    if (typeof pos === 'number' && pos >= 0) {
-      return Math.floor(pos / 600);
+    if (isFixedLength600Layout) {
+      const pos = group?.position;
+      if (typeof pos === 'number' && pos >= 0) {
+        return Math.floor(pos / 600);
+      }
     }
     return fallbackIndex;
   };
@@ -384,6 +431,8 @@ const FieldDisplay: React.FC = () => {
     let currentPosition = 0;
     const sequenceLength = 6; // Sequencial sempre 6 chars
     const lineNumberLength = 3; // Número da linha sempre 3 chars
+    // Tamanho real da linha (vem de lineValidations; fallback sinalizado se ausente).
+    const lineLength = getLineLength(group.lineName);
 
     // Adicionar sequencial e número da linha
     currentPosition += sequenceLength + lineNumberLength;
@@ -393,21 +442,21 @@ const FieldDisplay: React.FC = () => {
       const fieldStart = field.startPosition ? field.startPosition - 1 : currentPosition; // converter para 0-based
       const fieldLength = field.length || field.value?.length || 1;
 
-      // Se a posição do campo + seu tamanho excederia 600, este campo é problemático
-      if (fieldStart + fieldLength > 600) {
+      // Se a posição do campo + seu tamanho excederia o tamanho real da linha, este campo é problemático
+      if (fieldStart + fieldLength > lineLength) {
         return {
           fieldName: field.fieldName || 'Campo Desconhecido',
-          issue: 'Campo excede limite de 600 caracteres da linha',
-          expectedSize: 600 - fieldStart,
+          issue: `Campo excede limite de ${lineLength} caracteres da linha`,
+          expectedSize: lineLength - fieldStart,
           actualSize: fieldLength,
         };
       }
 
-      // Se chegamos ao limite de 600 caracteres antes de processar todos os campos
-      if (currentPosition >= 600) {
+      // Se chegamos ao limite da linha antes de processar todos os campos
+      if (currentPosition >= lineLength) {
         return {
           fieldName: field.fieldName || 'Campo Desconhecido',
-          issue: 'Campo não cabe na linha (limite de 600 caracteres atingido)',
+          issue: `Campo não cabe na linha (limite de ${lineLength} caracteres atingido)`,
           expectedSize: 0,
           actualSize: fieldLength,
         };
@@ -480,7 +529,9 @@ const FieldDisplay: React.FC = () => {
         // O -1 reproduz o comportamento anterior, em que `undefined >= 0` já era falso.
         const groupPosition = groupData.position ?? -1;
         if (txtContent && groupPosition >= 0) {
-          const lineStart = Math.floor(groupPosition / 600) * 600;
+          const lineStart = isFixedLength600Layout
+            ? Math.floor(groupPosition / 600) * 600
+            : groupPosition;
           const sequentialInFile = txtContent.substring(lineStart, lineStart + 6);
           if (sequentialInFile) {
             displaySequential = sequentialInFile;
@@ -562,14 +613,18 @@ const FieldDisplay: React.FC = () => {
                     {displaySequential}
                   </span>
                 )}
-                <span className="field-line-content">{' '.repeat(600)}</span>
+                <span className="field-line-content">
+                  {' '.repeat(getLineLength(group.lineName))}
+                </span>
               </div>
             </div>
           );
         }
 
-        // Construir linha completa com 600 caracteres usando a lógica do back-end
-        const LINE_LENGTH = 600;
+        // Construir linha completa usando a lógica do back-end. O tamanho vem de
+        // `lineValidations[].totalLength` (contrato da API) — não é mais fixo em 600, o que
+        // permite layouts de linha variável (IDOC/SAP) além do fixo (600, MQSeries).
+        const LINE_LENGTH = getLineLength(group.lineName);
         const lineParts: Array<{
           type: 'field' | 'space' | 'initial' | 'sequence' | 'static';
           content: string;
@@ -577,37 +632,6 @@ const FieldDisplay: React.FC = () => {
           start: number;
           end: number;
         }> = [];
-
-        // Calcular a posição real da linha no TXT
-        // Cada linha tem exatamente 600 caracteres: linha 0 = 0-599, linha 1 = 600-1199, etc.
-        let lineStart = -1;
-
-        if (txtContent) {
-          // Prioridade 1: usar groupDataPosition se disponível (mais confiável)
-          if (groupData.position !== undefined && groupData.position >= 0) {
-            lineStart = Math.floor(groupData.position / 600) * 600;
-          } else {
-            // Prioridade 2: usar o índice do grupo para calcular
-            // HEADER é grupo 0 (linha 0), LINHA000 é grupo 1 (linha 600), etc.
-            lineStart = groupIndex * 600;
-
-            // Validar: se o primeiro campo tem startPosition, verificar se está na linha correta
-            const firstField = displayFields.length > 0 ? displayFields[0] : null;
-            if (firstField && firstField.startPosition && firstField.startPosition > 0) {
-              const fieldPos = firstField.startPosition - 1; // Converter para 0-based
-              const calculatedLineStart = Math.floor(fieldPos / 600) * 600;
-              // Se a diferença for muito grande, usar o calculado
-              if (Math.abs(calculatedLineStart - lineStart) > 300) {
-                lineStart = calculatedLineStart;
-              }
-            }
-          }
-
-          // Garantir que lineStart não ultrapasse o tamanho do txtContent
-          if (lineStart >= txtContent.length) {
-            lineStart = -1;
-          }
-        }
 
         // IMPORTANTE: Usar APENAS os dados do JSON retornado pela API
         // O JSON já contém todas as informações parseadas:
@@ -795,7 +819,8 @@ const FieldDisplay: React.FC = () => {
 
         // Não adicionar "Sequencia" ao final no front-end.
 
-        // 5. Preencher até 600 caracteres se necessário (não deveria acontecer se cálculo estiver correto)
+        // 5. Preencher até LINE_LENGTH (tamanho real da linha) se necessário — não deveria
+        // acontecer se o cálculo estiver correto.
         if (currentPos < LINE_LENGTH) {
           const missing = LINE_LENGTH - currentPos;
           lineParts.push({
@@ -804,24 +829,26 @@ const FieldDisplay: React.FC = () => {
             start: currentPos,
             end: LINE_LENGTH,
           });
-          // Linha fora dos 600 chars: sintoma de layout/documento desalinhado. Diagnóstico
-          // só de desenvolvimento — roda por linha e cita conteúdo do documento.
+          // Linha menor que o tamanho esperado: sintoma de layout/documento desalinhado.
+          // Diagnóstico só de desenvolvimento — roda por linha e cita conteúdo do documento.
           if (import.meta.env.DEV) {
             console.warn(
-              `⚠️ Linha ${group.lineName} tem apenas ${currentPos} chars, preenchendo ${missing} espaços`
+              `⚠️ Linha ${group.lineName} tem apenas ${currentPos} chars (esperado ${LINE_LENGTH}), preenchendo ${missing} espaços`
             );
           }
         } else if (currentPos > LINE_LENGTH && import.meta.env.DEV) {
-          console.warn(`⚠️ Linha ${group.lineName} excedeu 600 chars (${currentPos}), truncando`);
+          console.warn(
+            `⚠️ Linha ${group.lineName} excedeu ${LINE_LENGTH} chars (${currentPos}), truncando`
+          );
         }
 
-        // Validar e garantir que a linha tenha exatamente 600 caracteres
+        // Validar e garantir que a linha tenha exatamente LINE_LENGTH caracteres
         let fullLineContent = '';
         lineParts.forEach(part => {
           fullLineContent += part.content;
         });
 
-        // Se não tiver 600 caracteres, preencher com espaços no final
+        // Se não tiver LINE_LENGTH caracteres, preencher com espaços no final
         if (fullLineContent.length < LINE_LENGTH) {
           const missing = LINE_LENGTH - fullLineContent.length;
           lineParts.push({
@@ -835,7 +862,7 @@ const FieldDisplay: React.FC = () => {
           // Truncar se exceder (não deveria acontecer)
           fullLineContent = fullLineContent.substring(0, LINE_LENGTH);
           if (import.meta.env.DEV) {
-            console.warn(`⚠️ Linha ${group.lineName} excedeu 600 caracteres, truncando`);
+            console.warn(`⚠️ Linha ${group.lineName} excedeu ${LINE_LENGTH} caracteres, truncando`);
           }
         }
 
