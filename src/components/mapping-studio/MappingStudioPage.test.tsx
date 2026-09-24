@@ -32,6 +32,7 @@ vi.mock('../../services/api/mappingDraftService', async importOriginal => {
       getSuggestion: vi.fn(),
       cancelSuggestion: vi.fn(),
       updateRule: vi.fn(),
+      listDrafts: vi.fn(),
     },
   };
 });
@@ -140,6 +141,12 @@ describe('MappingStudioPage', () => {
       target: { roots: [] },
       rules: [],
       limitations: [],
+    });
+    vi.mocked(mappingDraftService.listDrafts).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      totalCount: 0,
     });
     useWorkspaceStore.setState({
       status: 'ready',
@@ -272,6 +279,49 @@ describe('MappingStudioPage', () => {
     expect(
       await screen.findByText(/Não foi possível carregar os mapeadores gerados automaticamente/)
     ).toBeVisible();
+  });
+
+  it('lista drafts do workspace ativo e linka para a rota de revisão (issue #198)', async () => {
+    vi.mocked(mappingDraftService.listDrafts).mockResolvedValue({
+      items: [
+        {
+          draftId: 'draft-2',
+          workspaceId: 'workspace-1',
+          packageId: 'package-1',
+          revisionId: 'revision-1',
+          engine: 'tcl',
+          createdAt: '2026-09-22T10:00:00Z',
+          rulesCount: 3,
+          fiscalProfile: null,
+        },
+      ],
+      page: 1,
+      pageSize: 20,
+      totalCount: 1,
+    });
+
+    renderRoute('/workspace/mapping-studio');
+
+    const link = await screen.findByRole('link', { name: /TCL.*draft-2.*3 regra\(s\)/s });
+    expect(link).toHaveAttribute('href', '/workspace/mapping-studio/draft-2/draft');
+    expect(mappingDraftService.listDrafts).toHaveBeenCalledWith('workspace-1', 1, 20, undefined);
+  });
+
+  it('mostra estado vazio do catálogo de drafts quando o workspace não tem drafts', async () => {
+    renderRoute('/workspace/mapping-studio');
+    expect(await screen.findByText('Nenhum draft ainda')).toBeVisible();
+  });
+
+  it('filtra drafts por engine e reinicia a paginação', async () => {
+    renderRoute('/workspace/mapping-studio');
+
+    await screen.findByText('Nenhum draft ainda');
+
+    fireEvent.change(screen.getByLabelText('Motor'), { target: { value: 'xslt' } });
+
+    await waitFor(() => {
+      expect(mappingDraftService.listDrafts).toHaveBeenCalledWith('workspace-1', 1, 20, 'xslt');
+    });
   });
 
   it('renderiza Sysmiddle somente leitura sem controles de autoria', async () => {

@@ -30,6 +30,26 @@ metadata:
   `File` JSON a partir dos campos do wizard (documentType/schemaVersion/operation/jurisdiction),
   não pedido como upload separado ao usuário. Isso não mudou nesta rodada.
 
+## PBI #201 — confirmação de aba/cabeçalho/colunas (gap fechado em 2026-09-16)
+
+- O critério de aceite "planilha permite confirmar aba/cabeçalho/colunas antes de interpretar"
+  não estava implementado: o inventário (`getExcelInventory`) só era **exibido**, sem gate de
+  confirmação. Implementado em `FiscalPackageWizard.tsx` (branch
+  `feat/fiscal-package-inventory-confirmation`, a partir de `develop`): estado
+  `sheetConfirmations` por `artifactId`, radio de aba + checkboxes de coluna + botão "Confirmar
+  aba, cabeçalho e colunas"; qualquer troca de aba/coluna depois de confirmado volta para
+  "Pendente de confirmação".
+- **Achado de gap de contrato (não bloqueante, documentado em vez de inventado):**
+  `ExcelInventoryResult`/`ExcelSheetInventory` (`src/types/mappingPackage.ts`) não tem campo de
+  linha de cabeçalho separado — só `sheetName`/`columns`/`ruleCount`, já normalizado pela API.
+  Então "confirmar cabeçalho" foi implementado como confirmar o subconjunto de `columns` da aba
+  escolhida, não uma linha de cabeçalho distinta. Se a API vier a expor `headerRowIndex` ou
+  equivalente, ajustar a UI para confirmar isso explicitamente.
+- Também não existe hoje nenhum botão "prosseguir para interpretação pela IA" no wizard — o
+  gate criado é só visual/de estado (badge "Confirmado para interpretação" vs. "Pendente"), sem
+  ação de submissão associada, porque essa etapa de IA ainda não tem endpoint/consumidor no
+  front.
+
 ## PBI #198 — catálogo e ciclo de vida de mappings fiscais
 
 - **Nada implementado — bloqueio total de contrato.** Vasculhei toda a API em `develop`
